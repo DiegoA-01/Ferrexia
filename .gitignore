@@ -1,0 +1,16 @@
+graphify-out/
+
+# Variables de docker-compose (secretos): nunca a git
+.env
+.env.*
+!.env.example
+
+# Credenciales locales de la demo
+*.local.txt
+*.local.json
+
+# Pruebas de punta a punta y de carga (spec 010)
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+reporte-carga.local.*
