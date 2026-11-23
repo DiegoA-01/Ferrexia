@@ -78,7 +78,7 @@ jobs:
 
       - name: Reporte de cobertura (JaCoCo)
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: cobertura-backend
           path: backend/target/site/jacoco/
@@ -87,7 +87,7 @@ jobs:
 
       - name: Reportes de pruebas
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: pruebas-backend
           path: backend/target/surefire-reports/
@@ -197,7 +197,7 @@ jobs:
 
       - name: Reporte de Playwright
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |
