@@ -4752,6 +4752,9 @@ export interface components {
             topeEfectivo?: number;
             activa?: boolean;
             turnoAbierto?: boolean;
+            turnoAbiertoPor?: string;
+            /** Format: date-time */
+            turnoAbiertoDesde?: string;
         };
         ConfiguracionCaja: {
             toleranciaDiferencia: number;

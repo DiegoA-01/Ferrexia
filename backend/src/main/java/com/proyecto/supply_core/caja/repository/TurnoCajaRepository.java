@@ -1,5 +1,6 @@
 package com.proyecto.supply_core.caja.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -31,6 +32,13 @@ public interface TurnoCajaRepository extends JpaRepository<TurnoCaja, Long> {
      * @return {@code true} si la caja tiene un turno en ese estado
      */
     boolean existsByCajaIdAndEstado(Long cajaId, EstadoTurno estado);
+
+    /**
+     * @param estado estado buscado
+     * @return turnos de la empresa en ese estado, con su caja (para marcar las cajas ocupadas, spec 015)
+     */
+    @Query("select t from TurnoCaja t join fetch t.caja where t.estado = :estado")
+    List<TurnoCaja> conCajaPorEstado(@Param("estado") EstadoTurno estado);
 
     /**
      * @param id turno

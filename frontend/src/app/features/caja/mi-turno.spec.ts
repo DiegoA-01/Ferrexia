@@ -4,7 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { Turno } from '../../core/api/modelos';
+import { Caja, Turno } from '../../core/api/modelos';
 import { MiTurno } from './mi-turno';
 
 const abierto: Turno = { id: 4, cajaId: 1, caja: 'Caja 1', estado: 'ABIERTO', abiertoEn: '2026-11-20T08:00:00', baseApertura: 50000,
@@ -16,8 +16,8 @@ describe('Mi turno', () => {
   const c = () => fixture.componentInstance as unknown as Record<string, any>;
   const texto = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
 
-  /** @param turno turno abierto (null = sin turno) */
-  const crear = (turno: Turno | null) => {
+  /** @param turno turno abierto (null = sin turno) @param cajas cajas activas que responde el backend */
+  const crear = (turno: Turno | null, cajas: Caja[] = [{ id: 1, nombre: 'Caja 1', sede: 'Centro' }]) => {
     TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] });
     backend = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(MiTurno);
@@ -27,7 +27,7 @@ describe('Mi turno', () => {
       actual.flush(turno);
     } else {
       actual.flush({}, { status: 404, statusText: 'Not Found' });
-      backend.expectOne(r => r.url === '/api/cajas').flush([{ id: 1, nombre: 'Caja 1', sede: 'Centro' }]);
+      backend.expectOne(r => r.url === '/api/cajas').flush(cajas);
     }
     fixture.detectChanges();
   };
@@ -45,6 +45,40 @@ describe('Mi turno', () => {
     r.flush(abierto);
     fixture.detectChanges();
     expect(texto()).toContain('Cierre ciego');
+  });
+
+  describe('cajas ocupadas (spec 015)', () => {
+    const ocupada: Caja = { id: 1, nombre: 'Caja 1 mostrador', sede: 'Centro', turnoAbierto: true,
+      turnoAbiertoPor: 'Cajero', turnoAbiertoDesde: '2026-11-20T11:01:23' };
+    const libre: Caja = { id: 2, nombre: 'Caja 2 mostrador', sede: 'Centro', turnoAbierto: false };
+    const opciones = () => [...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLOptionElement>('#ab-caja option')];
+
+    it('una caja ocupada sale con quién la tiene y desde cuándo, y no se puede elegir', () => {
+      crear(null, [ocupada, libre]);
+      const op = opciones().find(o => o.textContent?.includes('Caja 1'))!;
+      expect(op.textContent?.trim()).toBe('Caja 1 mostrador · Centro · ocupada por Cajero desde 20 nov, 11:01');
+      expect(op.disabled).toBe(true);
+      expect(opciones().find(o => o.textContent?.includes('Caja 2'))!.disabled).toBe(false);
+    });
+
+    it('con una sola caja libre, queda elegida sola', () => {
+      crear(null, [ocupada, libre]);
+      expect(c()['cajaId']()).toBe(2);
+    });
+
+    it('con varias cajas libres no elige ninguna', () => {
+      crear(null, [libre, { ...libre, id: 3, nombre: 'Caja 3' }]);
+      expect(c()['cajaId']()).toBeNull();
+    });
+
+    it('con todas ocupadas muestra qué hacer en vez del formulario', () => {
+      crear(null, [ocupada]);
+      expect(texto()).toContain('Todas las cajas tienen un turno abierto');
+      expect(texto()).toContain('Caja 1 mostrador: ocupada por Cajero desde 20 nov, 11:01');
+      expect((fixture.nativeElement as HTMLElement).querySelector('#ab-caja')).toBeNull();
+      expect([...(fixture.nativeElement as HTMLElement).querySelectorAll('button')]
+        .some(b => b.textContent?.includes('Abrir turno'))).toBe(false);
+    });
   });
 
   it('avisa el tope de efectivo y el retiro va con el permiso del supervisor', () => {
