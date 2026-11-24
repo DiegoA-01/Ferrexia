@@ -1,3 +1,4 @@
+import { NumeroPipe } from '../../core/formato/formato';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -8,6 +9,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 import { CampoCatalogo, CATALOGOS, ConfigCatalogo } from './catalogos';
 
+import { Cifra } from '../../core/ui/cifra';
 /**
  * Pantalla de un catálogo simple de la empresa (sedes, centros de costo, bodegas, categorías, unidades de medida). Una
  * sola pantalla sirve a los cinco: lo que cambia (campos, roles, ruta de la API) sale de {@link CATALOGOS}. Desactivar no
@@ -15,7 +17,7 @@ import { CampoCatalogo, CATALOGOS, ConfigCatalogo } from './catalogos';
  */
 @Component({
   selector: 'sc-catalogo',
-  imports: [FormsModule, RouterLink],
+  imports: [Cifra, NumeroPipe, FormsModule, RouterLink],
   templateUrl: './catalogo.html',
   styleUrl: './catalogo.scss',
 })

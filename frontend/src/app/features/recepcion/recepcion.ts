@@ -11,6 +11,7 @@ import { OrdenesService } from '../../core/servicios/ordenes.service';
 import { Avisos } from '../../core/ui/avisos';
 import { SesionService } from '../../core/sesion/sesion.service';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Lo que la persona digita por línea: cuánto llegó y cuánto rechaza. */
 interface Digitado {
   recibido: number | null;
@@ -24,7 +25,7 @@ interface Digitado {
  */
 @Component({
   selector: 'sc-recepcion',
-  imports: [FormsModule, RouterLink, Estado, EtiquetaPipe, NumeroPipe, FechaPipe],
+  imports: [Cifra, FormsModule, RouterLink, Estado, EtiquetaPipe, NumeroPipe, FechaPipe],
   templateUrl: './recepcion.html',
   styleUrl: './recepcion.scss',
 })

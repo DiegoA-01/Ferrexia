@@ -59,9 +59,9 @@
             <option [ngValue]="0" disabled>Elige</option>
             @for (u of unidades(); track u.id) { <option [ngValue]="u.id">{{ u.nombre }} ({{ u.codigo }})</option> }
           </select></div>
-        <div class="campo"><label for="min">Stock mínimo</label><input id="min" type="number" min="0" class="entrada num" formControlName="stockMinimo"></div>
-        <div class="campo"><label for="max">Stock máximo</label><input id="max" type="number" min="0" class="entrada num" formControlName="stockMaximo"></div>
-        <div class="campo"><label for="costo">Costo de referencia</label><input id="costo" type="number" min="0" class="entrada num" formControlName="costoReferencia"></div>
+        <div class="campo"><label for="min">Stock mínimo</label><input scCifra [decimales]="4" id="min" min="0" class="entrada num" formControlName="stockMinimo"></div>
+        <div class="campo"><label for="max">Stock máximo</label><input scCifra [decimales]="4" id="max" min="0" class="entrada num" formControlName="stockMaximo"></div>
+        <div class="campo"><label for="costo">Costo de referencia</label><input scCifra id="costo" min="0" class="entrada num" formControlName="costoReferencia"></div>
         <div class="fila fin"><button type="submit" class="boton primario" [disabled]="trabajando()">{{ editandoId() ? 'Guardar cambios' : 'Crear producto' }}</button>
           <button type="button" class="boton" (click)="panel.set('ninguno')">Cancelar</button></div>
       </form>

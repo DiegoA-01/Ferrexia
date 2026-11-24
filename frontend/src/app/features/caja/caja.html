@@ -127,7 +127,7 @@
               </select>
               <span class="sub">Sede: {{ sedeDeBodega() }}</span></div>
             <div class="campo"><label for="cp">Prefijo de los consecutivos</label><input id="cp" class="entrada" maxlength="10" placeholder="C1" [ngModel]="e.prefijo" (ngModelChange)="cambiar('prefijo', $event)"></div>
-            <div class="campo"><label for="ct">Tope de efectivo (0 = sin aviso)</label><input id="ct" type="number" min="0" class="entrada num" [ngModel]="e.tope" (ngModelChange)="cambiar('tope', $event === '' ? null : +$event)"></div>
+            <div class="campo"><label for="ct">Tope de efectivo (0 = sin aviso)</label><input scCifra id="ct" min="0" class="entrada num" [ngModel]="e.tope" (ngModelChange)="cambiar('tope', $event)"></div>
             @if (e.id) { <label class="opcion"><input type="checkbox" [ngModel]="e.activa" (ngModelChange)="cambiar('activa', $event)"> Activa</label> }
           </div>
           <div class="fila">
@@ -141,8 +141,8 @@
         <h2>Tolerancia de diferencia</h2>
         <p class="texto-chico texto-2">Diferencia por medio de pago que se acepta al cerrar sin aprobación de un supervisor.</p>
         <div class="fila tolerancia">
-          <input class="entrada num" type="number" min="0" aria-label="Tolerancia de diferencia" [disabled]="!esDueno()"
-            [ngModel]="tolerancia()" (ngModelChange)="tolerancia.set($event === '' ? null : +$event)">
+          <input scCifra class="entrada num" min="0" aria-label="Tolerancia de diferencia" [disabled]="!esDueno()"
+            [ngModel]="tolerancia()" (ngModelChange)="tolerancia.set($event)">
           @if (esDueno()) { <button type="button" class="boton" (click)="guardarTolerancia()">Guardar</button> }
         </div>
         <h2>Bodega de averías</h2>
@@ -160,9 +160,9 @@
         <p class="texto-chico texto-2">Cuando un cajero llega en un día a estas cantidades, el dueño y los supervisores reciben un aviso (una vez por día).</p>
         <div class="fila tolerancia">
           <label for="um-anul">Anulaciones</label>
-          <input id="um-anul" class="entrada num" type="number" min="1" [disabled]="!esDueno()" [ngModel]="umbralAnulaciones()" (ngModelChange)="umbralAnulaciones.set($event === '' ? null : +$event)">
+          <input scCifra [decimales]="0" id="um-anul" class="entrada num" min="1" [disabled]="!esDueno()" [ngModel]="umbralAnulaciones()" (ngModelChange)="umbralAnulaciones.set($event)">
           <label for="um-desc">Ventas con descuento autorizado</label>
-          <input id="um-desc" class="entrada num" type="number" min="1" [disabled]="!esDueno()" [ngModel]="umbralDescuentos()" (ngModelChange)="umbralDescuentos.set($event === '' ? null : +$event)">
+          <input scCifra [decimales]="0" id="um-desc" class="entrada num" min="1" [disabled]="!esDueno()" [ngModel]="umbralDescuentos()" (ngModelChange)="umbralDescuentos.set($event)">
           @if (esDueno()) { <button type="button" class="boton" (click)="guardarTolerancia()">Guardar</button> }
         </div>
       </section>

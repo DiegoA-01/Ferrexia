@@ -20,11 +20,11 @@
                     <td><strong>{{ l.productoNombre }}</strong><span class="sub">{{ l.especificaciones || l.productoCodigo }}</span></td>
                     <td class="num">{{ l.cantidad | numero }} {{ l.unidadCodigo }}</td>
                     <td class="num">
-                      <input type="number" min="0" step="0.01" class="entrada num precio" [attr.aria-label]="'Precio de ' + l.productoNombre"
+                      <input scCifra min="0" class="entrada num precio" [attr.aria-label]="'Precio de ' + l.productoNombre"
                              [disabled]="!editable()" [ngModel]="oferta(l.id).precio" (ngModelChange)="cambiar(l.id, 'precio', $event)">
                     </td>
                     <td class="num">
-                      <input type="number" min="0" max="100" class="entrada num impuesto" [attr.aria-label]="'Impuesto de ' + l.productoNombre"
+                      <input scCifra min="0" max="100" class="entrada num impuesto" [attr.aria-label]="'Impuesto de ' + l.productoNombre"
                              [disabled]="!editable()" [ngModel]="oferta(l.id).impuesto" (ngModelChange)="cambiar(l.id, 'impuesto', +$event)">
                     </td>
                   </tr>
@@ -38,7 +38,7 @@
           <h2>Condiciones</h2>
           <div class="formulario dos">
             <div class="campo"><label for="plazo">Plazo de entrega (días)</label>
-              <input id="plazo" type="number" min="0" class="entrada" [disabled]="!editable()" [ngModel]="plazo()" (ngModelChange)="plazo.set($event); sinGuardar.set(true)"></div>
+              <input scCifra [decimales]="0" id="plazo" min="0" class="entrada" [disabled]="!editable()" [ngModel]="plazo()" (ngModelChange)="plazo.set($event); sinGuardar.set(true)"></div>
             <div class="campo"><label for="pago">Condiciones de pago</label>
               <select id="pago" class="entrada" [disabled]="!editable()" [ngModel]="condiciones()" (ngModelChange)="condiciones.set($event); sinGuardar.set(true)">
                 @for (c of ['Contado', 'A 15 días', 'A 30 días', 'A 60 días']; track c) { <option [value]="c">{{ c }}</option> }
@@ -47,7 +47,7 @@
             <div class="campo"><label for="validez">Vigencia de la oferta</label>
               <input id="validez" type="date" class="entrada" [disabled]="!editable()" [ngModel]="validez()" (ngModelChange)="validez.set($event); sinGuardar.set(true)"></div>
             <div class="campo"><label for="garantia">Garantía (meses)</label>
-              <input id="garantia" type="number" min="0" class="entrada" [disabled]="!editable()" [ngModel]="garantia()" (ngModelChange)="garantia.set($event); sinGuardar.set(true)"></div>
+              <input scCifra [decimales]="0" id="garantia" min="0" class="entrada" [disabled]="!editable()" [ngModel]="garantia()" (ngModelChange)="garantia.set($event); sinGuardar.set(true)"></div>
           </div>
           <div class="campo margen-arriba"><label for="notas">Notas para el comprador</label>
             <textarea id="notas" class="entrada" placeholder="Opcional" [disabled]="!editable()" [ngModel]="notas()" (ngModelChange)="notas.set($event)"></textarea></div>

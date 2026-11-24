@@ -8,6 +8,7 @@ import { ConfiguracionService } from '../../core/servicios/configuracion.service
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 
+import { Cifra } from '../../core/ui/cifra';
 /**
  * Pesos de evaluación: qué tanto cuenta cada criterio (precio, plazo, garantía…) en el puntaje de una cotización. Deben
  * estar todos y sumar 100. Cada cambio crea una versión nueva y cierra la anterior; los análisis ya hechos guardan los
@@ -15,7 +16,7 @@ import { Avisos } from '../../core/ui/avisos';
  */
 @Component({
   selector: 'sc-pesos',
-  imports: [FormsModule, RouterLink, FechaPipe, NumeroPipe],
+  imports: [Cifra, FormsModule, RouterLink, FechaPipe, NumeroPipe],
   templateUrl: './pesos.html',
   styleUrl: './pesos.scss',
 })

@@ -17,7 +17,7 @@ llegar a Reportes o Gestión; y las tarjetas de Inicio repiten esa misma lista c
   icono, su nombre y una flecha. Al hacer clic se despliega o se recoge la lista de sus pantallas.
 - Al entrar, todas las categorías salen recogidas, menos la que contiene la pantalla abierta (si estoy en Clientes,
   Ventas sale abierta). Inicio sigue siempre visible arriba.
-- Se puede tener más de una categoría abierta a la vez.
+- Se puede tener más de una categoría abierta a la vez. **Reemplazado por la spec 017 (2026-11-24): ahora solo una categoría abierta a la vez.**
 - Lo que la persona abre o recoge se recuerda en ese navegador al volver a entrar.
 - Los contadores (solicitudes por aprobar, productos bajo el mínimo) también se ven en la categoría recogida, para no
   perder el aviso.

@@ -23,7 +23,7 @@
       </div>
       <div class="campo">
         <label for="pc">Cantidad (opcional)</label>
-        <input id="pc" type="number" min="0" class="entrada num" [ngModel]="cantidad()" (ngModelChange)="cantidad.set($event === '' || $event === null ? null : +$event)">
+        <input scCifra [decimales]="4" id="pc" min="0" class="entrada num" [ngModel]="cantidad()" (ngModelChange)="cantidad.set($event)">
       </div>
       <sc-selector-sede [sede]="sede()" (sedeChange)="sede.set($event)" />
       <div class="campo ancho">

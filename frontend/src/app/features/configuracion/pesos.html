@@ -24,7 +24,7 @@
             <label [for]="'peso-' + p.codigo">{{ p.nombre }}</label>
             @if (editando()) {
               <div class="entrada-peso">
-                <input [id]="'peso-' + p.codigo" type="number" min="0" max="100" step="any" class="entrada num" [ngModel]="valores()[p.codigo!]" (ngModelChange)="cambiar(p.codigo!, $event)">
+                <input scCifra [id]="'peso-' + p.codigo" min="0" max="100" class="entrada num" [ngModel]="valores()[p.codigo!]" (ngModelChange)="cambiar(p.codigo!, $event)">
                 <span>%</span>
               </div>
             } @else {

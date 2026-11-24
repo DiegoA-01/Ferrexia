@@ -60,7 +60,7 @@
       @if (d.totalPaginas > 1) {
         <div class="paginacion fila">
           <button type="button" class="boton chico" [disabled]="d.pagina === 0" (click)="irA(d.pagina - 1)">Anterior</button>
-          <span class="texto-chico">Página {{ d.pagina + 1 }} de {{ d.totalPaginas }} · {{ d.totalElementos }} clientes</span>
+          <span class="texto-chico">Página {{ d.pagina + 1 }} de {{ d.totalPaginas }} · {{ d.totalElementos | numero }} clientes</span>
           <button type="button" class="boton chico" [disabled]="d.pagina + 1 >= d.totalPaginas" (click)="irA(d.pagina + 1)">Siguiente</button>
         </div>
       }

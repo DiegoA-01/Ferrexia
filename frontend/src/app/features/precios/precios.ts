@@ -10,6 +10,7 @@ import { InventarioService } from '../../core/servicios/inventario.service';
 import { VentasService } from '../../core/servicios/ventas.service';
 import { Avisos, descargar } from '../../core/ui/avisos';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Texto de cada alerta de un producto. */
 const ALERTAS: Record<string, string> = {
   SIN_PRECIO: 'Sin precio',
@@ -39,7 +40,7 @@ interface Edicion {
  */
 @Component({
   selector: 'sc-precios',
-  imports: [FormsModule, RouterLink, PesosPipe, NumeroPipe, FechaPipe],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, NumeroPipe, FechaPipe],
   templateUrl: './precios.html',
   styleUrl: './precios.scss',
 })

@@ -11,6 +11,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 import { SelectorSede } from '../../core/ui/selector-sede';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Texto, color y explicación de cada estado del plan. */
 export const ESTADOS: Record<EstadoReabastecimiento, { texto: string; tono: string; ayuda: string }> = {
   URGENTE: { texto: 'Urgente', tono: 'rojo', ayuda: 'Aun pidiendo hoy, se acaba antes de que llegue el pedido.' },
@@ -34,7 +35,7 @@ interface EdicionPlazo {
  */
 @Component({
   selector: 'sc-reabastecimiento',
-  imports: [FormsModule, RouterLink, NumeroPipe, FechaPipe, PesosPipe, SelectorSede],
+  imports: [Cifra, FormsModule, RouterLink, NumeroPipe, FechaPipe, PesosPipe, SelectorSede],
   templateUrl: './reabastecimiento.html',
   styleUrl: './reabastecimiento.scss',
 })

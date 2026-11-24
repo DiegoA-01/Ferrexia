@@ -43,11 +43,11 @@
                     <td><strong>{{ a.productoNombre }}</strong><span class="sub">Ya aceptado: {{ a.aceptado | numero }} · falta: {{ a.faltante | numero }}</span></td>
                     <td class="num">{{ a.pedido | numero }}</td>
                     <td class="num">
-                      <input type="number" min="0" class="entrada num corta" [attr.aria-label]="'Llegó de ' + a.productoNombre"
+                      <input scCifra [decimales]="4" min="0" class="entrada num corta" [attr.aria-label]="'Llegó de ' + a.productoNombre"
                              [disabled]="!puedeRecibir()" [ngModel]="valor(a).recibido" (ngModelChange)="cambiar(a, 'recibido', $event)">
                     </td>
                     <td class="num">
-                      <input type="number" min="0" class="entrada num corta" [attr.aria-label]="'Rechazado de ' + a.productoNombre"
+                      <input scCifra [decimales]="4" min="0" class="entrada num corta" [attr.aria-label]="'Rechazado de ' + a.productoNombre"
                              [disabled]="!puedeRecibir()" [ngModel]="valor(a).rechazado" (ngModelChange)="cambiar(a, 'rechazado', $event)">
                     </td>
                     <td>

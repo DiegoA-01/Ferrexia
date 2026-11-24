@@ -5,6 +5,7 @@ import { Cliente, ClienteRequest, ListaPrecio, TipoDocumento } from '../../core/
 import { ClientesService } from '../../core/servicios/clientes.service';
 import { Avisos } from '../../core/ui/avisos';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Tipos de documento con su nombre. */
 const TIPOS: { codigo: TipoDocumento; nombre: string }[] = [
   { codigo: 'CC', nombre: 'Cédula de ciudadanía' },
@@ -20,7 +21,7 @@ const TIPOS: { codigo: TipoDocumento; nombre: string }[] = [
  */
 @Component({
   selector: 'sc-cliente-formulario',
-  imports: [FormsModule],
+  imports: [Cifra, FormsModule],
   template: `
     <form class="formulario cliente-form" (ngSubmit)="guardar()">
       <div class="campo"><label for="cf-tipo">Tipo de documento</label>
@@ -49,9 +50,9 @@ const TIPOS: { codigo: TipoDocumento; nombre: string }[] = [
             @for (l of listas(); track l.id) { @if (!l.esGeneral && l.activo) { <option [ngValue]="l.id">{{ l.nombre }}</option> } }
           </select></div>
         <div class="campo"><label for="cf-cupo">Cupo de crédito</label>
-          <input id="cf-cupo" name="cupo" type="number" min="0" class="entrada num" [ngModel]="cupo()" (ngModelChange)="cupo.set($event === '' ? null : +$event)"></div>
+          <input scCifra id="cf-cupo" name="cupo" min="0" class="entrada num" [ngModel]="cupo()" (ngModelChange)="cupo.set($event)"></div>
         <div class="campo"><label for="cf-plazo">Plazo (días)</label>
-          <input id="cf-plazo" name="plazo" type="number" min="0" max="365" class="entrada num" [ngModel]="plazo()" (ngModelChange)="plazo.set($event === '' ? null : +$event)"></div>
+          <input scCifra [decimales]="0" id="cf-plazo" name="plazo" min="0" max="365" class="entrada num" [ngModel]="plazo()" (ngModelChange)="plazo.set($event)"></div>
       }
       @if (cliente()) {
         <label class="opcion ancho"><input type="checkbox" name="activo" [ngModel]="activo()" (ngModelChange)="activo.set($event)"> Activo (se le puede vender)</label>

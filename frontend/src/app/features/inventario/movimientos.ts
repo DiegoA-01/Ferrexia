@@ -10,6 +10,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
 import { BuscadorProducto } from '../../core/ui/buscador-producto';
 import { Avisos, descargar } from '../../core/ui/avisos';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Tipos que el almacenista puede registrar a mano (el resto los generan recepción y despachos). */
 const MANUALES: readonly TipoMovimiento[] = ['SALIDA_CONSUMO', 'AJUSTE_POSITIVO', 'AJUSTE_NEGATIVO', 'TRASLADO'];
 const USAN_ORIGEN: readonly TipoMovimiento[] = ['SALIDA_CONSUMO', 'AJUSTE_NEGATIVO', 'TRASLADO'];
@@ -26,7 +27,7 @@ const TODOS_LOS_TIPOS: readonly TipoMovimiento[] = [
  */
 @Component({
   selector: 'sc-movimientos',
-  imports: [FormsModule, RouterLink, Estado, EtiquetaPipe, FechaPipe, NumeroPipe],
+  imports: [Cifra, FormsModule, RouterLink, Estado, EtiquetaPipe, FechaPipe, NumeroPipe],
   templateUrl: './movimientos.html',
   styleUrl: './movimientos.scss',
 })

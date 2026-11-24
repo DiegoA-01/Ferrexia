@@ -61,9 +61,9 @@
                   <td><strong>{{ x.nombre }}</strong><span class="sub">{{ x.codigo }}@if (x.stock != null) { · stock {{ x.stock | numero }} }</span>
                     @if (calculada(i)?.pasaLimite) { <span class="sub ambar">Pasa su límite de descuento: pedirá el PIN del supervisor</span> }
                     @if (calculada(i)?.bajoMinimo) { <span class="sub ambar">Queda bajo el precio mínimo: pedirá el PIN del supervisor</span> }</td>
-                  <td class="num"><input class="entrada mini" type="number" min="0" step="any" [attr.aria-label]="'Cantidad de ' + x.nombre"
+                  <td class="num"><input scCifra [decimales]="4" class="entrada mini" min="0" [attr.aria-label]="'Cantidad de ' + x.nombre"
                     [ngModel]="x.cantidad" (ngModelChange)="cambiarCantidad(i, $event)"> {{ x.unidad }}</td>
-                  <td class="num"><input class="entrada mini" type="number" min="0" max="100" step="any" [attr.aria-label]="'Descuento de ' + x.nombre"
+                  <td class="num"><input scCifra class="entrada mini" min="0" max="100" [attr.aria-label]="'Descuento de ' + x.nombre"
                     [ngModel]="x.descuentoPct" (ngModelChange)="cambiarDescuento(i, $event)"></td>
                   <td class="num">{{ calculada(i) ? (calculada(i)!.precioUnitario | pesos) : '…' }}</td>
                   <td class="num">{{ calculada(i) ? (calculada(i)!.totalLinea | pesos) : '…' }}</td>
@@ -190,7 +190,7 @@
         </div>
         @if (p?.medio === 'EFECTIVO') {
           <label class="etiqueta-cobro" for="pos-recibido">¿Con cuánto paga el cliente?</label>
-          <input id="pos-recibido" class="entrada recibido" type="number" min="0" step="any" placeholder="Escriba lo que le entregan"
+          <input scCifra id="pos-recibido" class="entrada recibido" min="0" placeholder="Escriba lo que le entregan"
             [ngModel]="p.monto" (ngModelChange)="cambiarPago(0, 'monto', $event)">
           <div class="rapidos">
             <button type="button" class="boton chico" (click)="pagarExacto()">Exacto</button>
@@ -215,7 +215,7 @@
               <option [ngValue]="null" disabled>Elige el medio</option>
               @for (m of ordenMedios(); track m) { <option [ngValue]="m">{{ textoMedio(m) }}</option> }
             </select>
-            <input class="entrada" type="number" min="0" step="any" [attr.aria-label]="'Valor del pago ' + (i + 1)" placeholder="Valor"
+            <input scCifra class="entrada" min="0" [attr.aria-label]="'Valor del pago ' + (i + 1)" placeholder="Valor"
               [ngModel]="p.monto" (ngModelChange)="cambiarPago(i, 'monto', $event)">
             @if (p.medio && p.medio !== 'EFECTIVO' && p.medio !== 'CREDITO' && p.medio !== 'SALDO_FAVOR') {
               <input class="entrada" [placeholder]="esTarjeta(p) ? 'Voucher (opcional)' : 'Referencia (opcional)'"

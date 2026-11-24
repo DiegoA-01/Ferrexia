@@ -37,11 +37,11 @@
                        [ngModel]="p.buscador.texto()" (ngModelChange)="p.buscador.escribir($event)">
                 <datalist [id]="'lista-c' + i">@for (o of p.buscador.opciones(); track o.id) { <option [value]="p.buscador.etiqueta(o)"></option> }</datalist></div>
               <div class="campo"><label [for]="'pr' + i">Precio unitario</label>
-                <input [id]="'pr' + i" [name]="'pr' + i" type="number" min="0" step="any" class="entrada num" [ngModel]="p.precio" (ngModelChange)="cambiarPrecio(i, 'precio', $event)"></div>
+                <input scCifra [id]="'pr' + i" [name]="'pr' + i" min="0" class="entrada num" [ngModel]="p.precio" (ngModelChange)="cambiarPrecio(i, 'precio', $event)"></div>
               <div class="campo"><label [for]="'pi' + i">IVA %</label>
-                <input [id]="'pi' + i" [name]="'pi' + i" type="number" min="0" max="100" step="any" class="entrada num" [ngModel]="p.impuesto" (ngModelChange)="cambiarPrecio(i, 'impuesto', $event)"></div>
+                <input scCifra [id]="'pi' + i" [name]="'pi' + i" min="0" max="100" class="entrada num" [ngModel]="p.impuesto" (ngModelChange)="cambiarPrecio(i, 'impuesto', $event)"></div>
               <div class="campo"><label [for]="'pt' + i">Tope de cantidad (opcional)</label>
-                <input [id]="'pt' + i" [name]="'pt' + i" type="number" min="0" step="any" class="entrada num" placeholder="Sin tope" [ngModel]="p.tope" (ngModelChange)="cambiarPrecio(i, 'tope', $event)"></div>
+                <input scCifra [id]="'pt' + i" [name]="'pt' + i" min="0" class="entrada num" placeholder="Sin tope" [ngModel]="p.tope" (ngModelChange)="cambiarPrecio(i, 'tope', $event)"></div>
               <button type="button" class="boton chico" (click)="quitarPrecio(i)" [disabled]="precios().length === 1" aria-label="Quitar producto"><span class="material-symbols-outlined">close</span></button>
             </div>
           }

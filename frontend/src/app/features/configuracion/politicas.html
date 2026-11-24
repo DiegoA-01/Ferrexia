@@ -22,10 +22,10 @@
             @for (r of roles; track r) { <option [value]="r">{{ nombre(r) }}</option> }
           </select></div>
         <div class="campo"><label for="pd">Desde el monto</label>
-          <input id="pd" name="pd" type="number" min="0" step="any" class="entrada num" [ngModel]="desde()" (ngModelChange)="desde.set($event)">
+          <input scCifra id="pd" name="pd" min="0" class="entrada num" [ngModel]="desde()" (ngModelChange)="desde.set($event)">
           <span class="ayuda">Este monto sí entra en el rango.</span></div>
         <div class="campo"><label for="ph">Hasta el monto (opcional)</label>
-          <input id="ph" name="ph" type="number" min="0" step="any" class="entrada num" placeholder="Sin tope" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)">
+          <input scCifra id="ph" name="ph" min="0" class="entrada num" placeholder="Sin tope" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)">
           <span class="ayuda">Este monto no entra: ya lo cubre la política siguiente. Vacío = sin tope.</span></div>
         <div class="fila">
           <button type="submit" class="boton primario" [disabled]="trabajando()">{{ trabajando() ? 'Guardando…' : 'Guardar' }}</button>

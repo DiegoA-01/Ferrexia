@@ -52,7 +52,7 @@
             </select></div>
         }
         <div class="campo"><label for="cant">Cantidad</label>
-          <input id="cant" name="cant" type="number" min="0" step="any" class="entrada num" [ngModel]="cantidad()" (ngModelChange)="cantidad.set($event)">
+          <input scCifra [decimales]="4" id="cant" name="cant" min="0" class="entrada num" [ngModel]="cantidad()" (ngModelChange)="cantidad.set($event)">
           <span class="ayuda">En la unidad del producto.</span></div>
         <div class="campo ancho"><label for="motivo">Motivo {{ exigeMotivo() ? '(obligatorio)' : '(opcional)' }}</label>
           <input id="motivo" name="motivo" class="entrada" maxlength="250" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)"
@@ -159,7 +159,7 @@
         @if ((p.totalPaginas ?? 0) > 1) {
           <div class="fila paginacion">
             <button type="button" class="boton chico" [disabled]="numeroPagina() === 0" (click)="buscar(numeroPagina() - 1)">Anterior</button>
-            <span class="texto-chico texto-2">Página {{ numeroPagina() + 1 }} de {{ p.totalPaginas }} · {{ p.totalElementos }} movimientos</span>
+            <span class="texto-chico texto-2">Página {{ numeroPagina() + 1 }} de {{ p.totalPaginas }} · {{ p.totalElementos | numero }} movimientos</span>
             <button type="button" class="boton chico" [disabled]="numeroPagina() + 1 >= (p.totalPaginas ?? 0)" (click)="buscar(numeroPagina() + 1)">Siguiente</button>
           </div>
         }

@@ -11,6 +11,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 import { BuscadorProducto } from '../../core/ui/buscador-producto';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Línea del formulario: un producto, su unidad y la cantidad. */
 interface LineaForm {
   buscador: BuscadorProducto;
@@ -25,7 +26,7 @@ interface LineaForm {
  */
 @Component({
   selector: 'sc-despachos',
-  imports: [FormsModule, RouterLink, Estado, FechaPipe, NumeroPipe],
+  imports: [Cifra, FormsModule, RouterLink, Estado, FechaPipe, NumeroPipe],
   templateUrl: './despachos.html',
   styleUrl: './despachos.scss',
 })

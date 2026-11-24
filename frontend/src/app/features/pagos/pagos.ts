@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import { Pagina, Pago, Proveedor } from '../../core/api/modelos';
 import { Estado, EtiquetaPipe } from '../../core/formato/etiquetas';
-import { FechaPipe, PesosPipe } from '../../core/formato/formato';
+import { FechaPipe, PesosPipe, NumeroPipe } from '../../core/formato/formato';
 import { OrdenesService } from '../../core/servicios/ordenes.service';
 import { ReportesService } from '../../core/servicios/reportes.service';
 import { SesionService } from '../../core/sesion/sesion.service';
@@ -18,7 +18,7 @@ import { PagoAcciones } from '../ordenes/pago-acciones';
  */
 @Component({
   selector: 'sc-pagos',
-  imports: [FormsModule, RouterLink, Estado, EtiquetaPipe, FechaPipe, PesosPipe, PagoAcciones],
+  imports: [NumeroPipe, FormsModule, RouterLink, Estado, EtiquetaPipe, FechaPipe, PesosPipe, PagoAcciones],
   templateUrl: './pagos.html',
   styleUrl: './pagos.scss',
 })

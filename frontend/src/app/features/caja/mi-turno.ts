@@ -14,6 +14,7 @@ import { AutorizacionPin } from './autorizacion-pin';
 import { htmlRecibo, imprimirHtml } from '../pos/tiquete';
 import { MEDIOS } from './caja';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Movimiento de efectivo que registra el cajero. */
 type TipoMovimiento = 'RETIRO' | 'GASTO' | 'INGRESO';
 
@@ -28,7 +29,7 @@ const TIPOS: Record<TipoMovimiento, string> = { RETIRO: 'Retiro a la bóveda', G
  */
 @Component({
   selector: 'sc-mi-turno',
-  imports: [FormsModule, RouterLink, PesosPipe, FechaPipe, AutorizacionPin],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, FechaPipe, AutorizacionPin],
   template: `
     <div class="pagina">
       <div class="encabezado"><div><h1>Mi turno</h1><p>Abra su caja, registre el efectivo que sale o entra y ciérrela contando a ciegas.</p></div>
@@ -70,7 +71,7 @@ const TIPOS: Record<TipoMovimiento, string> = { RETIRO: 'Retiro a la bóveda', G
                 @for (k of tipos; track k) { <option [ngValue]="k">{{ textoTipo(k) }}</option> }
               </select></div>
             <div class="campo"><label for="mt-monto">Monto</label>
-              <input id="mt-monto" type="number" min="0" step="any" class="entrada" [ngModel]="monto()" (ngModelChange)="monto.set($event)"></div>
+              <input scCifra id="mt-monto" min="0" class="entrada" [ngModel]="monto()" (ngModelChange)="monto.set($event)"></div>
             <div class="campo ancho"><label for="mt-motivo">Motivo</label>
               <input id="mt-motivo" class="entrada" maxlength="300" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)"></div>
             <div class="campo"><label for="mt-soporte">Soporte (recibo)</label>
@@ -103,7 +104,7 @@ const TIPOS: Record<TipoMovimiento, string> = { RETIRO: 'Retiro a la bóveda', G
                 @if (clienteAbono(); as c) { <span class="sub">Abona: <strong>{{ c.nombre }}</strong> <button type="button" class="boton chico" (click)="clienteAbono.set(null)">Cambiar</button></span> }
               </div>
               <div class="campo"><label for="ab-valor">Valor</label>
-                <input id="ab-valor" type="number" min="0" step="any" class="entrada" [ngModel]="valorAbono()" (ngModelChange)="valorAbono.set($event)"></div>
+                <input scCifra id="ab-valor" min="0" class="entrada" [ngModel]="valorAbono()" (ngModelChange)="valorAbono.set($event)"></div>
               <div class="campo"><label for="ab-medio">Medio</label>
                 <select id="ab-medio" class="entrada" [ngModel]="medioAbono()" (ngModelChange)="medioAbono.set($event)">
                   @for (m of medios; track m) { <option [ngValue]="m">{{ textoMedio(m) }}</option> }
@@ -121,7 +122,7 @@ const TIPOS: Record<TipoMovimiento, string> = { RETIRO: 'Retiro a la bóveda', G
           <div class="formulario">
             @for (m of medios; track m) {
               <div class="campo"><label [for]="'cc-' + m">{{ textoMedio(m) }}</label>
-                <input [id]="'cc-' + m" type="number" min="0" step="any" class="entrada" [ngModel]="contado()[m] ?? null" (ngModelChange)="contar(m, $event)"></div>
+                <input scCifra [id]="'cc-' + m" min="0" class="entrada" [ngModel]="contado()[m] ?? null" (ngModelChange)="contar(m, $event)"></div>
             }
             <div class="campo ancho"><label for="cc-obs">Observación</label>
               <input id="cc-obs" class="entrada" maxlength="500" placeholder="Opcional" [ngModel]="observacion()" (ngModelChange)="observacion.set($event)"></div>
@@ -152,7 +153,7 @@ const TIPOS: Record<TipoMovimiento, string> = { RETIRO: 'Retiro a la bóveda', G
                   }
                 </select></div>
               <div class="campo"><label for="ab-base">Base en efectivo</label>
-                <input id="ab-base" type="number" min="0" step="any" class="entrada" [ngModel]="base()" (ngModelChange)="base.set($event)"></div>
+                <input scCifra id="ab-base" min="0" class="entrada" [ngModel]="base()" (ngModelChange)="base.set($event)"></div>
             </div>
             <button type="button" class="boton primario" [disabled]="!cajaId() || base() == null || enviando()" (click)="abrir()">Abrir turno</button>
           }

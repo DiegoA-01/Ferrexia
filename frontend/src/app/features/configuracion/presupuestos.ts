@@ -9,6 +9,7 @@ import { ConfiguracionService } from '../../core/servicios/configuracion.service
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 
+import { Cifra } from '../../core/ui/cifra';
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 /**
@@ -18,7 +19,7 @@ const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', '
  */
 @Component({
   selector: 'sc-presupuestos',
-  imports: [FormsModule, RouterLink, PesosPipe, NumeroPipe],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, NumeroPipe],
   templateUrl: './presupuestos.html',
   styleUrl: './presupuestos.scss',
 })

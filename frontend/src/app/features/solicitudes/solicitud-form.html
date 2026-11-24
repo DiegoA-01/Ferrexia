@@ -69,7 +69,7 @@
                     <option [ngValue]="null">Elige…</option>
                     @for (u of unidades(); track u.id) { <option [ngValue]="u.id">{{ u.nombre }} ({{ u.codigo }})</option> }
                   </select></div>
-                <div class="campo"><label for="np-r">Costo de referencia</label><input id="np-r" name="np-r" type="number" min="0" step="any" class="entrada num" [ngModel]="nuevoCosto()" (ngModelChange)="nuevoCosto.set($event)"></div>
+                <div class="campo"><label for="np-r">Costo de referencia</label><input scCifra id="np-r" name="np-r" min="0" class="entrada num" [ngModel]="nuevoCosto()" (ngModelChange)="nuevoCosto.set($event)"></div>
               </div>
               <div class="fila">
                 <button type="submit" class="boton primario" [disabled]="trabajando()">Crear y agregar</button>
@@ -87,7 +87,7 @@
                   <td><strong>{{ l.producto.nombre }}</strong><span class="sub">{{ l.producto.codigo }}</span></td>
                   <td class="num">
                     @if (editable()) {
-                      <span class="cantidad"><input type="number" min="0.0001" step="any" class="entrada num" [attr.aria-label]="'Cantidad de ' + l.producto.nombre"
+                      <span class="cantidad"><input scCifra [decimales]="4" min="0.0001" class="entrada num" [attr.aria-label]="'Cantidad de ' + l.producto.nombre"
                              [ngModel]="l.cantidad" (ngModelChange)="cambiarCantidad(i, $event)"> {{ l.producto.unidadMedida?.codigo }}</span>
                     } @else { {{ l.cantidad | numero }} {{ l.producto.unidadMedida?.codigo }} }
                   </td>

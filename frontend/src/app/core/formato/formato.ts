@@ -3,6 +3,7 @@ import { Pipe, PipeTransform } from '@angular/core';
 /**
  * Formato colombiano (es-CO). Solo da formato a lo que devuelve el backend: aquí no se calcula dinero ni stock.
  */
+// es-CO pone el punto de miles también en 4 cifras (1.234); lo protege formato.spec.ts (spec 017)
 const PESOS = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const COMPACTO = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', notation: 'compact', maximumFractionDigits: 1 });
 const NUMERO = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 4 });

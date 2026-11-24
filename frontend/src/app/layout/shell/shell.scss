@@ -140,7 +140,9 @@ a.notif { color: inherit; text-decoration: none; &:not(.sin-enlace):hover { back
   span { font-size: 13px; color: var(--sc-texto-2); } }
 
 // Pestañas con las pantallas de la categoría actual (spec 014): deslizables de lado en pantallas angostas.
+.ancla-pestanas { height: 0; }
 .pestanas {
+  position: sticky; top: 10px; z-index: 20;
   display: flex; gap: 6px; margin-bottom: 20px; padding: 8px;
   border: 1px solid var(--sc-borde); border-radius: 16px; background: #fff;
   overflow-x: auto; scrollbar-width: thin;
@@ -156,3 +158,11 @@ a.notif { color: inherit; text-decoration: none; &:not(.sin-enlace):hover { back
   &.bloqueada { opacity: .6; cursor: not-allowed; }
   .candado { font-size: 16px; }
 }
+
+// Spec 017: al bajar, la fila queda pegada arriba y se vuelve más delgada
+.pestanas.compacta {
+  padding: 4px; box-shadow: 0 8px 22px rgb(0 0 0 / 10%);
+  .pestana { padding: 5px 12px; font-size: 13px; }
+  .pestana .material-symbols-outlined { font-size: 17px; }
+}
+.pestanas { transition: padding .15s, box-shadow .15s; }

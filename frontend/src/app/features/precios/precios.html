@@ -84,9 +84,9 @@
                           </select></div>
                       }
                       <div class="campo"><label for="pr-{{ p.productoId }}">Precio de venta</label>
-                        <input id="pr-{{ p.productoId }}" type="number" min="0" class="entrada num" [ngModel]="e.precio" (ngModelChange)="cambiar('precio', $event === '' ? null : +$event)"></div>
+                        <input scCifra id="pr-{{ p.productoId }}" min="0" class="entrada num" [ngModel]="e.precio" (ngModelChange)="cambiar('precio', $event)"></div>
                       <div class="campo"><label for="pm-{{ p.productoId }}">Precio mínimo (opcional)</label>
-                        <input id="pm-{{ p.productoId }}" type="number" min="0" class="entrada num" [ngModel]="e.minimo" (ngModelChange)="cambiar('minimo', $event === '' || $event === null ? null : +$event)"></div>
+                        <input scCifra id="pm-{{ p.productoId }}" min="0" class="entrada num" [ngModel]="e.minimo" (ngModelChange)="cambiar('minimo', $event)"></div>
                       <div class="campo"><label for="pi-{{ p.productoId }}">Impuesto</label>
                         <select id="pi-{{ p.productoId }}" class="entrada" [ngModel]="e.tarifaId" (ngModelChange)="cambiar('tarifaId', $event)">
                           <option [ngValue]="null">Sin definir</option>

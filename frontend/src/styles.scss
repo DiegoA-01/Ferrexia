@@ -166,6 +166,25 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: 15px; }
 .tabla .sub { display: block; font-size: 13px; color: var(--sc-texto-2); }
 .tabla tfoot td { font-weight: 600; border-top: 1px solid var(--sc-borde); }
 .tabla tr.seleccionable { cursor: pointer; }
+
+// Spec 017: en pantallas de menos de 768 px cada fila es una tarjeta y cada celda lleva su encabezado al lado
+// (data-etiqueta lo pone TablasResponsivas). Así ninguna tabla desplaza la página de lado.
+@media (max-width: 767px) {
+  .tabla-contenedor { overflow-x: visible; }
+  table.tabla, .tabla tbody, .tabla tfoot, .tabla tr, .tabla td { display: block; width: 100%; }
+  .tabla thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tabla tbody tr, .tabla tfoot tr { margin: 10px 12px; width: auto; padding: 4px 14px; border: 1px solid var(--sc-borde); border-radius: 12px; background: #fff; }
+  .tabla td { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0;
+    border-bottom: 1px solid #f2f2f2; text-align: right; overflow-wrap: anywhere; }
+  .tabla td::before { content: attr(data-etiqueta); flex-shrink: 0; max-width: 45%; text-align: left; font-size: 13px;
+    font-weight: 600; color: var(--sc-texto-2); }
+  .tabla td[data-etiqueta=""]::before { content: none; }
+  .tabla td[data-etiqueta=""] { justify-content: flex-end; }
+  .tabla td.vacio, .tabla td[colspan] { justify-content: center; text-align: center; }
+  .tabla tr td:last-child { border-bottom: 0; }
+  .tabla .num { white-space: normal; }
+  .tabla td .sub { text-align: right; }
+}
 .tabla tr.seleccionable:hover td { background: #fbfbfb; }
 .tabla tr.seleccionada td { background: var(--sc-primario-suave); }
 
@@ -187,6 +206,11 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: 15px; }
 }
 .entrada:focus { outline: 2px solid #f6b9a3; border-color: var(--sc-primario); }
 .entrada.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+// Spec 017: ningún campo de número muestra flechas (los de la aplicación usan scCifra; esto cubre lo que quede)
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[scCifra] { font-variant-numeric: tabular-nums; }
 textarea.entrada { min-height: 84px; resize: vertical; }
 
 // Contraseña con botón para mostrarla y revisar que esté bien escrita

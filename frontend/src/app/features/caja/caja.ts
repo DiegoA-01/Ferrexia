@@ -9,6 +9,7 @@ import { InventarioService } from '../../core/servicios/inventario.service';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Nombre de cada medio de pago. */
 export const MEDIOS: Record<MedioPago, string> = {
   EFECTIVO: 'Efectivo', TARJETA_DEBITO: 'Tarjeta débito', TARJETA_CREDITO: 'Tarjeta crédito',
@@ -31,7 +32,7 @@ interface EdicionCaja {
  */
 @Component({
   selector: 'sc-caja',
-  imports: [FormsModule, RouterLink, PesosPipe, FechaPipe],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, FechaPipe],
   templateUrl: './caja.html',
   styleUrl: './caja.scss',
 })

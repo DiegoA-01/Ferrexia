@@ -9,6 +9,7 @@ import { ConfiguracionService } from '../../core/servicios/configuracion.service
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 
+import { Cifra } from '../../core/ui/cifra';
 /**
  * Políticas de aprobación: según el monto, qué rol aprueba una solicitud o una adjudicación. Cada política cubre un rango
  * [desde, hasta): el "desde" entra y el "hasta" no. Entre las activas del mismo tipo los rangos no se superponen, así cada
@@ -16,7 +17,7 @@ import { Avisos } from '../../core/ui/avisos';
  */
 @Component({
   selector: 'sc-politicas',
-  imports: [FormsModule, RouterLink, PesosPipe],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe],
   templateUrl: './politicas.html',
   styleUrl: './politicas.scss',
 })

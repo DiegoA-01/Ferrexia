@@ -37,7 +37,7 @@
             </select></div>
         }
         <div class="campo"><label for="pmo">Monto</label>
-          <input id="pmo" name="pmo" type="number" min="0" step="any" class="entrada num" [ngModel]="monto()" (ngModelChange)="monto.set($event)"></div>
+          <input scCifra id="pmo" name="pmo" min="0" class="entrada num" [ngModel]="monto()" (ngModelChange)="monto.set($event)"></div>
         <div class="fila">
           <button type="submit" class="boton primario" [disabled]="trabajando()">{{ trabajando() ? 'Guardando…' : 'Guardar' }}</button>
           <button type="button" class="boton" (click)="abierto.set(false)">Cancelar</button>

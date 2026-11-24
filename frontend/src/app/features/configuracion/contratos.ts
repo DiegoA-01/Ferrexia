@@ -12,6 +12,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 import { BuscadorProducto } from '../../core/ui/buscador-producto';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Línea del formulario: un producto con su precio pactado y su tope. */
 interface PrecioForm {
   buscador: BuscadorProducto;
@@ -27,7 +28,7 @@ interface PrecioForm {
  */
 @Component({
   selector: 'sc-contratos',
-  imports: [FormsModule, RouterLink, Estado, FechaPipe, NumeroPipe, PesosPipe],
+  imports: [Cifra, FormsModule, RouterLink, Estado, FechaPipe, NumeroPipe, PesosPipe],
   templateUrl: './contratos.html',
   styleUrl: './contratos.scss',
 })
