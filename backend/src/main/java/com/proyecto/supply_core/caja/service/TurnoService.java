@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -129,7 +130,9 @@ public class TurnoService {
         t.setBaseApertura(req.baseApertura().setScale(2, RoundingMode.HALF_UP));
         try {
             turnoRepository.saveAndFlush(t);
-        } catch (DataIntegrityViolationException e) {
+        } catch (DataIntegrityViolationException | PessimisticLockingFailureException e) {
+            // Dos aperturas simultáneas de la misma caja: MySQL responde con la llave duplicada o, a veces, con un
+            // interbloqueo. En los dos casos otro turno ganó, así que se responde 409 y no un error interno.
             throw new NegocioException("TURNO_ABIERTO", "La caja o el cajero ya tienen un turno abierto");
         }
         if (t.getBaseApertura().signum() > 0) {
