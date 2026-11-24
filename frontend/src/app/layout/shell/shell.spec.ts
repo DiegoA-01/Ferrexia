@@ -98,6 +98,27 @@ describe('Marco de la empresa: campana y menú', () => {
     expect(html().textContent).not.toContain('Ver como dueño');
   });
 
+  describe('menú por categorías (spec 011)', () => {
+    const titulos = () => [...html().querySelectorAll('nav .seccion')].map(p => p.textContent?.trim());
+    const textos = () => [...html().querySelectorAll('nav .opcion .texto')].map(s => s.textContent?.trim());
+
+    it('el dueño ve los seis grupos con título y la sección de Inicio no pinta título', () => {
+      crear(['ADMIN_SISTEMA']);
+      backend.match(r => r.url === '/api/proveedores').forEach(r => r.flush(pagina([])));
+      fixture.detectChanges();
+      expect(titulos()).toEqual(['Ventas', 'Compras', 'Inventario', 'Reportes', 'Gestión humana', 'Gestión']);
+      expect(textos()[0]).toBe('Inicio');
+    });
+
+    it('el cajero no ve Gestión y en Gestión humana solo tiene Delegaciones', () => {
+      crear(['CAJERO']);
+      expect(titulos()).not.toContain('Gestión');
+      expect(titulos()).toContain('Gestión humana');
+      expect(textos()).toContain('Delegaciones');
+      expect(textos()).not.toContain('Usuarios y roles');
+    });
+  });
+
   it('cada aviso lleva a su pantalla', () => {
     crear(['ADMIN_COMPRAS']);
     backend.expectOne(r => r.url === '/api/proveedores').flush(pagina([]));

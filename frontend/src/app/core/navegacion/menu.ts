@@ -56,31 +56,15 @@ export const ROLES_PROVEEDORES = ['ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR'];
 /** Roles internos (todos menos PROVEEDOR). */
 export const INTERNOS = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'SOLICITANTE', 'COMPRADOR', 'APROBADOR', 'ALMACENISTA', 'CAJERO', 'SUPERVISOR_VENTAS', 'VENDEDOR', 'ADMINISTRATIVO', 'AUDITOR'];
 
-/** Menú de la empresa, en el orden del mockup. Los roles y módulos son los mismos que exige el backend. */
+/**
+ * Menú de la empresa agrupado por categorías (spec 011). Inicio va sola y sin título.
+ * Los roles y módulos de cada opción son los mismos que exige el backend.
+ */
 export const MENU: SeccionMenu[] = [
   {
-    titulo: 'Compras',
+    titulo: '',
     opciones: [
       { texto: 'Inicio', icono: 'home', ruta: '/app/inicio' },
-      { texto: 'Solicitudes', icono: 'description', ruta: '/app/solicitudes', modulo: 'COMPRAS', contador: 'solicitudes' },
-      { texto: 'Cotizaciones con IA', icono: 'auto_awesome', ruta: '/app/cotizaciones', roles: ROLES_RFQ, modulo: 'RFQ_COTIZACIONES' },
-      { texto: 'Adjudicaciones', icono: 'fact_check', ruta: '/app/adjudicaciones', roles: INTERNOS, modulo: 'RFQ_COTIZACIONES' },
-      { texto: 'Pedidos internos', icono: 'campaign', ruta: '/app/pedidos', roles: INTERNOS, modulo: 'COMPRAS' },
-      { texto: 'Órdenes y pagos', icono: 'receipt_long', ruta: '/app/ordenes', roles: ROLES_ORDENES, modulo: 'ORDENES_PAGOS' },
-      { texto: 'Recepción', icono: 'local_shipping', ruta: '/app/recepcion', roles: ROLES_ORDENES, modulo: 'RECEPCION' },
-      { texto: 'Pagos', icono: 'payments', ruta: '/app/pagos', roles: ROLES_PAGOS, modulo: 'ORDENES_PAGOS' },
-    ],
-  },
-  {
-    titulo: 'Inventario',
-    opciones: [
-      { texto: 'Productos y stock', icono: 'inventory_2', ruta: '/app/inventario', modulo: 'INVENTARIO', contador: 'bajoMinimo', exacta: true },
-      { texto: 'Plan de reabastecimiento', icono: 'event_repeat', ruta: '/app/inventario/reabastecimiento', roles: ROLES_REABASTECIMIENTO, modulo: 'COMPRAS' },
-      { texto: 'Rotación de productos', icono: 'trending_up', ruta: '/app/inventario/rotacion', roles: ROLES_ROTACION, modulo: 'REPORTES' },
-      { texto: 'Despachos', icono: 'outbox', ruta: '/app/despachos', roles: ROLES_DESPACHOS, modulo: 'DESPACHOS' },
-      { texto: 'Movimientos de stock', icono: 'swap_horiz', ruta: '/app/inventario/movimientos', modulo: 'INVENTARIO' },
-      { texto: 'Proveedores', icono: 'group', ruta: '/app/proveedores', roles: ROLES_PROVEEDORES, modulo: 'PROVEEDORES' },
-      { texto: 'Catálogos de proveedores', icono: 'storefront', ruta: '/app/catalogos', roles: ROLES_CATALOGOS, modulo: 'PROVEEDORES' },
     ],
   },
   {
@@ -90,24 +74,58 @@ export const MENU: SeccionMenu[] = [
       { texto: 'Mi turno', icono: 'schedule', ruta: '/app/caja/mi-turno', roles: ROLES_MI_TURNO, modulo: 'CAJA' },
       { texto: 'Pedidos de venta', icono: 'receipt_long', ruta: '/app/pedidos-venta', roles: ROLES_PEDIDOS_VENTA, modulo: 'VENTAS' },
       { texto: 'Ventas', icono: 'point_of_sale', ruta: '/app/ventas', roles: ROLES_VENTAS, modulo: 'VENTAS', exacta: true },
-      { texto: 'Reportes de ventas', icono: 'query_stats', ruta: '/app/ventas/reportes', roles: ROLES_VENTAS, modulo: 'VENTAS' },
       { texto: 'Clientes', icono: 'groups', ruta: '/app/clientes', roles: ROLES_CLIENTES, modulo: 'VENTAS' },
       { texto: 'Cartera', icono: 'account_balance_wallet', ruta: '/app/cartera', roles: ROLES_CARTERA, modulo: 'CARTERA' },
       { texto: 'Cajas y turnos', icono: 'storefront', ruta: '/app/caja', roles: ROLES_CAJA, modulo: 'CAJA', exacta: true },
     ],
   },
   {
-    titulo: 'Gestión',
+    titulo: 'Compras',
+    opciones: [
+      { texto: 'Solicitudes', icono: 'description', ruta: '/app/solicitudes', modulo: 'COMPRAS', contador: 'solicitudes' },
+      { texto: 'Pedidos internos', icono: 'campaign', ruta: '/app/pedidos', roles: INTERNOS, modulo: 'COMPRAS' },
+      { texto: 'Cotizaciones con IA', icono: 'auto_awesome', ruta: '/app/cotizaciones', roles: ROLES_RFQ, modulo: 'RFQ_COTIZACIONES' },
+      { texto: 'Adjudicaciones', icono: 'fact_check', ruta: '/app/adjudicaciones', roles: INTERNOS, modulo: 'RFQ_COTIZACIONES' },
+      { texto: 'Órdenes y pagos', icono: 'receipt_long', ruta: '/app/ordenes', roles: ROLES_ORDENES, modulo: 'ORDENES_PAGOS' },
+      { texto: 'Pagos', icono: 'payments', ruta: '/app/pagos', roles: ROLES_PAGOS, modulo: 'ORDENES_PAGOS' },
+      { texto: 'Recepción', icono: 'local_shipping', ruta: '/app/recepcion', roles: ROLES_ORDENES, modulo: 'RECEPCION' },
+      { texto: 'Proveedores', icono: 'group', ruta: '/app/proveedores', roles: ROLES_PROVEEDORES, modulo: 'PROVEEDORES' },
+      { texto: 'Catálogos de proveedores', icono: 'storefront', ruta: '/app/catalogos', roles: ROLES_CATALOGOS, modulo: 'PROVEEDORES' },
+    ],
+  },
+  {
+    titulo: 'Inventario',
+    opciones: [
+      { texto: 'Productos y stock', icono: 'inventory_2', ruta: '/app/inventario', modulo: 'INVENTARIO', contador: 'bajoMinimo', exacta: true },
+      { texto: 'Movimientos de stock', icono: 'swap_horiz', ruta: '/app/inventario/movimientos', modulo: 'INVENTARIO' },
+      { texto: 'Despachos', icono: 'outbox', ruta: '/app/despachos', roles: ROLES_DESPACHOS, modulo: 'DESPACHOS' },
+      { texto: 'Plan de reabastecimiento', icono: 'event_repeat', ruta: '/app/inventario/reabastecimiento', roles: ROLES_REABASTECIMIENTO, modulo: 'COMPRAS' },
+    ],
+  },
+  {
+    titulo: 'Reportes',
     opciones: [
       { texto: 'Tablero del dueño', icono: 'monitoring', ruta: '/app/tablero', roles: ROLES_TABLERO, modulo: 'REPORTES' },
-      { texto: 'Precios y margen', icono: 'sell', ruta: '/app/precios', roles: ROLES_PRECIOS, modulo: 'VENTAS' },
-      { texto: 'Reportes', icono: 'bar_chart', ruta: '/app/reportes', roles: ROLES_REPORTES, modulo: 'REPORTES' },
+      { texto: 'Reportes de compras', icono: 'bar_chart', ruta: '/app/reportes', roles: ROLES_REPORTES, modulo: 'REPORTES' },
+      { texto: 'Reportes de ventas', icono: 'query_stats', ruta: '/app/ventas/reportes', roles: ROLES_VENTAS, modulo: 'VENTAS' },
+      { texto: 'Rotación de productos', icono: 'trending_up', ruta: '/app/inventario/rotacion', roles: ROLES_ROTACION, modulo: 'REPORTES' },
       { texto: 'Informe de compras', icono: 'summarize', ruta: '/app/informes', roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS'], modulo: 'COMPRAS' },
-      { texto: 'Delegaciones', icono: 'group_add', ruta: '/app/delegaciones', roles: INTERNOS, modulo: 'COMPRAS' },
-      { texto: 'Auditoría', icono: 'shield', ruta: '/app/auditoria', roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA' },
+      { texto: 'Precios y margen', icono: 'sell', ruta: '/app/precios', roles: ROLES_PRECIOS, modulo: 'VENTAS' },
+    ],
+  },
+  {
+    titulo: 'Gestión humana',
+    opciones: [
       { texto: 'Usuarios y roles', icono: 'apartment', ruta: '/app/usuarios', roles: ['ADMIN_SISTEMA', 'AUDITOR'] },
+      { texto: 'Delegaciones', icono: 'group_add', ruta: '/app/delegaciones', roles: INTERNOS, modulo: 'COMPRAS' },
+    ],
+  },
+  {
+    titulo: 'Gestión',
+    opciones: [
       { texto: 'Configuración', icono: 'settings', ruta: '/app/configuracion', roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO'], exacta: true },
       { texto: 'Avisos y correos', icono: 'notifications', ruta: '/app/configuracion/notificaciones', roles: ['ADMIN_SISTEMA'] },
+      { texto: 'Auditoría', icono: 'shield', ruta: '/app/auditoria', roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA' },
     ],
   },
 ];
