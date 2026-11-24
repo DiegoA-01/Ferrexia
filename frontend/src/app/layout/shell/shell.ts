@@ -10,7 +10,7 @@ import { filter, map } from 'rxjs';
 import { Notificacion, Proveedor } from '../../core/api/modelos';
 import { FechaPipe, iniciales } from '../../core/formato/formato';
 import { nombreRol } from '../../core/formato/etiquetas';
-import { MENU, OpcionMenu } from '../../core/navegacion/menu';
+import { OpcionMenu, seccionesVisibles } from '../../core/navegacion/menu';
 import { ComprasService } from '../../core/servicios/compras.service';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { NotificacionesService } from '../../core/servicios/notificaciones.service';
@@ -48,9 +48,7 @@ export class Shell implements OnInit {
   protected readonly totalAvisos = computed(() => this.notificaciones.noLeidas() + this.pendientes().length);
 
   /** Secciones con solo las opciones que el rol del usuario puede usar. */
-  protected readonly secciones = computed(() => MENU
-    .map(s => ({ ...s, opciones: s.opciones.filter(o => this.sesion.tieneRol(o.roles)) }))
-    .filter(s => s.opciones.length > 0));
+  protected readonly secciones = computed(() => seccionesVisibles(r => this.sesion.tieneRol(r)));
 
   protected readonly iniciales = computed(() => iniciales(this.sesion.usuario()?.nombre));
   protected readonly rolPrincipal = computed(() => {

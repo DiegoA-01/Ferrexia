@@ -13,6 +13,8 @@ export interface OpcionMenu {
 
 export interface SeccionMenu {
   titulo: string;
+  /** Icono de la categoría (Material Symbols); la sección de Inicio no lleva. */
+  icono?: string;
   opciones: OpcionMenu[];
 }
 
@@ -69,6 +71,7 @@ export const MENU: SeccionMenu[] = [
   },
   {
     titulo: 'Ventas',
+    icono: 'point_of_sale',
     opciones: [
       { texto: 'Punto de venta', icono: 'shopping_cart_checkout', ruta: '/app/pos', roles: ROLES_POS, modulo: 'VENTAS' },
       { texto: 'Mi turno', icono: 'schedule', ruta: '/app/caja/mi-turno', roles: ROLES_MI_TURNO, modulo: 'CAJA' },
@@ -81,6 +84,7 @@ export const MENU: SeccionMenu[] = [
   },
   {
     titulo: 'Compras',
+    icono: 'shopping_cart',
     opciones: [
       { texto: 'Solicitudes', icono: 'description', ruta: '/app/solicitudes', modulo: 'COMPRAS', contador: 'solicitudes' },
       { texto: 'Pedidos internos', icono: 'campaign', ruta: '/app/pedidos', roles: INTERNOS, modulo: 'COMPRAS' },
@@ -95,6 +99,7 @@ export const MENU: SeccionMenu[] = [
   },
   {
     titulo: 'Inventario',
+    icono: 'inventory_2',
     opciones: [
       { texto: 'Productos y stock', icono: 'inventory_2', ruta: '/app/inventario', modulo: 'INVENTARIO', contador: 'bajoMinimo', exacta: true },
       { texto: 'Movimientos de stock', icono: 'swap_horiz', ruta: '/app/inventario/movimientos', modulo: 'INVENTARIO' },
@@ -104,6 +109,7 @@ export const MENU: SeccionMenu[] = [
   },
   {
     titulo: 'Reportes',
+    icono: 'bar_chart',
     opciones: [
       { texto: 'Tablero del dueño', icono: 'monitoring', ruta: '/app/tablero', roles: ROLES_TABLERO, modulo: 'REPORTES' },
       { texto: 'Reportes de compras', icono: 'bar_chart', ruta: '/app/reportes', roles: ROLES_REPORTES, modulo: 'REPORTES' },
@@ -115,6 +121,7 @@ export const MENU: SeccionMenu[] = [
   },
   {
     titulo: 'Gestión humana',
+    icono: 'groups',
     opciones: [
       { texto: 'Usuarios y roles', icono: 'apartment', ruta: '/app/usuarios', roles: ['ADMIN_SISTEMA', 'AUDITOR'] },
       { texto: 'Delegaciones', icono: 'group_add', ruta: '/app/delegaciones', roles: INTERNOS, modulo: 'COMPRAS' },
@@ -122,6 +129,7 @@ export const MENU: SeccionMenu[] = [
   },
   {
     titulo: 'Gestión',
+    icono: 'settings',
     opciones: [
       { texto: 'Configuración', icono: 'settings', ruta: '/app/configuracion', roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO'], exacta: true },
       { texto: 'Avisos y correos', icono: 'notifications', ruta: '/app/configuracion/notificaciones', roles: ['ADMIN_SISTEMA'] },
@@ -129,3 +137,16 @@ export const MENU: SeccionMenu[] = [
     ],
   },
 ];
+
+/**
+ * Secciones del menú con solo las opciones que el usuario puede usar; quita las que quedan vacías.
+ * La usan la barra lateral y la página de Inicio para que muestren siempre lo mismo.
+ *
+ * @param tieneRol dice si el usuario tiene alguno de los roles (sin roles = cualquiera)
+ * @return secciones visibles para el usuario, en el orden del menú
+ */
+export function seccionesVisibles(tieneRol: (roles?: readonly string[]) => boolean): SeccionMenu[] {
+  return MENU
+    .map(s => ({ ...s, opciones: s.opciones.filter(o => tieneRol(o.roles)) }))
+    .filter(s => s.opciones.length > 0);
+}

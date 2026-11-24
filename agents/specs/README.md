@@ -33,6 +33,7 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 | [009-reportes-cuadre](009-reportes-cuadre/spec.md) | F9 | Reportes de ventas y caja, tablero, cuadre diario automático | `feature/ventas-reportes` | 006, 008 | Hecha (V38) |
 | [010-endurecimiento-e2e](010-endurecimiento-e2e/spec.md) | F10 | Alertas, pruebas de punta a punta en el CI, prueba de carga | `feature/ventas-endurecimiento` | 009 | Hecha (V39; falta ver el `e2e` del CI en GitHub) |
 | [011-menu-por-categorias](011-menu-por-categorias/spec.md) | — | Menú lateral en siete grupos: Ventas, Compras, Inventario, Reportes, Gestión humana y Gestión | `feature/menu-por-categorias` | — | Hecha (sin migración, falta PR) |
+| [012-inicio-categorias](012-inicio-categorias/spec.md) | — | Tablero de categorías con icono en la página de Inicio | `feature/inicio-categorias` | 011 | Hecha (sin migración, falta PR) |
 
 Al terminar la 006 el negocio ya puede **vender y cuadrar caja**. De la 007 en adelante se suman crédito, márgenes y
 control fino.
