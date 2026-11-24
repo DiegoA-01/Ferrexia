@@ -177,7 +177,7 @@
 
   @if (cobrando()) {
     <div class="velo" (click)="cancelar()"></div>
-    <section class="tarjeta dialogo cobro" role="dialog" aria-modal="true" aria-labelledby="t-cobro">
+    <section #dialogoCobro class="tarjeta dialogo cobro" role="dialog" aria-modal="true" aria-labelledby="t-cobro">
       <h2 id="t-cobro">Cobrar {{ cotizacion()?.totalAPagar | pesos }}</h2>
       @if (!dividido()) {
         @let p = pagos()[0];

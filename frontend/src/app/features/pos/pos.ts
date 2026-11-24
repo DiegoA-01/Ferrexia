@@ -75,6 +75,7 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
   protected readonly sesion = inject(SesionService);
 
   private readonly lector = viewChild<ElementRef<HTMLInputElement>>('lector');
+  private readonly dialogoCobro = viewChild<ElementRef<HTMLElement>>('dialogoCobro');
   private temporizador: ReturnType<typeof setTimeout> | null = null;
   private pedidoPendiente: number | null = null;
   /** Pausa entre teclas antes de pedir sugerencias, y número de la última búsqueda (las viejas se ignoran). */
@@ -444,6 +445,8 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     this.pagos.set([{ medio: null, monto: null, referencia: '' }]);
     this.cobrando.set(true);
     this.recalcular(true);
+    // el foco sale del lector y pasa al primer medio de pago: así E (Efectivo) y las flechas sirven sin el mouse
+    setTimeout(() => this.dialogoCobro()?.nativeElement.querySelector<HTMLElement>('.medio')?.focus());
   }
 
   /** @param m medio elegido con un solo pago; fuera del efectivo se cobra el total que dé el servidor */

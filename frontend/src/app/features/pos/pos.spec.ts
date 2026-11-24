@@ -287,6 +287,22 @@ describe('Punto de venta', () => {
       expect(c()['puedeConfirmar']()).toBe(false);
     });
 
+    it('al abrir el cobro el foco pasa al primer medio, así la E funciona sin tocar el mouse', () => {
+      crear(['CAJERO']);
+      escanear();
+      cotizar();
+      document.body.appendChild(fixture.nativeElement);
+      c()['abrirCobro']();
+      fixture.detectChanges();
+      vi.advanceTimersByTime(1);
+      const activo = document.activeElement as HTMLElement;
+      expect(activo.classList).toContain('medio');
+      activo.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true }));
+      expect(c()['pagos']()[0].medio).toBe('EFECTIVO');
+      cotizar();
+      (fixture.nativeElement as HTMLElement).remove();
+    });
+
     it('la E escrita en un campo no elige Efectivo', () => {
       crear(['CAJERO']);
       escanear();

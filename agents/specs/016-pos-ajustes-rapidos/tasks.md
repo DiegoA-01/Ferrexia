@@ -17,3 +17,6 @@ Notas (2026-11-24):
   mostrando sus 4 dígitos en el tiquete y en el detalle.
 - "Descartado" se muestra como "Eliminado" en la pantalla; el estado en la base no cambia.
 - `ventas.spec.ts` tenía una prueba del descarte sin motivo: se ajustó al nuevo flujo.
+- El e2e del CI (venta-completa) pulsaba "Exacto" sin elegir medio y fallaba a los 4 minutos. Al revisarlo apareció un
+  fallo real: tras F9 el foco seguía en el lector y la E se escribía ahí. Ahora el cobro pone el foco en el primer
+  medio, el e2e comprueba el aviso, el botón desactivado y elige Efectivo con la E (probado en Docker).
