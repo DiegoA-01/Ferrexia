@@ -138,3 +138,21 @@
 a.notif { color: inherit; text-decoration: none; &:not(.sin-enlace):hover { background: #faf5f2; } }
 .menu-usuario-cabecera { display: flex; flex-direction: column; padding: 8px 16px 10px; border-bottom: 1px solid #f0f0f0;
   span { font-size: 13px; color: var(--sc-texto-2); } }
+
+// Pestañas con las pantallas de la categoría actual (spec 014): deslizables de lado en pantallas angostas.
+.pestanas {
+  display: flex; gap: 6px; margin-bottom: 20px; padding: 8px;
+  border: 1px solid var(--sc-borde); border-radius: 16px; background: #fff;
+  overflow-x: auto; scrollbar-width: thin;
+}
+.pestana {
+  display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+  padding: 8px 14px; border-radius: 10px; white-space: nowrap;
+  color: var(--sc-texto-2); text-decoration: none; font-size: 14px; font-weight: 500;
+  transition: background .15s, color .15s;
+  .material-symbols-outlined { font-size: 19px; }
+  &:hover, &:focus-visible { background: #f6f6f6; color: var(--sc-texto, #1f1f1f); }
+  &.activa { background: var(--sc-primario-suave); color: #8a3a1c; .material-symbols-outlined { color: var(--sc-primario); } }
+  &.bloqueada { opacity: .6; cursor: not-allowed; }
+  .candado { font-size: 16px; }
+}

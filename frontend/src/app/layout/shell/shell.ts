@@ -10,7 +10,7 @@ import { filter, map } from 'rxjs';
 import { Notificacion, Proveedor } from '../../core/api/modelos';
 import { FechaPipe, iniciales } from '../../core/formato/formato';
 import { nombreRol } from '../../core/formato/etiquetas';
-import { OpcionMenu, SeccionMenu, seccionesVisibles } from '../../core/navegacion/menu';
+import { OpcionMenu, SeccionMenu, seccionDeRuta, seccionesVisibles } from '../../core/navegacion/menu';
 import { ComprasService } from '../../core/servicios/compras.service';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { NotificacionesService } from '../../core/servicios/notificaciones.service';
@@ -53,6 +53,11 @@ export class Shell implements OnInit {
   /** Secciones con solo las opciones que el rol del usuario puede usar. */
   protected readonly secciones = computed(() => seccionesVisibles(r => this.sesion.tieneRol(r)));
 
+  /** Dirección de la pantalla actual; se actualiza en cada navegación. */
+  private readonly url = signal(this.router.url);
+  /** Categoría de la pantalla actual, para la fila de pestañas (spec 014); {@code null} en Inicio o fuera del menú. */
+  protected readonly categoriaActual = computed(() => seccionDeRuta(this.secciones(), this.url()));
+
   /** Categorías del menú lateral que están desplegadas (spec 013). */
   protected readonly abiertas = signal<ReadonlySet<string>>(this.leerAbiertas());
 
@@ -64,7 +69,12 @@ export class Shell implements OnInit {
 
   ngOnInit(): void {
     this.router.events.pipe(filter(e => e instanceof NavigationEnd), takeUntilDestroyed(this.destruir))
-      .subscribe(e => { this.menuAbierto.set(false); this.abrirLaDe((e as NavigationEnd).urlAfterRedirects); });
+      .subscribe(e => {
+        const url = (e as NavigationEnd).urlAfterRedirects;
+        this.menuAbierto.set(false);
+        this.url.set(url);
+        this.abrirLaDe(url);
+      });
     this.abrirLaDe(this.router.url);
     this.notificaciones.contar();
     this.cargarContadores();
@@ -101,22 +111,14 @@ export class Shell implements OnInit {
   }
 
   /**
-   * Abre la categoría que contiene la pantalla actual (la opción cuya ruta coincide más largo), sin cerrar otras.
+   * Abre la categoría que contiene la pantalla actual ({@link seccionDeRuta}), sin cerrar otras.
    *
    * @param url dirección actual
    */
   private abrirLaDe(url: string): void {
-    const ruta = url.split(/[?#]/)[0];
-    let mejor: { titulo: string; largo: number } | null = null;
-    for (const s of this.secciones()) {
-      for (const o of s.opciones) {
-        if ((ruta === o.ruta || ruta.startsWith(o.ruta + '/')) && (!mejor || o.ruta.length > mejor.largo)) {
-          mejor = { titulo: s.titulo, largo: o.ruta.length };
-        }
-      }
-    }
-    if (mejor?.titulo && !this.abiertas().has(mejor.titulo)) {
-      this.abiertas.set(new Set([...this.abiertas(), mejor.titulo]));
+    const titulo = seccionDeRuta(this.secciones(), url)?.titulo;
+    if (titulo && !this.abiertas().has(titulo)) {
+      this.abiertas.set(new Set([...this.abiertas(), titulo]));
     }
   }
 

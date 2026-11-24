@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { MENU, seccionesVisibles } from './menu';
+import { MENU, seccionDeRuta, seccionesVisibles } from './menu';
 
 /**
  * Permisos de cada opción tal como estaban antes de agrupar el menú por categorías (spec 011).
@@ -100,5 +100,19 @@ describe('Menú lateral por categorías (spec 011)', () => {
     const cajero = seccionesVisibles(con(['CAJERO']));
     expect(cajero.map(s => s.titulo)).not.toContain('Gestión');
     expect(cajero.find(s => s.titulo === 'Gestión humana')?.opciones.map(o => o.texto)).toEqual(['Delegaciones']);
+  });
+
+  it('seccionDeRuta deduce la categoría de la pantalla, también en subpáginas (spec 014)', () => {
+    const todas = seccionesVisibles(() => true);
+    const de = (url: string) => seccionDeRuta(todas, url)?.titulo ?? null;
+    expect(de('/app/tablero')).toBe('Reportes');
+    expect(de('/app/ventas/reportes')).toBe('Reportes');
+    expect(de('/app/ventas')).toBe('Ventas');
+    expect(de('/app/ventas?desde=2026-11-01')).toBe('Ventas');
+    expect(de('/app/ordenes/15')).toBe('Compras');
+    expect(de('/app/inventario/rotacion')).toBe('Reportes');
+    expect(de('/app/inventario/42')).toBe('Inventario');
+    expect(de('/app/inicio')).toBeNull();
+    expect(de('/app/perfil')).toBeNull();
   });
 });

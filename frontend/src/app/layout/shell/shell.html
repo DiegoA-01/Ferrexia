@@ -98,6 +98,25 @@
     }
 
     <main class="principal">
+      @if (categoriaActual(); as cat) {
+        <nav class="pestanas" [attr.aria-label]="'Pantallas de ' + cat.titulo">
+          @for (op of cat.opciones; track op.ruta) {
+            @if (bloqueada(op)) {
+              <span class="pestana bloqueada" title="Módulo no contratado en tu plan">
+                <span class="material-symbols-outlined" aria-hidden="true">{{ op.icono }}</span>
+                <span>{{ op.texto }}</span>
+                <span class="material-symbols-outlined candado" aria-label="Bloqueado">lock</span>
+              </span>
+            } @else {
+              <a class="pestana" [routerLink]="op.ruta" routerLinkActive="activa" ariaCurrentWhenActive="page"
+                 [routerLinkActiveOptions]="{ exact: !!op.exacta }">
+                <span class="material-symbols-outlined" aria-hidden="true">{{ op.icono }}</span>
+                <span>{{ op.texto }}</span>
+              </a>
+            }
+          }
+        </nav>
+      }
       <router-outlet />
     </main>
   </div>
