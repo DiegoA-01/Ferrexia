@@ -20,3 +20,7 @@ Notas (2026-11-24):
 - Fallo real encontrado en la exportación: el PDF de reportes de ventas imprimía las unidades como
   "Cantidad[valor=...]" y los conteos sin punto de miles. Corregido con prueba. El Excel ya tenía formato de miles.
 - La revisión en Docker de las pantallas con formulario se hizo con el cajero (el auditor solo lee).
+- El e2e nuevo falló en el CI: recargaba la página en cada pantalla (unas 100 veces), cada recarga renovaba la sesión y
+  el límite de 20 peticiones por minuto de /api/auth/refresh mandaba al ingreso. En local las pruebas de scroll daban
+  verde midiendo la pantalla de ingreso. Ahora navega dentro de la app sin recargar y falla si la sesión se pierde;
+  probado en local con Chrome contra Docker (3 de 3).

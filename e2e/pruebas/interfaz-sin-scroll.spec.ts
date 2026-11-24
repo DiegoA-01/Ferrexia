@@ -44,6 +44,22 @@ async function entrar(page: Page, c: Credenciales, correo: string): Promise<void
   await page.waitForURL(/\/app\//);
 }
 
+/**
+ * Navega dentro de la aplicación, sin recargar la página. Recargar en cada pantalla renueva la sesión cada vez y el
+ * límite de peticiones por IP de /api/auth/refresh termina mandando al ingreso (la prueba mediría la pantalla de ingreso).
+ *
+ * @param page página
+ * @param ruta pantalla
+ */
+async function ir(page: Page, ruta: string): Promise<void> {
+  await page.evaluate(r => {
+    history.pushState(null, '', r);
+    dispatchEvent(new PopStateEvent('popstate'));
+  }, ruta);
+  await page.waitForURL(url => url.pathname === ruta || url.pathname.startsWith('/ingreso') || url.pathname.startsWith('/app/'));
+  await page.waitForTimeout(700);
+}
+
 /** @returns cuántos píxeles se sale la página de lado (0 = nada) */
 async function desborde(page: Page): Promise<number> {
   return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -54,6 +70,7 @@ async function desborde(page: Page): Promise<number> {
  */
 for (const recorrido of RECORRIDOS) {
   test(`sin scroll horizontal: pantallas de ${recorrido.correo}`, async ({ page }) => {
+    test.setTimeout(300_000);
     const c = credenciales();
     test.skip(!c.cuentas[recorrido.correo], `la siembra no trae ${recorrido.correo}`);
     await entrar(page, c, recorrido.correo);
@@ -61,8 +78,10 @@ for (const recorrido of RECORRIDOS) {
     for (const ancho of ANCHOS) {
       await page.setViewportSize({ width: ancho, height: 900 });
       for (const ruta of recorrido.rutas) {
-        await page.goto(ruta);
-        await page.waitForLoadState('networkidle');
+        await ir(page, ruta);
+        // si la sesión se cayó, la prueba no puede dar verde midiendo la pantalla de ingreso
+        expect(new URL(page.url()).pathname, `la sesión se perdió al ir a ${ruta}`).not.toMatch(/^\/ingreso/);
+        await expect(page.locator('main')).toBeVisible();
         const sobra = await desborde(page);
         if (sobra > 1) {
           fallas.push(`${ruta} a ${ancho} px se sale ${sobra} px`);
@@ -79,7 +98,7 @@ test('las pestañas de la categoría siguen a la vista al bajar', async ({ page 
   test.skip(!c.cuentas[correo], `la siembra no trae ${correo}`);
   await entrar(page, c, correo);
   await page.setViewportSize({ width: 1280, height: 600 });
-  await page.goto('/app/inventario/movimientos');
+  await ir(page, '/app/inventario/movimientos');
   const pestanas = page.locator('main nav.pestanas');
   await expect(pestanas).toBeVisible();
   // se garantiza una página larga para poder bajar
