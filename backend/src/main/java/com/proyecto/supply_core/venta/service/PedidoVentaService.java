@@ -122,18 +122,24 @@ public class PedidoVentaService {
     }
 
     /**
-     * @param id pedido
+     * @param id     pedido
+     * @param motivo por qué se descarta; queda con quién y cuándo (spec 016)
      * @return pedido descartado
      * @throws NegocioException        si ya no está pendiente
      * @throws AccesoDenegadoException si no lo armó la sesión ni es supervisor
      */
     @Transactional
-    public PedidoVentaResponse descartar(Long id) {
+    public PedidoVentaResponse descartar(Long id, String motivo) {
         PedidoVenta p = pendiente(id);
+        LocalDateTime ahora = LocalDateTime.now();
+        String porQue = motivo.trim();
         p.setEstado(EstadoPedidoVenta.DESCARTADO);
-        p.setActualizadoEn(LocalDateTime.now());
+        p.setActualizadoEn(ahora);
+        p.setDescartadoPorUsuarioId(SesionActual.usuario().id());
+        p.setDescartadoEn(ahora);
+        p.setMotivoDescarte(porQue);
         auditoriaService.exito(AccionAuditoria.PEDIDO_VENTA_DESCARTAR, EntidadAuditada.PEDIDO_VENTA, p.getId(),
-                p.getConsecutivo());
+                p.getConsecutivo() + " · motivo: " + porQue);
         return respuesta(p);
     }
 
@@ -232,6 +238,8 @@ public class PedidoVentaService {
                 .collect(Collectors.toMap(UnidadMedida::getId, UnidadMedida::getCodigo));
         String cliente = clienteRepository.findById(p.getClienteId()).map(Cliente::getNombre).orElse(null);
         String vendedor = usuarioRepository.findById(p.getVendedorUsuarioId()).map(Usuario::getNombreCompleto).orElse(null);
+        String descartadoPor = p.getDescartadoPorUsuarioId() == null ? null
+                : usuarioRepository.findById(p.getDescartadoPorUsuarioId()).map(Usuario::getNombreCompleto).orElse(null);
         List<PedidoVentaLineaResponse> lineas = p.getLineas().stream().map(l -> {
             Producto x = productos.get(l.getProductoId());
             return new PedidoVentaLineaResponse(l.getProductoId(), x == null ? null : x.getCodigo(),
@@ -239,6 +247,7 @@ public class PedidoVentaService {
                     l.getCantidad(), l.getDescuentoPct());
         }).toList();
         return new PedidoVentaResponse(p.getId(), p.getConsecutivo(), p.getEstado(), p.getClienteId(), cliente, vendedor,
-                p.getNota(), p.getVentaId(), p.getCreadoEn(), lineas);
+                p.getNota(), p.getVentaId(), p.getCreadoEn(), lineas, descartadoPor, p.getDescartadoEn(),
+                p.getMotivoDescarte());
     }
 }

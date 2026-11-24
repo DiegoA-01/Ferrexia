@@ -18,8 +18,11 @@ import com.proyecto.supply_core.venta.enums.EstadoPedidoVenta;
  * @param ventaId     venta con que se cobró
  * @param creadoEn    fecha
  * @param lineas      líneas
+ * @param descartadoPor  nombre de quien lo descartó ({@code null} si no se descartó o fue antes de la spec 016)
+ * @param descartadoEn   cuándo se descartó
+ * @param motivoDescarte por qué se descartó
  */
 public record PedidoVentaResponse(Long id, String consecutivo, EstadoPedidoVenta estado, Long clienteId,
         String cliente, String vendedor, String nota, Long ventaId, LocalDateTime creadoEn,
-        List<PedidoVentaLineaResponse> lineas) {
+        List<PedidoVentaLineaResponse> lineas, String descartadoPor, LocalDateTime descartadoEn, String motivoDescarte) {
 }

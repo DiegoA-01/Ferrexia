@@ -724,18 +724,17 @@ public class VentaService {
     }
 
     /**
+     * Reglas de los pagos. Desde la spec 016 la tarjeta no exige los últimos 4 dígitos ni el código del voucher: los dos
+     * son opcionales (si llegan los 4 dígitos, se guardan como antes).
+     *
      * @param pagos pagos recibidos
-     * @throws NegocioException si una tarjeta llega sin sus últimos 4 dígitos o un medio que no es tarjeta los trae
+     * @throws NegocioException si el efectivo viene repetido o un medio que no es tarjeta trae últimos 4 dígitos
      */
     private static void validarTarjetas(List<PagoVentaRequest> pagos) {
         if (pagos.stream().filter(p -> p.medio() == MedioPagoVenta.EFECTIVO).count() > 1) {
             throw new NegocioException("PAGO_REPETIDO", "Registre el efectivo en un solo pago");
         }
         for (PagoVentaRequest p : pagos) {
-            if (p.medio().esTarjeta() && (p.ultimos4() == null || p.referencia() == null || p.referencia().isBlank())) {
-                throw new NegocioException("TARJETA_SIN_DATOS",
-                        "De la tarjeta escriba los últimos 4 dígitos y el número de autorización del datáfono");
-            }
             if (!p.medio().esTarjeta() && p.ultimos4() != null) {
                 throw new NegocioException("TARJETA_SIN_DATOS", "Solo las tarjetas llevan los últimos 4 dígitos");
             }

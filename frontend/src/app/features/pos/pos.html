@@ -198,14 +198,11 @@
               <button type="button" class="boton chico" (click)="cambiarPago(0, 'monto', b)">{{ b | pesos }}</button>
             }
           </div>
-        } @else if (p) {
+        } @else if (p?.medio) {
           <p class="sub">Se cobra el total por {{ textoMedio(p.medio) }}.</p>
-          @if (esTarjeta(p)) {
-            <input class="entrada corta" inputmode="numeric" maxlength="4" placeholder="Últimos 4 dígitos" aria-label="Últimos 4 dígitos de la tarjeta"
-              [ngModel]="p.ultimos4" (ngModelChange)="cambiarPago(0, 'ultimos4', $event)">
-          }
           @if (p.medio !== 'CREDITO' && p.medio !== 'SALDO_FAVOR') {
-            <input class="entrada" placeholder="N.º de autorización o referencia" aria-label="Autorización del pago"
+            <input class="entrada" [placeholder]="esTarjeta(p) ? 'Código del voucher (opcional)' : 'Referencia (opcional)'"
+              [attr.aria-label]="esTarjeta(p) ? 'Código del voucher, opcional' : 'Referencia del pago, opcional'"
               [ngModel]="p.referencia" (ngModelChange)="cambiarPago(0, 'referencia', $event)">
           }
         }
@@ -215,16 +212,14 @@
         @for (p of pagos(); track $index; let i = $index) {
           <div class="pago">
             <select class="entrada" [attr.aria-label]="'Medio del pago ' + (i + 1)" [ngModel]="p.medio" (ngModelChange)="cambiarPago(i, 'medio', $event)">
+              <option [ngValue]="null" disabled>Elige el medio</option>
               @for (m of ordenMedios(); track m) { <option [ngValue]="m">{{ textoMedio(m) }}</option> }
             </select>
             <input class="entrada" type="number" min="0" step="any" [attr.aria-label]="'Valor del pago ' + (i + 1)" placeholder="Valor"
               [ngModel]="p.monto" (ngModelChange)="cambiarPago(i, 'monto', $event)">
-            @if (esTarjeta(p)) {
-              <input class="entrada corta" inputmode="numeric" maxlength="4" placeholder="Últimos 4" [attr.aria-label]="'Últimos 4 dígitos del pago ' + (i + 1)"
-                [ngModel]="p.ultimos4" (ngModelChange)="cambiarPago(i, 'ultimos4', $event)">
-            }
-            @if (p.medio !== 'EFECTIVO' && p.medio !== 'CREDITO' && p.medio !== 'SALDO_FAVOR') {
-              <input class="entrada" placeholder="N.º de autorización" [attr.aria-label]="'Autorización del pago ' + (i + 1)"
+            @if (p.medio && p.medio !== 'EFECTIVO' && p.medio !== 'CREDITO' && p.medio !== 'SALDO_FAVOR') {
+              <input class="entrada" [placeholder]="esTarjeta(p) ? 'Voucher (opcional)' : 'Referencia (opcional)'"
+                [attr.aria-label]="'Código del voucher o referencia del pago ' + (i + 1) + ', opcional'"
                 [ngModel]="p.referencia" (ngModelChange)="cambiarPago(i, 'referencia', $event)">
             }
             <button type="button" class="boton chico icono" [attr.aria-label]="'Quitar pago ' + (i + 1)" (click)="quitarPago(i)">
@@ -236,7 +231,8 @@
           <button type="button" class="enlace" (click)="unSoloMedio()">Volver a un solo medio</button>
         </div>
       }
-      <p class="sub">Nunca escriba el número completo de la tarjeta: solo los últimos 4 dígitos y la autorización del datáfono.</p>
+      <p class="sub">De la tarjeta no escriba ningún número: el código del voucher es opcional.</p>
+      @if (sinMedio()) { <p class="aviso ambar" role="status">Elige cómo paga el cliente (E = Efectivo).</p> }
       @if (cotizacion(); as c) {
         @if (c.mensajePago) { <p class="aviso ambar" role="status">{{ c.mensajePago }}</p> }
         @else if (c.cambio != null) { <p class="cambio grande" role="status">Cambio: {{ c.cambio | pesos }}</p> }

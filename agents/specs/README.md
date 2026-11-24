@@ -45,7 +45,7 @@ decisiones y se aprueban antes de escribir el plan.
 
 | Spec | Fase | Qué entrega | Rama | Depende de | Responsable | Estado |
 |---|---|---|---|---|---|---|
-| [016-pos-ajustes-rapidos](016-pos-ajustes-rapidos/spec.md) | 1 | Sin últimos 4 dígitos, voucher opcional, método de pago obligatorio, pedidos eliminados visibles | `feature/pos-ajustes-rapidos` | 005, 006 | Persona 1 | Propuesta |
+| [016-pos-ajustes-rapidos](016-pos-ajustes-rapidos/spec.md) | 1 | Sin últimos 4 dígitos, voucher opcional, método de pago obligatorio, pedidos eliminados visibles | `feature/pos-ajustes-rapidos` | 005, 006 | Persona 1 | Hecha (V40, falta PR) |
 | [017-interfaz-general](017-interfaz-general/spec.md) | 1 | Punto de miles, sin flechas en números, sin scroll horizontal, pestañas fijas, una categoría abierta | `feature/interfaz-general` | 013, 014 | Persona 2 | Propuesta |
 | [018-mi-turno-claro](018-mi-turno-claro/spec.md) | 1 | "Mi turno" sin "crear turno" con turno abierto, botón de cerrar, acciones en menú, revisión del flujo de cajas | `feature/mi-turno-claro` | 003, 015 | Persona 1 | Propuesta |
 | [019-reorganizar-menu](019-reorganizar-menu/spec.md) | 1 | Reportes en su categoría (con el informe de compras) e Importación de datos en Configuración | `feature/reorganizar-menu` | 011, 013 | Persona 2 | Propuesta |
@@ -115,7 +115,8 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V37 | `feature/ventas-pos` | Cartera: cuentas por cobrar, abonos, saldo a favor como medio de pago y excepción de crédito (spec 007) |
 | V38 | `feature/ventas-reportes` | Cuadre diario automático: `cuadre_diario` (spec 009) |
 | V39 | `feature/ventas-endurecimiento` | Umbrales de anulaciones y descuentos por cajero y registro de alertas (spec 010) |
-| V40 en adelante | libre | Se reserva al empezar cada spec |
+| V40 | `feature/pos-ajustes-rapidos` | Quién, cuándo y por qué se descartó un pedido de venta (spec 016) |
+| V41 en adelante | libre | Se reserva al empezar cada spec |
 
 ## Riesgos generales
 

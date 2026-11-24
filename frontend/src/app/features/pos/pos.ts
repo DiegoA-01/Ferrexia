@@ -33,10 +33,13 @@ export interface ItemCarrito {
 /** Billetes colombianos para los botones de cobro rápido. */
 const BILLETES = [2000, 5000, 10000, 20000, 50000, 100000, 200000];
 
+/**
+ * Pago que escribe el cajero. El medio empieza sin elegir (spec 016: no se confirma sin método de pago). De la tarjeta
+ * ya no se piden los últimos 4 dígitos; la referencia (código del voucher) es opcional.
+ */
 export interface PagoEscrito {
-  medio: MedioPagoVenta;
+  medio: MedioPagoVenta | null;
   monto: number | null;
-  ultimos4: string;
   referencia: string;
 }
 
@@ -136,9 +139,12 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
    */
   protected readonly bloqueado = computed(() => this.enviando() || this.reintento());
   /** El cobro solo se confirma cuando el servidor dice que los pagos cuadran. */
+  /** {@code true} si falta elegir cómo paga el cliente: sin pagos o con alguno sin medio (spec 016). */
+  protected readonly sinMedio = computed(() => !this.pagos().length || this.pagos().some(p => p.medio == null));
+
   protected readonly puedeConfirmar = computed(() => {
     const c = this.cotizacion();
-    return !!c && c.cambio != null && !c.mensajePago && !this.enviando() && !this.calculando();
+    return !!c && !this.sinMedio() && c.cambio != null && !c.mensajePago && !this.enviando() && !this.calculando();
   });
 
   ngOnDestroy(): void {
@@ -201,6 +207,11 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
       }
     } else if (e.key === 'Escape') {
       this.cancelar(PuntoDeVenta.enCampo(e));
+    } else if ((e.key === 'e' || e.key === 'E') && this.cobrando() && this.pagos().length === 1
+        && !PuntoDeVenta.enCampo(e) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // spec 016: el cobro abre sin medio; E elige Efectivo sin usar el mouse
+      e.preventDefault();
+      this.elegirMedio('EFECTIVO');
     }
   }
 
@@ -429,8 +440,8 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
       this.guardarPedido();
       return;
     }
-    // En efectivo el cajero escribe con cuánto paga el cliente; el cambio lo calcula el servidor
-    this.pagos.set([{ medio: 'EFECTIVO', monto: null, ultimos4: '', referencia: '' }]);
+    // spec 016: el cobro abre sin medio elegido; el cajero elige cómo paga el cliente (E = Efectivo)
+    this.pagos.set([{ medio: null, monto: null, referencia: '' }]);
     this.cobrando.set(true);
     this.recalcular(true);
   }
@@ -467,7 +478,7 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     if (this.fijo()) {
       return;
     }
-    this.pagos.update(p => [...p, { medio: 'TARJETA_DEBITO', monto: null, ultimos4: '', referencia: '' }]);
+    this.pagos.update(p => [...p, { medio: null, monto: null, referencia: '' }]);
   }
 
   /** @param i pago; @param campo campo; @param valor valor nuevo */
@@ -648,7 +659,7 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
           // Un solo medio que no es efectivo cobra el total exacto: si el total cambió (p. ej. sin el redondeo del
           // efectivo), se ajusta al que dio el servidor y se vuelve a cotizar una vez.
           const p = this.pagos();
-          if (conPagos && p.length === 1 && p[0].medio !== 'EFECTIVO' && c.totalAPagar != null && p[0].monto !== c.totalAPagar) {
+          if (conPagos && p.length === 1 && p[0].medio != null && p[0].medio !== 'EFECTIVO' && c.totalAPagar != null && p[0].monto !== c.totalAPagar) {
             this.pagos.set([{ ...p[0], monto: c.totalAPagar }]);
             this.recalcular(true);
           }
@@ -669,11 +680,10 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     return this.carrito().map(x => ({ productoId: x.productoId, unidadMedidaId: x.unidadMedidaId ?? undefined, cantidad: x.cantidad, descuentoPct: x.descuentoPct }));
   }
 
-  /** @returns los pagos con monto, con los campos de tarjeta solo cuando aplican */
+  /** @returns los pagos con medio y monto; la referencia (voucher) solo si se escribió. Sin últimos 4 (spec 016). */
   private pagosEnviados(): PagoVentaRequest[] {
-    return this.pagos().filter(p => (p.monto ?? 0) > 0).map(p => ({
-      medio: p.medio, monto: p.monto!,
-      ultimos4: this.esTarjeta(p) && p.ultimos4 ? p.ultimos4 : undefined,
+    return this.pagos().filter(p => p.medio != null && (p.monto ?? 0) > 0).map(p => ({
+      medio: p.medio!, monto: p.monto!,
       referencia: p.referencia.trim() || undefined,
     }));
   }
