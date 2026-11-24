@@ -3,6 +3,9 @@ package com.proyecto.supply_core.caja.service;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +17,7 @@ import com.proyecto.supply_core.caja.dto.CajaRequest;
 import com.proyecto.supply_core.caja.dto.CajaResponse;
 import com.proyecto.supply_core.caja.dto.ConfiguracionCaja;
 import com.proyecto.supply_core.caja.entity.Caja;
+import com.proyecto.supply_core.caja.entity.TurnoCaja;
 import com.proyecto.supply_core.caja.enums.EstadoTurno;
 import com.proyecto.supply_core.caja.repository.CajaRepository;
 import com.proyecto.supply_core.caja.repository.TurnoCajaRepository;
@@ -26,6 +30,8 @@ import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
 import com.proyecto.supply_core.empresa.repository.SedeRepository;
 import com.proyecto.supply_core.inventario.entity.Bodega;
 import com.proyecto.supply_core.inventario.repository.BodegaRepository;
+import com.proyecto.supply_core.usuario.entity.Usuario;
+import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
 
 /**
  * Cajas de la empresa y su configuración (spec 003). Una caja pertenece a una sede y descuenta de una sola bodega de esa
@@ -40,6 +46,7 @@ public class CajaService {
     private final BodegaRepository bodegaRepository;
     private final EmpresaRepository empresaRepository;
     private final AuditoriaService auditoriaService;
+    private final UsuarioRepository usuarioRepository;
 
     /**
      * @param cajaRepository    cajas
@@ -48,26 +55,37 @@ public class CajaService {
      * @param bodegaRepository  bodegas
      * @param empresaRepository tolerancia de diferencia de caja
      * @param auditoriaService  registro de cambios
+     * @param usuarioRepository nombre de quien tiene una caja ocupada
      */
     public CajaService(CajaRepository cajaRepository, TurnoCajaRepository turnoRepository,
             SedeRepository sedeRepository, BodegaRepository bodegaRepository, EmpresaRepository empresaRepository,
-            AuditoriaService auditoriaService) {
+            AuditoriaService auditoriaService, UsuarioRepository usuarioRepository) {
         this.cajaRepository = cajaRepository;
         this.turnoRepository = turnoRepository;
         this.sedeRepository = sedeRepository;
         this.bodegaRepository = bodegaRepository;
         this.empresaRepository = empresaRepository;
         this.auditoriaService = auditoriaService;
+        this.usuarioRepository = usuarioRepository;
     }
 
     /**
      * @param activa filtro por estado ({@code null} = todas)
-     * @return cajas con su sede, su bodega y si tienen turno abierto
+     * @return cajas con su sede, su bodega y, si están ocupadas, quién tiene el turno abierto y desde cuándo (spec 015)
      */
     @Transactional(readOnly = true)
     public List<CajaResponse> listar(Boolean activa) {
+        Map<Long, TurnoCaja> abiertos = turnoRepository.conCajaPorEstado(EstadoTurno.ABIERTO).stream()
+                .collect(Collectors.toMap(t -> t.getCaja().getId(), Function.identity(), (a, b) -> a));
+        Map<Long, String> nombres = usuarioRepository
+                .findAllById(abiertos.values().stream().map(TurnoCaja::getCajeroUsuarioId).distinct().toList()).stream()
+                .collect(Collectors.toMap(Usuario::getId, Usuario::getNombreCompleto));
         return cajaRepository.listar(activa).stream()
-                .map(c -> CajaResponse.of(c, turnoRepository.existsByCajaIdAndEstado(c.getId(), EstadoTurno.ABIERTO)))
+                .map(c -> {
+                    TurnoCaja t = abiertos.get(c.getId());
+                    return t == null ? CajaResponse.of(c, false)
+                            : CajaResponse.ocupada(c, nombres.get(t.getCajeroUsuarioId()), t.getAbiertoEn());
+                })
                 .toList();
     }
 

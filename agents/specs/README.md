@@ -36,6 +36,7 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 | [012-inicio-categorias](012-inicio-categorias/spec.md) | — | Tablero de categorías con icono en la página de Inicio | `feature/inicio-categorias` | 011 | Hecha (sin migración, falta PR) |
 | [013-menu-desplegable](013-menu-desplegable/spec.md) | — | Barra lateral con categorías desplegables y tarjetas de Inicio que entran directo a su categoría | `feature/menu-desplegable` | 011, 012 | Hecha (sin migración, falta PR) |
 | [014-pestanas-categoria](014-pestanas-categoria/spec.md) | — | Fila de pestañas con las pantallas de la categoría actual en cada pantalla | `feature/pestanas-categoria` | 011, 013 | Hecha (sin migración, falta PR) |
+| [015-cajas-ocupadas](015-cajas-ocupadas/spec.md) | — | "Mi turno" muestra qué cajas están ocupadas, por quién y desde cuándo | `feature/cajas-ocupadas` | 003, 005 | Hecha (sin migración, falta PR) |
 
 Al terminar la 006 el negocio ya puede **vender y cuadrar caja**. De la 007 en adelante se suman crédito, márgenes y
 control fino.

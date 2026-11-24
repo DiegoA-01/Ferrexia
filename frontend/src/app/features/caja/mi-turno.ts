@@ -131,22 +131,39 @@ const TIPOS: Record<TipoMovimiento, string> = { RETIRO: 'Retiro a la bóveda', G
       } @else {
         <section class="tarjeta">
           <h2>Abrir turno</h2>
-          <div class="formulario">
-            <div class="campo"><label for="ab-caja">Caja</label>
-              <select id="ab-caja" class="entrada" [ngModel]="cajaId()" (ngModelChange)="cajaId.set($event)">
-                <option [ngValue]="null">Elija la caja</option>
-                @for (c of cajas(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }} · {{ c.sede }}</option> }
-              </select></div>
-            <div class="campo"><label for="ab-base">Base en efectivo</label>
-              <input id="ab-base" type="number" min="0" step="any" class="entrada" [ngModel]="base()" (ngModelChange)="base.set($event)"></div>
-          </div>
-          <button type="button" class="boton primario" [disabled]="!cajaId() || base() == null || enviando()" (click)="abrir()">Abrir turno</button>
+          @if (cajasCargadas() && !cajasLibres().length) {
+            <div class="sin-cajas" role="alert">
+              <strong>Todas las cajas tienen un turno abierto.</strong>
+              <p>Pide a quien la está usando que cierre su turno, o pide al administrador que cree otra caja en
+                Configuración, Cajas.</p>
+              <ul>
+                @for (c of cajas(); track c.id) {
+                  <li>{{ c.nombre }}: ocupada por {{ c.turnoAbiertoPor ?? 'otra persona' }} desde {{ c.turnoAbiertoDesde | fecha: 'hora' }}</li>
+                }
+              </ul>
+            </div>
+          } @else {
+            <div class="formulario">
+              <div class="campo"><label for="ab-caja">Caja</label>
+                <select id="ab-caja" class="entrada" [ngModel]="cajaId()" (ngModelChange)="cajaId.set($event)">
+                  <option [ngValue]="null">Elija la caja</option>
+                  @for (c of cajas(); track c.id) {
+                    <option [ngValue]="c.id" [disabled]="c.turnoAbierto">{{ textoCaja(c) }}</option>
+                  }
+                </select></div>
+              <div class="campo"><label for="ab-base">Base en efectivo</label>
+                <input id="ab-base" type="number" min="0" step="any" class="entrada" [ngModel]="base()" (ngModelChange)="base.set($event)"></div>
+            </div>
+            <button type="button" class="boton primario" [disabled]="!cajaId() || base() == null || enviando()" (click)="abrir()">Abrir turno</button>
+          }
         </section>
       }
     </div>
   `,
   styles: `
     h2 { margin: 0 0 8px; }
+    .sin-cajas { padding: 14px 16px; border-radius: 12px; background: #fff7ed; border: 1px solid #fed7aa; color: #7c2d12;
+      p { margin: 6px 0; } ul { margin: 6px 0 0; padding-left: 18px; } }
     .resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
     .sub { display: block; font-size: 12px; color: var(--sc-texto-2); }
     .formulario { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px; .ancho { grid-column: 1 / -1; } }
@@ -160,6 +177,7 @@ export class MiTurno implements OnInit {
   private readonly clientesService = inject(ClientesService);
   private readonly sesion = inject(SesionService);
   private readonly avisos = inject(Avisos);
+  private readonly fecha = new FechaPipe();
 
   protected readonly medios = Object.keys(MEDIOS) as MedioPago[];
   protected readonly tipos = Object.keys(TIPOS) as TipoMovimiento[];
@@ -167,6 +185,9 @@ export class MiTurno implements OnInit {
   protected readonly turno = signal<Turno | null>(null);
   protected readonly cerrado = signal<Turno | null>(null);
   protected readonly cajas = signal<Caja[]>([]);
+  protected readonly cajasCargadas = signal(false);
+  /** Cajas sin turno abierto: las únicas que se pueden elegir (spec 015). */
+  protected readonly cajasLibres = computed(() => this.cajas().filter(c => !c.turnoAbierto));
   protected readonly cajaId = signal<number | null>(null);
   protected readonly base = signal<number | null>(null);
   protected readonly enviando = signal(false);
@@ -315,7 +336,28 @@ export class MiTurno implements OnInit {
     return mapa?.[m] ?? 0;
   }
 
+  /**
+   * @param c caja
+   * @returns nombre y sede; si está ocupada, quién la tiene y desde cuándo (spec 015)
+   */
+  protected textoCaja(c: Caja): string {
+    const base = `${c.nombre} · ${c.sede}`;
+    return c.turnoAbierto
+      ? `${base} · ocupada por ${c.turnoAbiertoPor ?? 'otra persona'} desde ${this.fecha.transform(c.turnoAbiertoDesde, 'hora')}`
+      : base;
+  }
+
   private cargarCajas(): void {
-    this.caja.cajas(true).subscribe({ next: c => this.cajas.set(c), error: e => this.avisos.error(e) });
+    this.caja.cajas(true).subscribe({
+      next: c => {
+        this.cajas.set(c);
+        this.cajasCargadas.set(true);
+        const libres = c.filter(x => !x.turnoAbierto);
+        if (libres.length === 1 && this.cajaId() == null) {
+          this.cajaId.set(libres[0].id ?? null);
+        }
+      },
+      error: e => this.avisos.error(e),
+    });
   }
 }

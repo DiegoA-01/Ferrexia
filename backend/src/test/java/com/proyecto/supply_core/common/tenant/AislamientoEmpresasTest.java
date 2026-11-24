@@ -2278,6 +2278,19 @@ class AislamientoEmpresasTest {
                             .contentType(json).content(abrir))
                     .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CAJA_OCUPADA"));
 
+            // spec 015: el listado dice quién tiene la caja ocupada y desde cuándo, sin montos del turno
+            mvc.perform(get("/api/cajas?activa=true").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.id==" + cajaId + ")].turnoAbierto").value(true))
+                    .andExpect(jsonPath("$[?(@.id==" + cajaId + ")].turnoAbiertoPor").isNotEmpty())
+                    .andExpect(jsonPath("$[?(@.id==" + cajaId + ")].turnoAbiertoDesde").isNotEmpty())
+                    .andExpect(jsonPath("$[0].baseApertura").doesNotExist())
+                    .andExpect(jsonPath("$[0].esperado").doesNotExist());
+            // la otra empresa no ve esa ocupación: ninguna de sus cajas sale ocupada por el turno de A
+            mvc.perform(get("/api/cajas").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_SISTEMA")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.turnoAbiertoPor)]").isEmpty());
+
             // el dueño fija su PIN confirmando la contraseña
             mvc.perform(put("/api/autorizaciones/mi-pin").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
                             .content("{\"passwordActual\":\"otra-clave\",\"pin\":\"123456\"}"))
