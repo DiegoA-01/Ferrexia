@@ -150,3 +150,25 @@ export function seccionesVisibles(tieneRol: (roles?: readonly string[]) => boole
     .map(s => ({ ...s, opciones: s.opciones.filter(o => tieneRol(o.roles)) }))
     .filter(s => s.opciones.length > 0);
 }
+
+/**
+ * Categoría a la que pertenece una pantalla (spec 014): la de la opción cuya ruta coincide más largo con la dirección,
+ * también en sus subpáginas ({@code /app/ordenes/15} es de Compras). Así {@code /app/ventas/reportes} es de Reportes
+ * y {@code /app/ventas} es de Ventas.
+ *
+ * @param secciones secciones visibles para el usuario
+ * @param url dirección actual (puede traer {@code ?} o {@code #})
+ * @return la categoría con título que contiene la pantalla, o {@code null} en Inicio o fuera del menú
+ */
+export function seccionDeRuta(secciones: readonly SeccionMenu[], url: string): SeccionMenu | null {
+  const ruta = url.split(/[?#]/)[0];
+  let mejor: { seccion: SeccionMenu; largo: number } | null = null;
+  for (const s of secciones) {
+    for (const o of s.opciones) {
+      if ((ruta === o.ruta || ruta.startsWith(o.ruta + '/')) && (!mejor || o.ruta.length > mejor.largo)) {
+        mejor = { seccion: s, largo: o.ruta.length };
+      }
+    }
+  }
+  return mejor?.seccion.titulo ? mejor.seccion : null;
+}

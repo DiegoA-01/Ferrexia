@@ -45,12 +45,14 @@ describe('Marco de la empresa: campana y menú', () => {
   afterEach(() => backend.verify());
 
   describe('quien administra compras', () => {
+    // Es el primer marco que se crea en el archivo y paga la compilación de su plantilla; con toda la suite corriendo
+    // en paralelo puede pasar de los 10 s por defecto, así que este paso tiene su propio límite.
     beforeEach(() => {
       crear(['ADMIN_SISTEMA', 'ADMIN_COMPRAS']);
       backend.expectOne(r => r.url === '/api/proveedores' && r.params.get('estado') === 'PENDIENTE')
         .flush(pagina([proveedor(7, 'Electro Sur'), proveedor(8, 'Cables del Norte')]));
       fixture.detectChanges();
-    });
+    }, 30_000);
 
     it('la campana muestra cuántas decisiones esperan', () => {
       expect(c()['totalAvisos']()).toBe(2);
@@ -164,6 +166,69 @@ describe('Marco de la empresa: campana y menú', () => {
       categoria('Inventario').click();
       fixture.detectChanges();
       expect(categoria('Inventario').querySelector('.contador')).toBeNull();
+    });
+  });
+
+  describe('pestañas de la categoría actual (spec 014)', () => {
+    const pestanas = () => [...html().querySelectorAll('main nav.pestanas .pestana')];
+    const ir = async (url: string) => {
+      await TestBed.inject(Router).navigateByUrl(url);
+      fixture.detectChanges();
+    };
+
+    const textos = () => pestanas().map(p => p.querySelector('span:not(.material-symbols-outlined)')?.textContent?.trim());
+
+    it('el auditor en el Tablero ve sus cinco pantallas de Reportes, con el Tablero activo', async () => {
+      crear(['AUDITOR']);
+      await ir('/app/tablero');
+      expect(textos()).toEqual([
+        'Tablero del dueño', 'Reportes de compras', 'Reportes de ventas', 'Rotación de productos', 'Precios y margen',
+      ]);
+      const activa = html().querySelector('main nav.pestanas .pestana.activa');
+      expect(activa?.getAttribute('href')).toBe('/app/tablero');
+      expect(activa?.getAttribute('aria-current')).toBe('page');
+    });
+
+    it('el dueño ve en Reportes sus cinco pantallas (sin Reportes de compras)', async () => {
+      crear(['ADMIN_SISTEMA']);
+      backend.match(r => r.url === '/api/proveedores').forEach(r => r.flush(pagina([])));
+      await ir('/app/tablero');
+      expect(textos()).toEqual([
+        'Tablero del dueño', 'Reportes de ventas', 'Rotación de productos', 'Informe de compras', 'Precios y margen',
+      ]);
+    });
+
+    it('en una subpágina muestra las pestañas de su categoría', async () => {
+      crear(['ADMIN_COMPRAS']);
+      backend.match(r => r.url === '/api/proveedores').forEach(r => r.flush(pagina([])));
+      await ir('/app/ordenes/15');
+      expect(html().querySelector('main nav.pestanas')?.getAttribute('aria-label')).toBe('Pantallas de Compras');
+    });
+
+    it('el cajero en el punto de venta ve las seis pantallas de Ventas de su rol', async () => {
+      crear(['CAJERO']);
+      await ir('/app/pos');
+      expect(pestanas().map(p => p.getAttribute('href'))).toEqual([
+        '/app/pos', '/app/caja/mi-turno', '/app/pedidos-venta', '/app/ventas', '/app/clientes', '/app/cartera',
+      ]);
+    });
+
+    it('una pantalla de un módulo apagado sale con candado y sin enlace', async () => {
+      crear(['AUDITOR']);
+      (c()['sesion'] as { tieneModulo: (m?: string) => boolean }).tieneModulo = m => m !== 'VENTAS';
+      await ir('/app/tablero');
+      const precios = pestanas().find(p => p.textContent?.includes('Precios y margen'))!;
+      expect(precios.tagName).toBe('SPAN');
+      expect(precios.getAttribute('href')).toBeNull();
+      expect(precios.querySelector('.candado')).not.toBeNull();
+    });
+
+    it('en Inicio y en el perfil no hay fila de pestañas', async () => {
+      crear(['CAJERO']);
+      await ir('/app/inicio');
+      expect(html().querySelector('main nav.pestanas')).toBeNull();
+      await ir('/app/perfil');
+      expect(html().querySelector('main nav.pestanas')).toBeNull();
     });
   });
 
