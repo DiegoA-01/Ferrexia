@@ -18,7 +18,9 @@
 
     <nav>
       @for (seccion of secciones(); track seccion.titulo) {
-        <p class="seccion">{{ seccion.titulo }}</p>
+        @if (seccion.titulo) {
+          <p class="seccion">{{ seccion.titulo }}</p>
+        }
         @for (op of seccion.opciones; track op.ruta) {
           @if (bloqueada(op)) {
             <span class="opcion bloqueada" matTooltip="Módulo no contratado en tu plan" matTooltipPosition="right">
