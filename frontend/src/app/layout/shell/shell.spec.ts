@@ -138,18 +138,36 @@ describe('Marco de la empresa: campana y menú', () => {
       expect(textos()).not.toContain('Solicitudes');
     });
 
-    it('un clic abre otra categoría sin cerrar la actual, otro clic la recoge, y se recuerda', async () => {
+    it('abrir otra categoría recoge la que estaba abierta (spec 017), otro clic la recoge, y se recuerda', async () => {
       crear(['CAJERO']);
       await ir('/app/clientes');
       categoria('Compras').click();
       fixture.detectChanges();
-      expect(textos()).toEqual(expect.arrayContaining(['Clientes', 'Solicitudes']));
-      expect(JSON.parse(localStorage.getItem('sc.menu.abiertas')!)).toEqual(expect.arrayContaining(['Ventas', 'Compras']));
+      expect(textos()).toContain('Solicitudes');
+      expect(textos()).not.toContain('Clientes');
+      expect(html().querySelectorAll('nav .categoria[aria-expanded="true"]').length).toBe(1);
+      expect(JSON.parse(localStorage.getItem('sc.menu.abiertas')!)).toEqual(['Compras']);
 
       categoria('Compras').click();
       fixture.detectChanges();
       expect(textos()).not.toContain('Solicitudes');
       expect(categoria('Compras').getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('al navegar queda abierta solo la categoría de la pantalla actual (spec 017)', async () => {
+      crear(['CAJERO']);
+      categoria('Inventario').click();
+      fixture.detectChanges();
+      await ir('/app/clientes');
+      expect(html().querySelectorAll('nav .categoria[aria-expanded="true"]').length).toBe(1);
+      expect(categoria('Ventas').getAttribute('aria-expanded')).toBe('true');
+      expect(categoria('Inventario').getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('si quedaron guardadas varias (de la regla vieja), abre solo una', () => {
+      localStorage.setItem('sc.menu.abiertas', JSON.stringify(['Inventario', 'Compras']));
+      crear(['CAJERO']);
+      expect(html().querySelectorAll('nav .categoria[aria-expanded="true"]').length).toBe(1);
     });
 
     it('recupera las categorías guardadas al volver a entrar', () => {
@@ -221,6 +239,21 @@ describe('Marco de la empresa: campana y menú', () => {
       expect(precios.tagName).toBe('SPAN');
       expect(precios.getAttribute('href')).toBeNull();
       expect(precios.querySelector('.candado')).not.toBeNull();
+    });
+
+    it('al bajar, las pestañas pasan a la versión compacta y al subir vuelven (spec 017)', async () => {
+      crear(['CAJERO']);
+      await ir('/app/pos');
+      const ancla = html().querySelector<HTMLElement>('.ancla-pestanas')!;
+      const fila = () => html().querySelector('main nav.pestanas')!;
+      ancla.getBoundingClientRect = () => ({ top: -40 } as DOMRect);
+      window.dispatchEvent(new Event('scroll'));
+      fixture.detectChanges();
+      expect(fila().classList).toContain('compacta');
+      ancla.getBoundingClientRect = () => ({ top: 120 } as DOMRect);
+      window.dispatchEvent(new Event('scroll'));
+      fixture.detectChanges();
+      expect(fila().classList).not.toContain('compacta');
     });
 
     it('en Inicio y en el perfil no hay fila de pestañas', async () => {

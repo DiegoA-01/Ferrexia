@@ -60,7 +60,7 @@
               <tr>
                 <td>{{ l.productoNombre }}</td>
                 <td class="num">{{ l.cantidad | numero }} {{ l.unidad }}</td>
-                <td class="num"><input type="number" min="0" step="any" class="entrada num corta" [attr.aria-label]="'Nueva cantidad de ' + l.productoNombre"
+                <td class="num"><input scCifra [decimales]="4" min="0" class="entrada num corta" [attr.aria-label]="'Nueva cantidad de ' + l.productoNombre"
                   [ngModel]="versionCantidades()[l.id!]" (ngModelChange)="cambiarCantidad(l.id!, +$event)"></td>
               </tr>
             }
@@ -128,11 +128,11 @@
                 <div class="campo"><label for="ffecha">Fecha de la factura</label>
                   <input id="ffecha" type="date" class="entrada" [ngModel]="facturaNueva().fechaFactura" (ngModelChange)="cambiarFactura('fechaFactura', $event)"></div>
                 <div class="campo"><label for="fsub">Subtotal</label>
-                  <input id="fsub" type="number" min="0" step="0.01" class="entrada num" [ngModel]="facturaNueva().subtotal" (ngModelChange)="cambiarFactura('subtotal', +$event)"></div>
+                  <input scCifra id="fsub" min="0" class="entrada num" [ngModel]="facturaNueva().subtotal" (ngModelChange)="cambiarFactura('subtotal', +$event)"></div>
                 <div class="campo"><label for="fimp">Impuestos</label>
-                  <input id="fimp" type="number" min="0" step="0.01" class="entrada num" [ngModel]="facturaNueva().impuestos" (ngModelChange)="cambiarFactura('impuestos', +$event)"></div>
+                  <input scCifra id="fimp" min="0" class="entrada num" [ngModel]="facturaNueva().impuestos" (ngModelChange)="cambiarFactura('impuestos', +$event)"></div>
                 <div class="campo"><label for="ftot">Total</label>
-                  <input id="ftot" type="number" min="0" step="0.01" class="entrada num" [ngModel]="facturaNueva().total" (ngModelChange)="cambiarFactura('total', +$event)">
+                  <input scCifra id="ftot" min="0" class="entrada num" [ngModel]="facturaNueva().total" (ngModelChange)="cambiarFactura('total', +$event)">
                   <span class="ayuda">El sistema verifica que el total sea subtotal + impuestos.</span></div>
                 <div class="campo"><label for="farch">Archivo (opcional)</label>
                   <input id="farch" type="file" accept="application/pdf,image/*" (change)="elegirFactura($event)"></div>
@@ -220,7 +220,7 @@
                 </div>
                 <div class="campo">
                   <label for="valor">Valor pagado</label>
-                  <input id="valor" type="number" min="0" step="0.01" class="entrada num" [ngModel]="pago().valor" (ngModelChange)="cambiarPago('valor', +$event)">
+                  <input scCifra id="valor" min="0" class="entrada num" [ngModel]="pago().valor" (ngModelChange)="cambiarPago('valor', +$event)">
                 </div>
                 <div class="campo">
                   <label for="fechaPago">Fecha</label>

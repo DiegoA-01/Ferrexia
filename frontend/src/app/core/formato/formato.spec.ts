@@ -15,6 +15,13 @@ describe('formato es-CO', () => {
     expect(numero(150.5)).toBe('150,5');
   });
 
+  it('pone el punto de miles también en cifras de 4 dígitos (spec 017)', () => {
+    expect(pesos(1234)).toBe('$ 1.234');
+    expect(numero(1234)).toBe('1.234');
+    expect(numero(1250000)).toBe('1.250.000');
+    expect(numero(1234.5)).toBe('1.234,5');
+  });
+
   it('formatea fechas como en el mockup sin correr el día', () => {
     const f = new FechaPipe();
     expect(f.transform('2026-11-05')).toBe('05 nov 2026');

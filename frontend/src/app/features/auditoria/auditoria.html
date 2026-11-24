@@ -28,7 +28,7 @@
           @for (c of listaEntidades; track c) { <option [value]="c">{{ entidades[c] }}</option> }
         </select></div>
       <div class="campo"><label for="ai">Número del registro</label>
-        <input id="ai" type="number" min="1" class="entrada num" placeholder="Ej. 118" [ngModel]="entidadId()" (ngModelChange)="entidadId.set($event)"></div>
+        <input scCifra [decimales]="0" id="ai" min="1" class="entrada num" placeholder="Ej. 118" [ngModel]="entidadId()" (ngModelChange)="entidadId.set($event)"></div>
       <div class="campo"><label for="ar">Resultado</label>
         <select id="ar" class="entrada" [ngModel]="resultado()" (ngModelChange)="resultado.set($event)">
           <option [ngValue]="null">Todos</option><option value="EXITO">Exitoso</option><option value="FALLO">Fallido</option>
@@ -82,7 +82,7 @@
     @if ((p.totalPaginas ?? 0) > 1) {
       <div class="fila paginacion">
         <button type="button" class="boton chico" [disabled]="numeroPagina() === 0" (click)="buscar(numeroPagina() - 1)">Anterior</button>
-        <span class="texto-chico texto-2">Página {{ numeroPagina() + 1 }} de {{ p.totalPaginas }} · {{ p.totalElementos }} registros</span>
+        <span class="texto-chico texto-2">Página {{ numeroPagina() + 1 }} de {{ p.totalPaginas }} · {{ p.totalElementos | numero }} registros</span>
         <button type="button" class="boton chico" [disabled]="numeroPagina() + 1 >= (p.totalPaginas ?? 0)" (click)="buscar(numeroPagina() + 1)">Siguiente</button>
       </div>
     }

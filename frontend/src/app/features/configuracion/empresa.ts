@@ -7,13 +7,14 @@ import { ConfiguracionService } from '../../core/servicios/configuracion.service
 import { Avisos } from '../../core/ui/avisos';
 import { SesionService } from '../../core/sesion/sesion.service';
 
+import { Cifra } from '../../core/ui/cifra';
 /**
  * Datos generales de la empresa y sus reglas de negocio: tope de anticipos, tolerancia del cruce de tres vías y
  * plazo (SLA) para aprobar. Solo el administrador de la empresa los cambia; queda en la auditoría.
  */
 @Component({
   selector: 'sc-config-empresa',
-  imports: [FormsModule, RouterLink],
+  imports: [Cifra, FormsModule, RouterLink],
   template: `
     <div class="pagina">
       <div>
@@ -33,27 +34,27 @@ import { SesionService } from '../../core/sesion/sesion.service';
       <h3 class="separa">Reglas de compra</h3>
       <div class="formulario dos">
         <div class="campo"><label for="tope">Tope de anticipos (% del total de la orden)</label>
-          <input id="tope" type="number" min="0" max="100" class="entrada num" [ngModel]="datos().topeAnticipoPct" (ngModelChange)="cambiar('topeAnticipoPct', $event)"></div>
+          <input scCifra id="tope" min="0" max="100" class="entrada num" [ngModel]="datos().topeAnticipoPct" (ngModelChange)="cambiar('topeAnticipoPct', $event)"></div>
         <div class="campo"><label for="sla">Plazo para aprobar (horas)</label>
-          <input id="sla" type="number" min="1" class="entrada num" [ngModel]="datos().slaAprobacionHoras" (ngModelChange)="cambiar('slaAprobacionHoras', $event)">
+          <input scCifra [decimales]="0" id="sla" min="1" class="entrada num" [ngModel]="datos().slaAprobacionHoras" (ngModelChange)="cambiar('slaAprobacionHoras', $event)">
           <span class="ayuda">Se avisa al 80 % y al vencer se escala a la política de mayor monto.</span></div>
         <div class="campo"><label for="tpct">Tolerancia de factura (%)</label>
-          <input id="tpct" type="number" min="0" step="0.01" class="entrada num" [ngModel]="datos().toleranciaFacturaPct" (ngModelChange)="cambiar('toleranciaFacturaPct', $event)"></div>
+          <input scCifra id="tpct" min="0" class="entrada num" [ngModel]="datos().toleranciaFacturaPct" (ngModelChange)="cambiar('toleranciaFacturaPct', $event)"></div>
         <div class="campo"><label for="tmon">Tolerancia de factura (monto)</label>
-          <input id="tmon" type="number" min="0" class="entrada num" [ngModel]="datos().toleranciaFacturaMonto" (ngModelChange)="cambiar('toleranciaFacturaMonto', $event)">
+          <input scCifra id="tmon" min="0" class="entrada num" [ngModel]="datos().toleranciaFacturaMonto" (ngModelChange)="cambiar('toleranciaFacturaMonto', $event)">
           <span class="ayuda">Una factura cuadra si la diferencia con lo recibido cabe en cualquiera de las dos tolerancias.</span></div>
       </div>
       <h3 class="separa">Reabastecimiento</h3>
       <p class="texto-chico texto-2">Con estos valores el plan de reabastecimiento calcula hasta cuándo pedir cada producto. Cada producto puede tener su propio plazo.</p>
       <div class="formulario dos">
         <div class="campo"><label for="plazo">Un pedido tarda en llegar (días hábiles)</label>
-          <input id="plazo" type="number" min="0" max="120" class="entrada num" [ngModel]="datos().plazoEntregaDiasDefecto" (ngModelChange)="cambiar('plazoEntregaDiasDefecto', $event)">
+          <input scCifra [decimales]="0" id="plazo" min="0" max="120" class="entrada num" [ngModel]="datos().plazoEntregaDiasDefecto" (ngModelChange)="cambiar('plazoEntregaDiasDefecto', $event)">
           <span class="ayuda">Sin sábados, domingos ni festivos. Ej.: si el proveedor tarda de 6 a 7 días hábiles, pon 7.</span></div>
         <div class="campo"><label for="seg">Días de seguridad (hábiles)</label>
-          <input id="seg" type="number" min="0" max="60" class="entrada num" [ngModel]="datos().diasSeguridadDefecto" (ngModelChange)="cambiar('diasSeguridadDefecto', $event)">
+          <input scCifra [decimales]="0" id="seg" min="0" max="60" class="entrada num" [ngModel]="datos().diasSeguridadDefecto" (ngModelChange)="cambiar('diasSeguridadDefecto', $event)">
           <span class="ayuda">Colchón por si el pedido se demora o se vende más de lo normal.</span></div>
         <div class="campo"><label for="cob">Lo que pido debe alcanzar (días)</label>
-          <input id="cob" type="number" min="1" max="365" class="entrada num" [ngModel]="datos().diasCoberturaDefecto" (ngModelChange)="cambiar('diasCoberturaDefecto', $event)">
+          <input scCifra [decimales]="0" id="cob" min="1" max="365" class="entrada num" [ngModel]="datos().diasCoberturaDefecto" (ngModelChange)="cambiar('diasCoberturaDefecto', $event)">
           <span class="ayuda">Días de calendario que cubre cada pedido después de llegar.</span></div>
       </div>
       <h3 class="separa">Precios de venta</h3>

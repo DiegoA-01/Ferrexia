@@ -6,6 +6,7 @@ import { Estado } from '../../core/formato/etiquetas';
 import { CotizacionesService } from '../../core/servicios/cotizaciones.service';
 import { Avisos } from '../../core/ui/avisos';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Nombre legible de cada dato que lee la IA. */
 const NOMBRES: Record<string, string> = {
   cantidad: 'Cantidad',
@@ -34,7 +35,7 @@ interface FilaDigitada extends LineaDigitada {
  */
 @Component({
   selector: 'sc-extraccion',
-  imports: [FormsModule, Estado],
+  imports: [Cifra, FormsModule, Estado],
   templateUrl: './extraccion.html',
   styleUrl: './extraccion.scss',
 })

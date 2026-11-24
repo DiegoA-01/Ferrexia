@@ -99,7 +99,8 @@
 
     <main class="principal">
       @if (categoriaActual(); as cat) {
-        <nav class="pestanas" [attr.aria-label]="'Pantallas de ' + cat.titulo">
+        <div #anclaPestanas class="ancla-pestanas" aria-hidden="true"></div>
+        <nav class="pestanas" [class.compacta]="pestanasCompactas()" [attr.aria-label]="'Pantallas de ' + cat.titulo">
           @for (op of cat.opciones; track op.ruta) {
             @if (bloqueada(op)) {
               <span class="pestana bloqueada" title="Módulo no contratado en tu plan">

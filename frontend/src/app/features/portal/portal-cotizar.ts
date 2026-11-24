@@ -11,6 +11,7 @@ import { PortalService } from '../../core/servicios/portal.service';
 import { iso } from '../../core/servicios/reportes.service';
 import { Avisos } from '../../core/ui/avisos';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Precio e impuesto que el proveedor escribe por línea. */
 interface Oferta {
   precio: number | null;
@@ -23,7 +24,7 @@ interface Oferta {
  */
 @Component({
   selector: 'sc-portal-cotizar',
-  imports: [FormsModule, RouterLink, Estado, PesosPipe, NumeroPipe, FechaPipe],
+  imports: [Cifra, FormsModule, RouterLink, Estado, PesosPipe, NumeroPipe, FechaPipe],
   templateUrl: './portal-cotizar.html',
   styleUrl: './portal-cotizar.scss',
 })

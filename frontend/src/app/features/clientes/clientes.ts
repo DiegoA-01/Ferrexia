@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { Cliente, ListaPrecio, Pagina } from '../../core/api/modelos';
-import { FechaPipe, PesosPipe } from '../../core/formato/formato';
+import { FechaPipe, PesosPipe, NumeroPipe } from '../../core/formato/formato';
 import { ClientesService } from '../../core/servicios/clientes.service';
 import { VentasService } from '../../core/servicios/ventas.service';
 import { SesionService } from '../../core/sesion/sesion.service';
@@ -16,7 +16,7 @@ import { ClienteFormulario } from './cliente-formulario';
  */
 @Component({
   selector: 'sc-clientes',
-  imports: [FormsModule, RouterLink, PesosPipe, FechaPipe, ClienteFormulario],
+  imports: [NumeroPipe, FormsModule, RouterLink, PesosPipe, FechaPipe, ClienteFormulario],
   templateUrl: './clientes.html',
   styleUrl: './clientes.scss',
 })

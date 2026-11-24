@@ -17,6 +17,7 @@ import { AutorizacionPin } from '../caja/autorizacion-pin';
 import { ClienteFormulario } from '../clientes/cliente-formulario';
 import { imprimirTiquete } from './tiquete';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Producto en el carrito: solo qué, cuánto y qué descuento se pide. El precio lo pone el servidor. */
 export interface ItemCarrito {
   productoId: number;
@@ -60,7 +61,7 @@ type PinPendiente = 'DESCUENTO' | 'PRECIO_BAJO_MINIMO' | null;
  */
 @Component({
   selector: 'sc-pos',
-  imports: [FormsModule, RouterLink, PesosPipe, NumeroPipe, AutorizacionPin, ClienteFormulario],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, NumeroPipe, AutorizacionPin, ClienteFormulario],
   templateUrl: './pos.html',
   styleUrl: './pos.scss',
 })

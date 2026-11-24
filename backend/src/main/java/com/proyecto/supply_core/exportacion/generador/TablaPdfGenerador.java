@@ -91,7 +91,7 @@ public class TablaPdfGenerador {
                 for (List<Object> fila : s.filas()) {
                     for (Object v : fila) {
                         PdfPCell celda = new PdfPCell(new Phrase(texto(v), NORMAL));
-                        if (v instanceof BigDecimal || v instanceof Number) {
+                        if (v instanceof BigDecimal || v instanceof Number || v instanceof ExcelGenerador.Cantidad) {
                             celda.setHorizontalAlignment(Element.ALIGN_RIGHT);
                         }
                         t.addCell(celda);
@@ -114,6 +114,9 @@ public class TablaPdfGenerador {
     }
 
     /**
+     * Texto de una celda con formato colombiano: punto de miles y coma decimal (spec 017). Las cantidades llevan hasta
+     * 4 decimales y los conteos van sin decimales.
+     *
      * @param v valor
      * @return texto para la celda
      */
@@ -123,6 +126,13 @@ public class TablaPdfGenerador {
         }
         if (v instanceof BigDecimal b) {
             return new DecimalFormat("#,##0.##", DecimalFormatSymbols.getInstance(COLOMBIA)).format(b);
+        }
+        if (v instanceof ExcelGenerador.Cantidad c) {
+            return c.valor() == null ? ""
+                    : new DecimalFormat("#,##0.####", DecimalFormatSymbols.getInstance(COLOMBIA)).format(c.valor());
+        }
+        if (v instanceof Long || v instanceof Integer || v instanceof Short) {
+            return new DecimalFormat("#,##0", DecimalFormatSymbols.getInstance(COLOMBIA)).format(v);
         }
         if (v instanceof LocalDateTime f) {
             return f.format(FECHA_HORA);

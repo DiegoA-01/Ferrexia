@@ -1,5 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, HostListener, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatMenuModule } from '@angular/material/menu';
@@ -58,8 +58,11 @@ export class Shell implements OnInit {
   /** Categoría de la pantalla actual, para la fila de pestañas (spec 014); {@code null} en Inicio o fuera del menú. */
   protected readonly categoriaActual = computed(() => seccionDeRuta(this.secciones(), this.url()));
 
-  /** Categorías del menú lateral que están desplegadas (spec 013). */
+  /** Categoría del menú lateral que está desplegada: a lo sumo una (spec 017, reemplaza las varias de la 013). */
   protected readonly abiertas = signal<ReadonlySet<string>>(this.leerAbiertas());
+  /** Al bajar, la fila de pestañas queda pegada arriba en una versión más delgada (spec 017). */
+  protected readonly pestanasCompactas = signal(false);
+  private readonly anclaPestanas = viewChild<ElementRef<HTMLElement>>('anclaPestanas');
 
   protected readonly iniciales = computed(() => iniciales(this.sesion.usuario()?.nombre));
   protected readonly rolPrincipal = computed(() => {
@@ -87,10 +90,19 @@ export class Shell implements OnInit {
    * @param titulo nombre de la categoría
    */
   protected alternar(titulo: string): void {
-    const nuevas = new Set(this.abiertas());
-    if (nuevas.has(titulo)) { nuevas.delete(titulo); } else { nuevas.add(titulo); }
-    this.abiertas.set(nuevas);
+    // spec 017: abrir una categoría recoge la que estaba abierta
+    this.abiertas.set(this.abiertas().has(titulo) ? new Set() : new Set([titulo]));
     this.guardarAbiertas();
+  }
+
+  /** Marca las pestañas como compactas cuando su lugar original ya salió por arriba de la pantalla. */
+  @HostListener('window:scroll')
+  protected alBajar(): void {
+    const ancla = this.anclaPestanas()?.nativeElement;
+    const compactas = !!ancla && ancla.getBoundingClientRect().top < 0;
+    if (compactas !== this.pestanasCompactas()) {
+      this.pestanasCompactas.set(compactas);
+    }
   }
 
   /**
@@ -111,14 +123,15 @@ export class Shell implements OnInit {
   }
 
   /**
-   * Abre la categoría que contiene la pantalla actual ({@link seccionDeRuta}), sin cerrar otras.
+   * Deja abierta solo la categoría que contiene la pantalla actual ({@link seccionDeRuta}); cierra las demás (spec 017).
    *
    * @param url dirección actual
    */
   private abrirLaDe(url: string): void {
     const titulo = seccionDeRuta(this.secciones(), url)?.titulo;
-    if (titulo && !this.abiertas().has(titulo)) {
-      this.abiertas.set(new Set([...this.abiertas(), titulo]));
+    // spec 017: al navegar queda abierta solo la categoría de la pantalla actual
+    if (titulo && !(this.abiertas().size === 1 && this.abiertas().has(titulo))) {
+      this.abiertas.set(new Set([titulo]));
     }
   }
 
@@ -126,7 +139,8 @@ export class Shell implements OnInit {
   private leerAbiertas(): ReadonlySet<string> {
     try {
       const guardado = JSON.parse(localStorage.getItem(CLAVE_ABIERTAS) ?? '[]');
-      return new Set(Array.isArray(guardado) ? guardado.filter((x): x is string => typeof x === 'string') : []);
+      const titulos = Array.isArray(guardado) ? guardado.filter((x): x is string => typeof x === 'string') : [];
+      return new Set(titulos.slice(0, 1));
     } catch {
       return new Set();
     }

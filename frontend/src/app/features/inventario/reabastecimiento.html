@@ -125,10 +125,10 @@
                     @if (edicion()?.id === i.productoId) {
                       <div class="fila plazo">
                         <div class="campo"><label for="pz-{{ i.productoId }}">Días hábiles de entrega</label>
-                          <input id="pz-{{ i.productoId }}" type="number" min="0" max="120" class="entrada num" placeholder="De la empresa"
+                          <input scCifra [decimales]="0" id="pz-{{ i.productoId }}" min="0" max="120" class="entrada num" placeholder="De la empresa"
                             [ngModel]="edicion()?.plazo" (ngModelChange)="cambiarEdicion('plazo', $event)"></div>
                         <div class="campo"><label for="sg-{{ i.productoId }}">Días hábiles de seguridad</label>
-                          <input id="sg-{{ i.productoId }}" type="number" min="0" max="60" class="entrada num" placeholder="De la empresa"
+                          <input scCifra [decimales]="0" id="sg-{{ i.productoId }}" min="0" max="60" class="entrada num" placeholder="De la empresa"
                             [ngModel]="edicion()?.seguridad" (ngModelChange)="cambiarEdicion('seguridad', $event)"></div>
                         <button type="button" class="boton primario" (click)="guardarPlazo()">Guardar</button>
                         <button type="button" class="boton" (click)="edicion.set(null)">Cancelar</button>
@@ -146,9 +146,9 @@
                       @if (l.productoId === i.productoId) {
                         <div class="fila plazo">
                           <div class="campo"><label for="lmin-{{ i.productoId }}">Mínimo en la sede</label>
-                            <input id="lmin-{{ i.productoId }}" type="number" min="0" class="entrada num" [ngModel]="l.minimo" (ngModelChange)="cambiarLimite('minimo', $event)"></div>
+                            <input scCifra [decimales]="4" id="lmin-{{ i.productoId }}" min="0" class="entrada num" [ngModel]="l.minimo" (ngModelChange)="cambiarLimite('minimo', $event)"></div>
                           <div class="campo"><label for="lmax-{{ i.productoId }}">Máximo en la sede</label>
-                            <input id="lmax-{{ i.productoId }}" type="number" min="0" class="entrada num" placeholder="Sin máximo" [ngModel]="l.maximo" (ngModelChange)="cambiarLimite('maximo', $event)"></div>
+                            <input scCifra [decimales]="4" id="lmax-{{ i.productoId }}" min="0" class="entrada num" placeholder="Sin máximo" [ngModel]="l.maximo" (ngModelChange)="cambiarLimite('maximo', $event)"></div>
                           <button type="button" class="boton primario" (click)="guardarLimites()">Guardar</button>
                           <button type="button" class="boton" (click)="limiteSede.set(null)">Cancelar</button>
                         </div>

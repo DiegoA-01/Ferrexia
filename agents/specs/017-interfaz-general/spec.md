@@ -1,6 +1,6 @@
 # 017 - Ajustes generales de la interfaz
 
-**Estado:** Propuesta · **Rama:** `feature/interfaz-general` · **Depende de:** 013, 014 · **Responsable:** Persona 2 ·
+**Estado:** Hecha (2026-11-24, sin migración; sin PR todavía) · **Rama:** `feature/interfaz-general` · **Depende de:** 013, 014 · **Responsable:** Persona 2 ·
 **Puntos de la reunión 2:** 16, 25, 26, 38, 41
 
 ## Objetivo
@@ -30,12 +30,19 @@ abiertas a la vez. Se hace primero porque toca estilos y componentes que usan to
   la regla de la spec 013 que permitía varias abiertas.
 
 ## Criterios de aceptación
-- [ ] Todas las cifras de dinero se ven con punto de miles.
-- [ ] Al escribir una cifra se pone el punto de miles y el valor guardado es correcto.
-- [ ] Ningún campo numérico tiene flechas ni cambia con la rueda del mouse.
-- [ ] Ninguna pantalla tiene scroll horizontal a 360 px, 768 px y 1280 px (revisado pantalla por pantalla).
-- [ ] Las pestañas de la categoría quedan visibles al bajar.
-- [ ] En el menú lateral nunca hay dos categorías abiertas.
+- [x] Todas las cifras de dinero se ven con punto de miles.
+- [x] Al escribir una cifra se pone el punto de miles y el valor guardado es correcto.
+- [x] Ningún campo numérico tiene flechas ni cambia con la rueda del mouse.
+- [x] Ninguna pantalla tiene scroll horizontal a 360 px, 768 px y 1280 px (revisado pantalla por pantalla).
+- [x] Las pestañas de la categoría quedan visibles al bajar.
+- [x] En el menú lateral nunca hay dos categorías abiertas.
+
+> Verificado el 2026-11-24. Frontend: 252 pruebas en verde y build sin advertencias (`formato.spec`, `cifra.spec`,
+> `tablas-responsivas.spec`, `app.spec`, `shell.spec`). Backend: 838 en verde (1 omitida) con `TablaPdfGeneradorTest`.
+> En Docker: 35 pantallas del auditor sin scroll horizontal a 360, 768 y 1280 px (las tablas pasan a tarjetas con su
+> etiqueta bajo 768 px); las pestañas quedan pegadas a 10 px y se vuelven compactas al bajar; abrir Compras recoge
+> Inventario; en el POS, escribir 20000 muestra "20.000" y el cambio sale bien. El e2e `interfaz-sin-scroll.spec.ts`
+> repite el recorrido en el CI con el auditor y el cajero.
 
 ## Fuera de alcance
 - Cambiar la paleta, la tipografía o el orden del menú.

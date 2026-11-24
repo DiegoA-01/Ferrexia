@@ -99,12 +99,12 @@
               @for (f of filas(); track f.rfqLineaId; let i = $index) {
                 <tr>
                   <td>{{ f.producto }}</td>
-                  <td><input class="entrada chica" type="number" min="0" step="any" [attr.aria-label]="'Cantidad de ' + f.producto" [ngModel]="f.cantidadOfertada" (ngModelChange)="cambiarFila(i, 'cantidadOfertada', $event)"></td>
+                  <td><input scCifra [decimales]="4" class="entrada chica" min="0" [attr.aria-label]="'Cantidad de ' + f.producto" [ngModel]="f.cantidadOfertada" (ngModelChange)="cambiarFila(i, 'cantidadOfertada', $event)"></td>
                   <td><input class="entrada chica" [attr.aria-label]="'Unidad de ' + f.producto" [ngModel]="f.unidadOfertada" (ngModelChange)="cambiarFila(i, 'unidadOfertada', $event)"></td>
-                  <td><input class="entrada chica" type="number" min="0" step="any" [attr.aria-label]="'Factor de ' + f.producto" [ngModel]="f.factorConversion" (ngModelChange)="cambiarFila(i, 'factorConversion', $event)"></td>
-                  <td><input class="entrada chica" type="number" min="0" step="any" [attr.aria-label]="'Precio de ' + f.producto" [ngModel]="f.precioUnitarioOfertado" (ngModelChange)="cambiarFila(i, 'precioUnitarioOfertado', $event)"></td>
-                  <td><input class="entrada chica" type="number" min="0" max="100" step="any" [attr.aria-label]="'Descuento de ' + f.producto" [ngModel]="f.descuentoPct" (ngModelChange)="cambiarFila(i, 'descuentoPct', $event)"></td>
-                  <td><input class="entrada chica" type="number" min="0" max="100" step="any" [attr.aria-label]="'IVA de ' + f.producto" [ngModel]="f.impuestoPct" (ngModelChange)="cambiarFila(i, 'impuestoPct', $event)"></td>
+                  <td><input scCifra [decimales]="4" class="entrada chica" min="0" [attr.aria-label]="'Factor de ' + f.producto" [ngModel]="f.factorConversion" (ngModelChange)="cambiarFila(i, 'factorConversion', $event)"></td>
+                  <td><input scCifra class="entrada chica" min="0" [attr.aria-label]="'Precio de ' + f.producto" [ngModel]="f.precioUnitarioOfertado" (ngModelChange)="cambiarFila(i, 'precioUnitarioOfertado', $event)"></td>
+                  <td><input scCifra class="entrada chica" min="0" max="100" [attr.aria-label]="'Descuento de ' + f.producto" [ngModel]="f.descuentoPct" (ngModelChange)="cambiarFila(i, 'descuentoPct', $event)"></td>
+                  <td><input scCifra class="entrada chica" min="0" max="100" [attr.aria-label]="'IVA de ' + f.producto" [ngModel]="f.impuestoPct" (ngModelChange)="cambiarFila(i, 'impuestoPct', $event)"></td>
                 </tr>
               }
             </tbody>

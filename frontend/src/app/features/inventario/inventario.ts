@@ -9,6 +9,7 @@ import { iso } from '../../core/servicios/reportes.service';
 import { Avisos, descargar } from '../../core/ui/avisos';
 import { SesionService } from '../../core/sesion/sesion.service';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Fila de la tabla: viene del reporte de inventario o, si el rol no lo ve, del listado de productos. */
 type Fila = Pick<InventarioItem, 'productoId' | 'codigo' | 'nombre' | 'categoria' | 'unidad' | 'stock' | 'stockMinimo' | 'stockMaximo' | 'valor' | 'bajoMinimo'>;
 
@@ -18,7 +19,7 @@ type Fila = Pick<InventarioItem, 'productoId' | 'codigo' | 'nombre' | 'categoria
  */
 @Component({
   selector: 'sc-inventario',
-  imports: [FormsModule, ReactiveFormsModule, RouterLink, PesosPipe, NumeroPipe],
+  imports: [Cifra, FormsModule, ReactiveFormsModule, RouterLink, PesosPipe, NumeroPipe],
   templateUrl: './inventario.html',
   styleUrl: './inventario.scss',
 })

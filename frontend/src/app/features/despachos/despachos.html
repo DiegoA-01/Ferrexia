@@ -35,7 +35,7 @@
                        [ngModel]="l.buscador.texto()" (ngModelChange)="l.buscador.escribir($event)">
                 <datalist [id]="'lista-' + i">@for (p of l.buscador.opciones(); track p.id) { <option [value]="l.buscador.etiqueta(p)"></option> }</datalist></div>
               <div class="campo"><label [for]="'c' + i">Cantidad</label>
-                <input [id]="'c' + i" [name]="'c' + i" type="number" min="0" step="any" class="entrada num" [ngModel]="l.cantidad" (ngModelChange)="cambiarLinea(i, 'cantidad', $event)"></div>
+                <input scCifra [decimales]="4" [id]="'c' + i" [name]="'c' + i" min="0" class="entrada num" [ngModel]="l.cantidad" (ngModelChange)="cambiarLinea(i, 'cantidad', $event)"></div>
               <div class="campo"><label [for]="'u' + i">Unidad</label>
                 <select [id]="'u' + i" [name]="'u' + i" class="entrada" [ngModel]="unidadDe(l)" (ngModelChange)="cambiarLinea(i, 'unidadId', $event)">
                   <option [ngValue]="null" disabled>Elige</option>

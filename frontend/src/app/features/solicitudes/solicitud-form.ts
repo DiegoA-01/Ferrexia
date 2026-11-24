@@ -13,6 +13,7 @@ import { iso } from '../../core/servicios/reportes.service';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Producto pedido en la solicitud. */
 interface LineaPedida {
   producto: Producto;
@@ -25,7 +26,7 @@ interface LineaPedida {
  */
 @Component({
   selector: 'sc-solicitud-form',
-  imports: [FormsModule, RouterLink, Estado, PesosPipe, NumeroPipe],
+  imports: [Cifra, FormsModule, RouterLink, Estado, PesosPipe, NumeroPipe],
   templateUrl: './solicitud-form.html',
   styleUrl: './solicitud-form.scss',
 })

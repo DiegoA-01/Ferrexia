@@ -35,7 +35,7 @@
                   </select>
                 }
                 @case ('numero') {
-                  <input [id]="'campo-' + k.clave" [name]="k.clave" type="number" step="any" class="entrada num" [disabled]="!editable(k)" [ngModel]="valores()[k.clave] ?? ''" (ngModelChange)="escribir(k, $event)">
+                  <input scCifra [id]="'campo-' + k.clave" [name]="k.clave" class="entrada num" [disabled]="!editable(k)" [ngModel]="valores()[k.clave] ?? ''" (ngModelChange)="escribir(k, $event)">
                 }
                 @default {
                   <input [id]="'campo-' + k.clave" [name]="k.clave" class="entrada" [attr.maxlength]="k.max ?? null" [disabled]="!editable(k)" [ngModel]="valores()[k.clave] ?? ''" (ngModelChange)="escribir(k, $event)">
@@ -95,7 +95,7 @@
         <h2>Convertir entre unidades</h2>
         <p class="texto-2">Sirve para comprobar los factores. Solo se puede convertir entre unidades de la misma magnitud; el cálculo lo hace el sistema.</p>
         <div class="filtros">
-          <div class="campo"><label for="cc">Cantidad</label><input id="cc" type="number" min="0" step="any" class="entrada num" [ngModel]="convCantidad()" (ngModelChange)="convCantidad.set($event)"></div>
+          <div class="campo"><label for="cc">Cantidad</label><input scCifra [decimales]="4" id="cc" min="0" class="entrada num" [ngModel]="convCantidad()" (ngModelChange)="convCantidad.set($event)"></div>
           <div class="campo"><label for="cd">De</label>
             <select id="cd" class="entrada" [ngModel]="convDesde()" (ngModelChange)="convDesde.set($event)">
               <option [ngValue]="null" disabled>Elige</option>
@@ -110,7 +110,7 @@
         </div>
         @if (conversion(); as r) {
           <div class="aviso verde"><span class="material-symbols-outlined">calculate</span>
-            <div><strong>{{ r.cantidadOrigen }} {{ r.unidadOrigen }} = {{ r.resultado }} {{ r.unidadDestino }}</strong></div></div>
+            <div><strong>{{ r.cantidadOrigen | numero }} {{ r.unidadOrigen }} = {{ r.resultado | numero }} {{ r.unidadDestino }}</strong></div></div>
         }
       </section>
     }

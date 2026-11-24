@@ -16,6 +16,7 @@ import { AutorizacionPin } from '../caja/autorizacion-pin';
 import { MEDIOS_VENTA } from '../pos/pos';
 import { imprimirTiquete } from '../pos/tiquete';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Línea en el formulario de devolución. */
 interface LineaDevuelta {
   ventaLineaId: number;
@@ -42,7 +43,7 @@ const ROLES_LIMITE: Record<string, string> = { CAJERO: 'Cajero', SUPERVISOR_VENT
  */
 @Component({
   selector: 'sc-ventas',
-  imports: [FormsModule, RouterLink, PesosPipe, NumeroPipe, FechaPipe, AutorizacionPin],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, NumeroPipe, FechaPipe, AutorizacionPin],
   templateUrl: './ventas.html',
   styles: `
     .filtros { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--sc-borde); align-items: flex-end;

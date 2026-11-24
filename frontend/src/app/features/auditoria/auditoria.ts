@@ -3,13 +3,14 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { Pagina, RegistroAuditoria, Usuario } from '../../core/api/modelos';
-import { FechaPipe } from '../../core/formato/formato';
+import { FechaPipe, NumeroPipe } from '../../core/formato/formato';
 import { AuditoriaService, FiltroAuditoria } from '../../core/servicios/auditoria.service';
 import { iso } from '../../core/servicios/reportes.service';
 import { UsuariosService } from '../../core/servicios/usuarios.service';
 import { Avisos } from '../../core/ui/avisos';
 import { ACCIONES, ENTIDADES, LISTA_ACCIONES, LISTA_ENTIDADES, RUTA_ENTIDAD } from './textos';
 
+import { Cifra } from '../../core/ui/cifra';
 /**
  * Auditoría de la empresa: quién hizo qué, cuándo y desde qué dirección. Es de solo lectura y no se puede editar ni
  * borrar; incluye los intentos fallidos. La ven el auditor y el administrador de la empresa. Cada registro guarda el
@@ -17,7 +18,7 @@ import { ACCIONES, ENTIDADES, LISTA_ACCIONES, LISTA_ENTIDADES, RUTA_ENTIDAD } fr
  */
 @Component({
   selector: 'sc-auditoria',
-  imports: [FormsModule, RouterLink, FechaPipe],
+  imports: [Cifra, NumeroPipe, FormsModule, RouterLink, FechaPipe],
   templateUrl: './auditoria.html',
   styleUrl: './auditoria.scss',
 })

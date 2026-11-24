@@ -107,7 +107,7 @@
     <div class="kpi"><span>Gasto en órdenes</span><strong>{{ c.gasto?.total | pesos }}</strong><small>{{ c.gasto?.ordenes | numero }} órdenes · pagado {{ c.gasto?.pagado | pesos }}</small></div>
   </div>
   @if (listaEstados(c.resumen.solicitudesPorEstado).length) {
-    <div class="estados">@for (e of listaEstados(c.resumen.solicitudesPorEstado); track e.estado) { <span class="chip"><sc-estado [valor]="e.estado" /> {{ e.total }}</span> }</div>
+    <div class="estados">@for (e of listaEstados(c.resumen.solicitudesPorEstado); track e.estado) { <span class="chip"><sc-estado [valor]="e.estado" /> {{ e.total | numero }}</span> }</div>
   }
   @if (c.recortado) { <p class="aviso ambar texto-chico">El periodo tiene muchos registros: cada lista muestra los 200 más recientes; las cifras cuentan todo.</p> }
 

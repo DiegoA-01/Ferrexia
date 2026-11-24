@@ -58,7 +58,7 @@
     @if ((p.totalPaginas ?? 0) > 1) {
       <div class="fila paginacion">
         <button type="button" class="boton chico" [disabled]="numeroPagina() === 0" (click)="buscar(numeroPagina() - 1)">Anterior</button>
-        <span class="texto-chico texto-2">Página {{ numeroPagina() + 1 }} de {{ p.totalPaginas }} · {{ p.totalElementos }} pagos</span>
+        <span class="texto-chico texto-2">Página {{ numeroPagina() + 1 }} de {{ p.totalPaginas }} · {{ p.totalElementos | numero }} pagos</span>
         <button type="button" class="boton chico" [disabled]="numeroPagina() + 1 >= (p.totalPaginas ?? 0)" (click)="buscar(numeroPagina() + 1)">Siguiente</button>
       </div>
     }

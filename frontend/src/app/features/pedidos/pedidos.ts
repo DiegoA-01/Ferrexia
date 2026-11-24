@@ -11,6 +11,7 @@ import { Avisos } from '../../core/ui/avisos';
 import { BuscadorProducto } from '../../core/ui/buscador-producto';
 import { SelectorSede } from '../../core/ui/selector-sede';
 
+import { Cifra } from '../../core/ui/cifra';
 /** Texto y color de cada estado. */
 const ESTADOS: Record<EstadoPedidoInterno, { texto: string; tono: string }> = {
   PENDIENTE: { texto: 'Pendiente', tono: 'ambar' },
@@ -32,7 +33,7 @@ interface Respuesta {
  */
 @Component({
   selector: 'sc-pedidos',
-  imports: [FormsModule, RouterLink, FechaPipe, NumeroPipe, SelectorSede],
+  imports: [Cifra, FormsModule, RouterLink, FechaPipe, NumeroPipe, SelectorSede],
   templateUrl: './pedidos.html',
   styleUrl: './pedidos.scss',
 })

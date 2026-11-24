@@ -46,7 +46,7 @@ decisiones y se aprueban antes de escribir el plan.
 | Spec | Fase | Qué entrega | Rama | Depende de | Responsable | Estado |
 |---|---|---|---|---|---|---|
 | [016-pos-ajustes-rapidos](016-pos-ajustes-rapidos/spec.md) | 1 | Sin últimos 4 dígitos, voucher opcional, método de pago obligatorio, pedidos eliminados visibles | `feature/pos-ajustes-rapidos` | 005, 006 | Persona 1 | Hecha (V40, falta PR) |
-| [017-interfaz-general](017-interfaz-general/spec.md) | 1 | Punto de miles, sin flechas en números, sin scroll horizontal, pestañas fijas, una categoría abierta | `feature/interfaz-general` | 013, 014 | Persona 2 | Propuesta |
+| [017-interfaz-general](017-interfaz-general/spec.md) | 1 | Punto de miles, sin flechas en números, sin scroll horizontal, pestañas fijas, una categoría abierta | `feature/interfaz-general` | 013, 014 | Persona 2 | Hecha (sin migración, falta PR) |
 | [018-mi-turno-claro](018-mi-turno-claro/spec.md) | 1 | "Mi turno" sin "crear turno" con turno abierto, botón de cerrar, acciones en menú, revisión del flujo de cajas | `feature/mi-turno-claro` | 003, 015 | Persona 1 | Propuesta |
 | [019-reorganizar-menu](019-reorganizar-menu/spec.md) | 1 | Reportes en su categoría (con el informe de compras) e Importación de datos en Configuración | `feature/reorganizar-menu` | 011, 013 | Persona 2 | Propuesta |
 | [020-empresa-sedes-simples](020-empresa-sedes-simples/spec.md) | 1 | Código de ingreso automático y sede con enlace de Google Maps | `feature/empresa-sedes-simples` | SaaS 2 | Persona 2 | Propuesta |

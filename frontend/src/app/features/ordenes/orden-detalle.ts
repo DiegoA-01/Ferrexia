@@ -14,13 +14,14 @@ import { Avisos, descargar } from '../../core/ui/avisos';
 import { PagoAcciones } from './pago-acciones';
 import { SesionService } from '../../core/sesion/sesion.service';
 
+import { Cifra } from '../../core/ui/cifra';
 /**
  * Vista 5 · Orden, pagos y cruce de tres vías. Los montos esperados, la diferencia y el saldo los calcula el
  * backend; aquí solo se muestran y se registran decisiones.
  */
 @Component({
   selector: 'sc-orden-detalle',
-  imports: [FormsModule, RouterLink, LowerCasePipe, Estado, EtiquetaPipe, PesosPipe, NumeroPipe, FechaPipe, PagoAcciones],
+  imports: [Cifra, FormsModule, RouterLink, LowerCasePipe, Estado, EtiquetaPipe, PesosPipe, NumeroPipe, FechaPipe, PagoAcciones],
   templateUrl: './orden-detalle.html',
   styleUrl: './orden-detalle.scss',
 })
