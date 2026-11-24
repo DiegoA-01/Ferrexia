@@ -4,7 +4,7 @@ import { forkJoin, map, of, catchError } from 'rxjs';
 
 import { Factura, Gasto, Producto, Proveedor, ProveedorRanking, SolicitudResumen, SugerenciaReorden } from '../../core/api/modelos';
 import { CompactoPipe, PesosPipe, PuntajePipe, horasDesde } from '../../core/formato/formato';
-import { OpcionMenu, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, seccionesVisibles } from '../../core/navegacion/menu';
+import { OpcionMenu, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, SeccionMenu, seccionesVisibles } from '../../core/navegacion/menu';
 import { ComprasService } from '../../core/servicios/compras.service';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { OrdenesService } from '../../core/servicios/ordenes.service';
@@ -127,6 +127,16 @@ export class Inicio implements OnInit {
       accion: 'Habilitar', proveedorId: p.id,
     })),
   ]);
+
+  /**
+   * Pantalla a la que entra la tarjeta de una categoría: la primera de su lista que la persona puede usar (spec 013).
+   *
+   * @param categoria categoría del menú, ya filtrada por los roles del usuario
+   * @return ruta de la primera opción sin candado, o {@code null} si todas tienen el módulo apagado
+   */
+  protected destino(categoria: SeccionMenu): string | null {
+    return categoria.opciones.find(o => !this.bloqueada(o))?.ruta ?? null;
+  }
 
   /**
    * @param opcion opción del menú

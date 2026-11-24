@@ -10,12 +10,15 @@ import { filter, map } from 'rxjs';
 import { Notificacion, Proveedor } from '../../core/api/modelos';
 import { FechaPipe, iniciales } from '../../core/formato/formato';
 import { nombreRol } from '../../core/formato/etiquetas';
-import { OpcionMenu, seccionesVisibles } from '../../core/navegacion/menu';
+import { OpcionMenu, SeccionMenu, seccionesVisibles } from '../../core/navegacion/menu';
 import { ComprasService } from '../../core/servicios/compras.service';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { NotificacionesService } from '../../core/servicios/notificaciones.service';
 import { ReportesService } from '../../core/servicios/reportes.service';
 import { SesionService } from '../../core/sesion/sesion.service';
+
+/** Clave de {@code localStorage} con las categorías del menú que el usuario dejó abiertas. */
+const CLAVE_ABIERTAS = 'sc.menu.abiertas';
 
 /** Marco de la empresa: menú lateral según roles y módulos, buscador, notificaciones y usuario. */
 @Component({
@@ -50,6 +53,9 @@ export class Shell implements OnInit {
   /** Secciones con solo las opciones que el rol del usuario puede usar. */
   protected readonly secciones = computed(() => seccionesVisibles(r => this.sesion.tieneRol(r)));
 
+  /** Categorías del menú lateral que están desplegadas (spec 013). */
+  protected readonly abiertas = signal<ReadonlySet<string>>(this.leerAbiertas());
+
   protected readonly iniciales = computed(() => iniciales(this.sesion.usuario()?.nombre));
   protected readonly rolPrincipal = computed(() => {
     const roles = this.sesion.usuario()?.roles ?? [];
@@ -58,10 +64,79 @@ export class Shell implements OnInit {
 
   ngOnInit(): void {
     this.router.events.pipe(filter(e => e instanceof NavigationEnd), takeUntilDestroyed(this.destruir))
-      .subscribe(() => this.menuAbierto.set(false));
+      .subscribe(e => { this.menuAbierto.set(false); this.abrirLaDe((e as NavigationEnd).urlAfterRedirects); });
+    this.abrirLaDe(this.router.url);
     this.notificaciones.contar();
     this.cargarContadores();
     this.cargarPendientes();
+  }
+
+  /**
+   * Despliega o recoge una categoría del menú y lo recuerda en este navegador.
+   *
+   * @param titulo nombre de la categoría
+   */
+  protected alternar(titulo: string): void {
+    const nuevas = new Set(this.abiertas());
+    if (nuevas.has(titulo)) { nuevas.delete(titulo); } else { nuevas.add(titulo); }
+    this.abiertas.set(nuevas);
+    this.guardarAbiertas();
+  }
+
+  /**
+   * @param seccion categoría del menú
+   * @return {@code true} si está desplegada; la sección sin título (Inicio) siempre lo está
+   */
+  protected abierta(seccion: SeccionMenu): boolean {
+    return !seccion.titulo || this.abiertas().has(seccion.titulo);
+  }
+
+  /**
+   * @param seccion categoría del menú
+   * @return suma de los contadores de sus opciones, para verla con la categoría recogida
+   */
+  protected contadorDe(seccion: SeccionMenu): number {
+    const c = this.contadores();
+    return seccion.opciones.reduce((total, o) => total + (o.contador ? c[o.contador] ?? 0 : 0), 0);
+  }
+
+  /**
+   * Abre la categoría que contiene la pantalla actual (la opción cuya ruta coincide más largo), sin cerrar otras.
+   *
+   * @param url dirección actual
+   */
+  private abrirLaDe(url: string): void {
+    const ruta = url.split(/[?#]/)[0];
+    let mejor: { titulo: string; largo: number } | null = null;
+    for (const s of this.secciones()) {
+      for (const o of s.opciones) {
+        if ((ruta === o.ruta || ruta.startsWith(o.ruta + '/')) && (!mejor || o.ruta.length > mejor.largo)) {
+          mejor = { titulo: s.titulo, largo: o.ruta.length };
+        }
+      }
+    }
+    if (mejor?.titulo && !this.abiertas().has(mejor.titulo)) {
+      this.abiertas.set(new Set([...this.abiertas(), mejor.titulo]));
+    }
+  }
+
+  /** @return categorías guardadas en este navegador (vacío si no hay o no se puede leer) */
+  private leerAbiertas(): ReadonlySet<string> {
+    try {
+      const guardado = JSON.parse(localStorage.getItem(CLAVE_ABIERTAS) ?? '[]');
+      return new Set(Array.isArray(guardado) ? guardado.filter((x): x is string => typeof x === 'string') : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  /** Guarda las categorías abiertas; si el navegador no deja guardar, el menú sigue funcionando. */
+  private guardarAbiertas(): void {
+    try {
+      localStorage.setItem(CLAVE_ABIERTAS, JSON.stringify([...this.abiertas()]));
+    } catch {
+      // sin almacenamiento: se pierde solo el recuerdo entre visitas
+    }
   }
 
   /** @param opcion opción del menú */

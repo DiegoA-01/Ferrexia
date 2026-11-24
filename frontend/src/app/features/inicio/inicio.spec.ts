@@ -5,7 +5,6 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 
-import { seccionesVisibles } from '../../core/navegacion/menu';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Inicio } from './inicio';
 
@@ -31,10 +30,11 @@ const crear = (roles: string[], apagados: string[] = []) => {
 };
 
 const tarjetas = (html: HTMLElement) => [...html.querySelectorAll('.accesos .categoria-acceso')];
-const titulo = (t: Element) => t.querySelector('h2')?.textContent?.trim();
+const titulo = (t: Element) => t.querySelector('.categoria-titulo')?.textContent?.trim();
 const icono = (t: Element) => t.querySelector('.categoria-icono')?.textContent?.trim();
+const tarjeta = (html: HTMLElement, t: string) => tarjetas(html).find(x => titulo(x) === t)!;
 
-describe('Inicio: categorías del menú (spec 012)', () => {
+describe('Inicio: categorías del menú (specs 012 y 013)', () => {
   it('el dueño ve las seis categorías en el orden del menú, cada una con su icono', () => {
     const html = crear(['ADMIN_SISTEMA']);
     expect(tarjetas(html).map(t => [titulo(t), icono(t)])).toEqual([
@@ -43,28 +43,33 @@ describe('Inicio: categorías del menú (spec 012)', () => {
     ]);
   });
 
-  it('cada tarjeta enlaza las mismas pantallas que la barra lateral', () => {
-    const roles = ['AUDITOR'];
-    const html = crear(roles);
-    const esperado = seccionesVisibles(r => !r?.length || r.some(x => roles.includes(x)))
-      .filter(s => s.titulo)
-      .map(s => s.opciones.map(o => o.ruta));
-    const enlaces = tarjetas(html).map(t => [...t.querySelectorAll('a.acceso')].map(a => a.getAttribute('href')));
-    expect(enlaces).toEqual(esperado);
+  it('cada tarjeta entra directo a la primera pantalla de su categoría, sin desplegar nada', () => {
+    const html = crear(['ADMIN_SISTEMA']);
+    expect(tarjetas(html).map(t => [t.tagName, t.getAttribute('href')])).toEqual([
+      ['A', '/app/pedidos-venta'], ['A', '/app/solicitudes'], ['A', '/app/inventario'],
+      ['A', '/app/tablero'], ['A', '/app/usuarios'], ['A', '/app/configuracion'],
+    ]);
+    expect(html.querySelectorAll('.accesos .acceso, .accesos [aria-expanded]').length).toBe(0);
   });
 
-  it('el cajero no ve la categoría Gestión', () => {
+  it('el destino depende del rol: el cajero entra a Ventas por el punto de venta y no ve Gestión', () => {
     const html = crear(['CAJERO']);
+    expect(tarjeta(html, 'Ventas').getAttribute('href')).toBe('/app/pos');
+    expect(tarjeta(html, 'Ventas').querySelector('.categoria-cuenta')?.textContent?.trim()).toBe('6 pantallas');
     expect(tarjetas(html).map(titulo)).not.toContain('Gestión');
-    expect(tarjetas(html).map(titulo)).toContain('Ventas');
   });
 
-  it('una opción de un módulo apagado sale con candado y sin enlace', () => {
-    const html = crear(['ADMIN_SISTEMA'], ['CARTERA']);
-    const ventas = tarjetas(html).find(t => titulo(t) === 'Ventas')!;
-    const cartera = [...ventas.querySelectorAll('.acceso')].find(e => e.textContent?.includes('Cartera'))!;
-    expect(cartera.tagName).toBe('SPAN');
-    expect(cartera.classList).toContain('bloqueado');
-    expect(cartera.querySelector('.candado')).not.toBeNull();
+  it('si la primera pantalla tiene el módulo apagado, entra por la siguiente disponible', () => {
+    const html = crear(['CAJERO'], ['VENTAS']);
+    expect(tarjeta(html, 'Ventas').getAttribute('href')).toBe('/app/caja/mi-turno');
+  });
+
+  it('con todos los módulos de la categoría apagados, la tarjeta lleva candado y no navega', () => {
+    const html = crear(['AUDITOR'], ['VENTAS', 'CARTERA', 'CAJA']);
+    const ventas = tarjeta(html, 'Ventas');
+    expect(ventas.tagName).toBe('DIV');
+    expect(ventas.getAttribute('href')).toBeNull();
+    expect(ventas.getAttribute('aria-disabled')).toBe('true');
+    expect(ventas.querySelector('.candado')).not.toBeNull();
   });
 });

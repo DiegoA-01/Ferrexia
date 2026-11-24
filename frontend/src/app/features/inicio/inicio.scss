@@ -30,22 +30,20 @@ h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 }
 
 /* Categorías del menú como accesos (spec 012): tres columnas en escritorio, dos en tableta, una en celular. */
-.accesos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.accesos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
 @media (max-width: 1200px) { .accesos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .accesos { grid-template-columns: minmax(0, 1fr); } }
 
-.categoria-acceso { display: flex; flex-direction: column; gap: 14px; }
-.categoria-cabecera { display: flex; align-items: center; gap: 14px;
-  h2 { margin: 0; font-size: 19px; } }
+.categoria-acceso { display: flex; align-items: center; gap: 14px; color: inherit; text-decoration: none;
+  transition: border-color .15s, box-shadow .15s;
+  .flecha { margin-left: auto; color: var(--sc-texto-2); transition: transform .15s, color .15s; }
+  &.bloqueada { cursor: not-allowed; opacity: .65; }
+  .candado { font-size: 20px; } }
+a.categoria-acceso:hover, a.categoria-acceso:focus-visible { border-color: #f0b9a4; box-shadow: 0 6px 18px rgb(217 58 11 / 10%);
+  .flecha { color: var(--sc-primario); transform: translateX(3px); } }
+a.categoria-acceso:focus-visible { outline: 2px solid var(--sc-primario); outline-offset: 2px; }
+.categoria-nombre { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.categoria-titulo { font-size: 19px; font-weight: 600; }
+.categoria-cuenta { font-size: 13px; color: var(--sc-texto-2); }
 .categoria-icono { display: grid; place-items: center; width: 52px; height: 52px; flex-shrink: 0; border-radius: 16px;
   background: var(--sc-primario-suave); color: var(--sc-primario); font-size: 30px; }
-
-.categoria-opciones { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.acceso { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 10px; color: inherit;
-  text-decoration: none; font-size: 15px; transition: background .15s;
-  .material-symbols-outlined { font-size: 20px; color: var(--sc-texto-2); }
-  .acceso-texto { flex: 1; min-width: 0; } }
-a.acceso:hover, a.acceso:focus-visible { background: var(--sc-primario-suave);
-  .material-symbols-outlined { color: var(--sc-primario); } }
-.acceso.bloqueado { color: var(--sc-texto-2); cursor: not-allowed; opacity: .7; }
-.candado { font-size: 16px !important; }
