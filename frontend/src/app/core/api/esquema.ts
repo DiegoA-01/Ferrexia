@@ -4498,6 +4498,13 @@ export interface components {
             /** Format: date-time */
             creadoEn?: string;
             lineas?: components["schemas"]["PedidoVentaLineaResponse"][];
+            descartadoPor?: string;
+            /** Format: date-time */
+            descartadoEn?: string;
+            motivoDescarte?: string;
+        };
+        DescartarPedidoRequest: {
+            motivo: string;
         };
         EmpresaRequest: {
             razonSocial: string;

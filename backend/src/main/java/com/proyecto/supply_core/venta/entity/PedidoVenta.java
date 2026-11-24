@@ -63,6 +63,18 @@ public class PedidoVenta {
     @Column(name = "venta_id")
     private Long ventaId;
 
+    /** Quién descartó el pedido (spec 016); {@code null} si no se descartó o se descartó antes de V40. */
+    @Column(name = "descartado_por_usuario_id")
+    private Long descartadoPorUsuarioId;
+
+    /** Cuándo se descartó (spec 016). */
+    @Column(name = "descartado_en")
+    private LocalDateTime descartadoEn;
+
+    /** Por qué se descartó (spec 016). */
+    @Column(name = "motivo_descarte", length = 300)
+    private String motivoDescarte;
+
     @Column(name = "creado_en", nullable = false, updatable = false)
     private LocalDateTime creadoEn;
 

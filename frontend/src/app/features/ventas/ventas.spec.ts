@@ -141,8 +141,14 @@ describe('Pedidos de venta', () => {
     lista.flush(pagina([{ id: 3, consecutivo: 'PV-000003', estado: 'PENDIENTE_COBRO', lineas: [] }]));
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Cobrar');
+    // desde la spec 016, descartar pide el motivo antes de enviar
     c()['descartar']({ id: 3, consecutivo: 'PV-000003' });
-    backend.expectOne('/api/pedidos-venta/3/descartar').flush({ id: 3, estado: 'DESCARTADO' });
+    backend.expectNone('/api/pedidos-venta/3/descartar');
+    c()['motivo'].set('El cliente desistió');
+    c()['confirmarDescarte']();
+    const descarte = backend.expectOne('/api/pedidos-venta/3/descartar');
+    expect(descarte.request.body).toEqual({ motivo: 'El cliente desistió' });
+    descarte.flush({ id: 3, estado: 'DESCARTADO' });
     backend.expectOne(r => r.url === '/api/pedidos-venta').flush(pagina([]));
     backend.verify();
   });

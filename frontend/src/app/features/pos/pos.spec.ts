@@ -62,6 +62,9 @@ describe('Punto de venta', () => {
     return r;
   };
 
+  /** Deja un pago en efectivo elegido (el cobro abre sin medio desde la spec 016). */
+  const conEfectivo = () => c()['pagos'].set([{ medio: 'EFECTIVO', monto: 3700, referencia: '' }]);
+
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => {
     vi.useRealTimers();
@@ -95,9 +98,13 @@ describe('Punto de venta', () => {
     cotizar();
     c()['atajo'](new KeyboardEvent('keydown', { key: 'F9' }));
     expect(c()['cobrando']()).toBe(true);
+    // spec 016: abre sin medio; E elige Efectivo
+    expect(c()['pagos']()[0].medio).toBeNull();
+    c()['atajo'](new KeyboardEvent('keydown', { key: 'e' }));
+    expect(c()['pagos']()[0].medio).toBe('EFECTIVO');
     c()['cambiarPago'](0, 'monto', 5000);
     const r = cotizar(cotizacion({ cambio: 1300, pagado: 5000 }));
-    expect(r.request.body.pagos).toEqual([{ medio: 'EFECTIVO', monto: 5000, ultimos4: undefined, referencia: undefined }]);
+    expect(r.request.body.pagos).toEqual([{ medio: 'EFECTIVO', monto: 5000, referencia: undefined }]);
     expect(texto()).toContain('Cambio');
     expect(c()['puedeConfirmar']()).toBe(true);
   });
@@ -106,6 +113,7 @@ describe('Punto de venta', () => {
     crear(['CAJERO']);
     escanear();
     cotizar(cotizacion({ cambio: 0 }));
+    conEfectivo();
     const clave = c()['clave']();
     c()['confirmar']();
     backend.expectOne('/api/ventas').error(new ProgressEvent('error'), { status: 0 });
@@ -126,6 +134,7 @@ describe('Punto de venta', () => {
     escanear();
     cotizar(cotizacion({ cambio: 0, requiereAutorizacionDescuento: true }));
     c()['cobrando'].set(true);
+    conEfectivo();
     c()['confirmar']();
     backend.expectNone('/api/ventas');
     expect(c()['pin']()).toBe('DESCUENTO');
@@ -178,6 +187,7 @@ describe('Punto de venta', () => {
     escanear();
     cotizar();
     c()['abrirCobro']();
+    c()['elegirMedio']('EFECTIVO');
     c()['cambiarPago'](0, 'monto', 5000);
     cotizar(cotizacion({ cambio: 1300, pagado: 5000 }));
     c()['atajo'](new KeyboardEvent('keydown', { key: 'F9' }));
@@ -192,6 +202,7 @@ describe('Punto de venta', () => {
     crear(['CAJERO']);
     escanear();
     cotizar(cotizacion({ cambio: 0 }));
+    conEfectivo();
     const clave = c()['clave']();
     c()['confirmar']();
     backend.expectOne('/api/ventas').error(new ProgressEvent('error'), { status: 0 });
@@ -223,18 +234,103 @@ describe('Punto de venta', () => {
     expect(c()['cotizacion']().totalAPagar).toBe(7400);
   });
 
+  describe('spec 016: método de pago y tarjeta', () => {
+    it('el cobro abre sin medio: no se confirma, F9 no cobra y avisa que elija cómo paga', () => {
+      crear(['CAJERO']);
+      escanear();
+      cotizar();
+      c()['abrirCobro']();
+      cotizar(cotizacion({ cambio: 0 }));
+      expect(c()['pagos']()[0].medio).toBeNull();
+      expect(c()['sinMedio']()).toBe(true);
+      expect(c()['puedeConfirmar']()).toBe(false);
+      expect(texto()).toContain('Elige cómo paga el cliente');
+      const boton = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')]
+        .find(b => b.textContent?.includes('Confirmar venta')) as HTMLButtonElement;
+      expect(boton.disabled).toBe(true);
+      c()['atajo'](new KeyboardEvent('keydown', { key: 'F9' }));
+      backend.expectNone('/api/ventas');
+    });
+
+    it('con tarjeta no pide los últimos 4 dígitos y el voucher es opcional', () => {
+      crear(['CAJERO']);
+      escanear();
+      cotizar();
+      c()['abrirCobro']();
+      cotizar();
+      c()['elegirMedio']('TARJETA_CREDITO');
+      cotizar(cotizacion({ cambio: 0 }));
+      fixture.detectChanges();
+      expect(texto()).not.toContain('Últimos 4');
+      const campos = [...(fixture.nativeElement as HTMLElement).querySelectorAll('input')].map(i => i.placeholder);
+      expect(campos).toContain('Código del voucher (opcional)');
+      expect(c()['puedeConfirmar']()).toBe(true);
+      c()['confirmar']();
+      const venta = backend.expectOne('/api/ventas');
+      expect(venta.request.body.pagos).toEqual([{ medio: 'TARJETA_CREDITO', monto: 3700, referencia: undefined }]);
+      venta.flush({ id: 60, consecutivo: 'C1-000010', totalAPagar: 3700, cambio: 0 });
+      backend.expectOne('/api/ventas/60/tiquete').flush({ copia: false, venta: { consecutivo: 'C1-000010', lineas: [], pagos: [] } });
+      backend.expectOne('/api/turnos/actual').flush(turno);
+    });
+
+    it('en el pago dividido, un medio sin elegir también bloquea el cobro', () => {
+      crear(['CAJERO']);
+      escanear();
+      cotizar();
+      c()['abrirCobro']();
+      c()['elegirMedio']('EFECTIVO');
+      cotizar();
+      c()['agregarPago']();
+      fixture.detectChanges();
+      expect(c()['pagos']()[1].medio).toBeNull();
+      expect(c()['sinMedio']()).toBe(true);
+      expect(c()['puedeConfirmar']()).toBe(false);
+    });
+
+    it('al abrir el cobro el foco pasa al primer medio, así la E funciona sin tocar el mouse', () => {
+      crear(['CAJERO']);
+      escanear();
+      cotizar();
+      document.body.appendChild(fixture.nativeElement);
+      c()['abrirCobro']();
+      fixture.detectChanges();
+      vi.advanceTimersByTime(1);
+      const activo = document.activeElement as HTMLElement;
+      expect(activo.classList).toContain('medio');
+      activo.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true }));
+      expect(c()['pagos']()[0].medio).toBe('EFECTIVO');
+      cotizar();
+      (fixture.nativeElement as HTMLElement).remove();
+    });
+
+    it('la E escrita en un campo no elige Efectivo', () => {
+      crear(['CAJERO']);
+      escanear();
+      cotizar();
+      c()['abrirCobro']();
+      cotizar();
+      const campo = document.createElement('input');
+      document.body.appendChild(campo);
+      campo.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true }));
+      expect(c()['pagos']()[0].medio).toBeNull();
+      campo.remove();
+    });
+  });
+
   it('el cobro es de un solo medio: en efectivo pregunta con cuánto paga, y dividir el pago es aparte', () => {
     crear(['CAJERO']);
     escanear();
     cotizar();
     c()['abrirCobro']();
     cotizar();
+    c()['elegirMedio']('EFECTIVO');
+    cotizar();
     expect(c()['pagos']()[0].monto).toBeNull();
     expect(texto()).toContain('¿Con cuánto paga el cliente?');
     expect(texto()).not.toContain('Agregar otro medio');
     expect(c()['billetes']()).toEqual([5000, 10000, 20000]);
     c()['pagarExacto']();
-    expect(cotizar().request.body.pagos).toEqual([{ medio: 'EFECTIVO', monto: 3700, ultimos4: undefined, referencia: undefined }]);
+    expect(cotizar().request.body.pagos).toEqual([{ medio: 'EFECTIVO', monto: 3700, referencia: undefined }]);
     // con tarjeta se cobra el total que da el servidor (sin redondeo del efectivo)
     c()['elegirMedio']('TARJETA_DEBITO');
     const r = cotizar(cotizacion({ total: 3710, totalAPagar: 3710 }));

@@ -16,8 +16,8 @@ import jakarta.validation.constraints.Size;
  *
  * @param medio      medio de pago
  * @param monto      valor (> 0, 2 decimales)
- * @param referencia número de autorización del datáfono o de la transferencia
- * @param ultimos4   últimos 4 dígitos de la tarjeta
+ * @param referencia número de autorización del datáfono (código del voucher) o de la transferencia; opcional
+ * @param ultimos4   últimos 4 dígitos de la tarjeta; opcional desde la spec 016 (el POS ya no los pide)
  */
 public record PagoVentaRequest(
         @NotNull(message = "es obligatorio") MedioPagoVenta medio,

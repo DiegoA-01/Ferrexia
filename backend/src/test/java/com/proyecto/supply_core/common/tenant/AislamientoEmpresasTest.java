@@ -2530,10 +2530,14 @@ class AislamientoEmpresasTest {
             mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-2")
                             .contentType(json).content(venta.formatted(50, 0, "{\"medio\":\"EFECTIVO\",\"monto\":1000000}", "")))
                     .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("STOCK_INSUFICIENTE"));
-            // la tarjeta exige últimos 4 dígitos y autorización, y no puede pasarse del total
+            // spec 016: sin método de pago no hay venta, ni sin pagos ni con un pago sin medio (lo rechaza la API)
             mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-3")
-                            .contentType(json).content(venta.formatted(1, 0, "{\"medio\":\"TARJETA_DEBITO\",\"monto\":11930}", "")))
-                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TARJETA_SIN_DATOS"));
+                            .contentType(json).content(venta.formatted(1, 0, "", "")))
+                    .andExpect(status().isBadRequest());
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-3")
+                            .contentType(json).content(venta.formatted(1, 0, "{\"monto\":11930}", "")))
+                    .andExpect(status().isBadRequest());
+            // la tarjeta no puede pasarse del total
             mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-3")
                             .contentType(json).content(venta.formatted(1, 0,
                                     "{\"medio\":\"TARJETA_DEBITO\",\"monto\":11931,\"ultimos4\":\"4242\",\"referencia\":\"A1\"}", "")))
@@ -2544,11 +2548,13 @@ class AislamientoEmpresasTest {
                     .andExpect(status().isBadRequest());
             mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-3")
                             .contentType(json).content(venta.formatted(1, 0,
-                                    "{\"medio\":\"TARJETA_DEBITO\",\"monto\":11930,\"ultimos4\":\"4242\",\"referencia\":\"A1\"}", "")))
+                                    "{\"medio\":\"TARJETA_DEBITO\",\"monto\":11930}", "")))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.consecutivo").value("V1-000002"))
                     .andExpect(jsonPath("$.redondeo").value(0.0))
-                    .andExpect(jsonPath("$.pagos[0].ultimos4").value("4242"));
+                    // spec 016: la tarjeta se cobra sin últimos 4 dígitos ni código del voucher
+                    .andExpect(jsonPath("$.pagos[0].ultimos4").doesNotExist())
+                    .andExpect(jsonPath("$.pagos[0].referencia").doesNotExist());
 
             // descuento sobre el límite del cajero (5 %): pide el PIN del supervisor, que se gasta en la venta
             mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-4")
@@ -2616,10 +2622,30 @@ class AislamientoEmpresasTest {
             long descartado = lector.readTree(mvc.perform(post("/api/pedidos-venta").header(HttpHeaders.AUTHORIZATION, vendedorA)
                             .contentType(json).content("{\"lineas\":[" + linea.formatted(1, 0) + "]}"))
                     .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
-            mvc.perform(post("/api/pedidos-venta/" + descartado + "/descartar").header(HttpHeaders.AUTHORIZATION, vendedorA))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("DESCARTADO"));
-            mvc.perform(post("/api/pedidos-venta/" + descartado + "/descartar").header(HttpHeaders.AUTHORIZATION, duenoA))
+            // spec 016: descartar exige motivo y guarda quién, cuándo y por qué
+            mvc.perform(post("/api/pedidos-venta/" + descartado + "/descartar").header(HttpHeaders.AUTHORIZATION, vendedorA)
+                            .contentType(json).content("{\"motivo\":\"\"}"))
+                    .andExpect(status().isBadRequest());
+            // la otra empresa no lo ve ni lo puede descartar
+            String duenoBPedidos = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+            mvc.perform(post("/api/pedidos-venta/" + descartado + "/descartar").header(HttpHeaders.AUTHORIZATION, duenoBPedidos)
+                            .contentType(json).content("{\"motivo\":\"Intento ajeno\"}"))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/pedidos-venta/" + descartado + "/descartar").header(HttpHeaders.AUTHORIZATION, vendedorA)
+                            .contentType(json).content("{\"motivo\":\"El cliente desistió\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("DESCARTADO"))
+                    .andExpect(jsonPath("$.descartadoPor").isNotEmpty())
+                    .andExpect(jsonPath("$.descartadoEn").isNotEmpty())
+                    .andExpect(jsonPath("$.motivoDescarte").value("El cliente desistió"));
+            mvc.perform(post("/api/pedidos-venta/" + descartado + "/descartar").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content("{\"motivo\":\"Otra vez\"}"))
                     .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PEDIDO_NO_PENDIENTE"));
+            mvc.perform(get("/api/pedidos-venta?estado=DESCARTADO").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.contenido[?(@.id==" + descartado + ")].motivoDescarte").value("El cliente desistió"));
+            mvc.perform(get("/api/pedidos-venta?estado=DESCARTADO").header(HttpHeaders.AUTHORIZATION, duenoBPedidos))
+                    .andExpect(jsonPath("$.contenido[?(@.id==" + descartado + ")]").isEmpty());
+            mvc.perform(get("/api/pedidos-venta/" + descartado).header(HttpHeaders.AUTHORIZATION, duenoBPedidos))
+                    .andExpect(status().isNotFound());
             mvc.perform(get("/api/pedidos-venta?estado=PENDIENTE_COBRO").header(HttpHeaders.AUTHORIZATION, cajeroA))
                     .andExpect(jsonPath("$.totalElementos").value(1));
             String cobrarPedido = "{\"pedidoVentaId\":" + pedido + ",\"lineas\":[" + linea.formatted(2, 0)

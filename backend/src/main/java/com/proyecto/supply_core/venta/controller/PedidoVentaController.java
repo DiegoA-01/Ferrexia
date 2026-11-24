@@ -21,6 +21,7 @@ import com.proyecto.supply_core.security.annotation.RequiereRol;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.venta.dto.DescartarPedidoRequest;
 import com.proyecto.supply_core.venta.dto.PedidoVentaRequest;
 import com.proyecto.supply_core.venta.dto.PedidoVentaResponse;
 import com.proyecto.supply_core.venta.enums.EstadoPedidoVenta;
@@ -89,11 +90,13 @@ public class PedidoVentaController {
     }
 
     /**
-     * @param id pedido
+     * @param id      pedido
+     * @param request motivo del descarte (obligatorio, spec 016)
      * @return pedido descartado
      */
     @PostMapping("/{id}/descartar")
-    public PedidoVentaResponse descartar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
-        return pedidoService.descartar(id);
+    public PedidoVentaResponse descartar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
+            @Valid @RequestBody DescartarPedidoRequest request) {
+        return pedidoService.descartar(id, request.motivo());
     }
 }

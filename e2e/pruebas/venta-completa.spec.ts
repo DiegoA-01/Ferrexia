@@ -87,6 +87,11 @@ test('abrir turno, vender, anular con PIN y cerrar el turno cuadrado', async ({ 
   await page.keyboard.press('F9');
   const cobro = page.getByRole('dialog', { name: /Cobrar/ });
   await expect(cobro).toBeVisible();
+  // spec 016: el cobro abre sin medio elegido y no deja confirmar hasta elegir; E elige Efectivo
+  await expect(cobro.getByText(/Elige cómo paga el cliente/)).toBeVisible();
+  await expect(cobro.getByRole('button', { name: 'Confirmar venta' })).toBeDisabled();
+  await page.keyboard.press('e');
+  await expect(cobro.getByRole('radio', { name: 'Efectivo' })).toHaveAttribute('aria-checked', 'true');
   await cobro.getByRole('button', { name: 'Exacto' }).click();
   await expect(cobro.getByText(/Cambio/)).toBeVisible();
   await cobro.getByRole('button', { name: 'Confirmar venta' }).click();

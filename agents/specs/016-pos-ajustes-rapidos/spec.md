@@ -1,6 +1,6 @@
 # 016 - Ajustes rápidos del Punto de venta
 
-**Estado:** Propuesta · **Rama:** `feature/pos-ajustes-rapidos` · **Depende de:** 005, 006 · **Responsable:** Persona 1
+**Estado:** Hecha (2026-11-24, V40; sin PR todavía) · **Rama:** `feature/pos-ajustes-rapidos` · **Depende de:** 005, 006 · **Responsable:** Persona 1
 · **Puntos de la reunión 2:** 20, 22, 24, 48
 
 ## Objetivo
@@ -24,11 +24,19 @@ pedidos que se eliminan.
   o cancelados con quién lo hizo, cuándo y el motivo. No se pueden volver a cobrar desde ahí.
 
 ## Criterios de aceptación
-- [ ] El cobro con tarjeta no pide los últimos 4 dígitos.
-- [ ] El código del voucher es opcional y la venta se guarda sin él.
-- [ ] No se puede confirmar una venta sin método de pago, ni desde la pantalla ni llamando a la API.
-- [ ] La lista de pedidos de venta muestra los eliminados con quién, cuándo y por qué.
-- [ ] Las ventas hechas antes de este cambio se siguen viendo igual.
+- [x] El cobro con tarjeta no pide los últimos 4 dígitos.
+- [x] El código del voucher es opcional y la venta se guarda sin él.
+- [x] No se puede confirmar una venta sin método de pago, ni desde la pantalla ni llamando a la API.
+- [x] La lista de pedidos de venta muestra los eliminados con quién, cuándo y por qué.
+- [x] Las ventas hechas antes de este cambio se siguen viendo igual.
+
+> Verificado el 2026-11-24. Backend: 835 pruebas en verde (1 omitida, Gemini en vivo) y Javadoc sin advertencias,
+> con `PedidoVentaServiceTest` nuevo y `AislamientoEmpresasTest` con MySQL real (tarjeta sin últimos 4 ni voucher se
+> guarda; venta sin pagos o con un pago sin medio da 400; descartar sin motivo da 400 y con motivo guarda quién, cuándo y
+> por qué; la otra empresa no ve ni descarta esos pedidos). Frontend: 236 pruebas y build sin advertencias. En Docker
+> (V40 aplicada) con el cajero: el cobro abre sin medio, con el aviso y "Confirmar" desactivado; con tarjeta solo pide
+> "Código del voucher (opcional)" y deja confirmar; la tecla E elige Efectivo; el filtro "Eliminados" muestra quién,
+> cuándo y motivo, y el pedido viejo dice "Sin dato". No se crearon ventas ni descartes en la demo.
 
 ## Fuera de alcance
 - Juntar cliente y método de pago en un solo paso (spec 027).

@@ -111,8 +111,8 @@ export class VentaService {
     return this.http.put<PedidoVenta>(api(`/api/pedidos-venta/${id}`), datos);
   }
 
-  /** @param id pedido */
-  descartarPedido(id: number): Observable<PedidoVenta> {
-    return this.http.post<PedidoVenta>(api(`/api/pedidos-venta/${id}/descartar`), {});
+  /** @param id pedido @param motivo por qué se descarta (obligatorio, spec 016) */
+  descartarPedido(id: number, motivo: string): Observable<PedidoVenta> {
+    return this.http.post<PedidoVenta>(api(`/api/pedidos-venta/${id}/descartar`), { motivo });
   }
 }
