@@ -18,38 +18,26 @@
   </div>
 
   <section class="accesos" aria-label="Categorías">
-    @for (cat of accesos(); track cat.titulo; let i = $index) {
-      <div class="tarjeta categoria-acceso" [class.desplegada]="desplegadas().has(cat.titulo)">
-        <button type="button" class="categoria-cabecera" (click)="alternar(cat.titulo)"
-                [attr.aria-expanded]="desplegadas().has(cat.titulo)" [attr.aria-controls]="'acceso-' + i">
+    @for (cat of accesos(); track cat.titulo) {
+      @if (destino(cat); as ruta) {
+        <a class="tarjeta categoria-acceso" [routerLink]="ruta">
           <span class="categoria-icono material-symbols-outlined" aria-hidden="true">{{ cat.icono }}</span>
           <span class="categoria-nombre">
             <span class="categoria-titulo">{{ cat.titulo }}</span>
             <span class="categoria-cuenta">{{ cat.opciones.length }} {{ cat.opciones.length === 1 ? 'pantalla' : 'pantallas' }}</span>
           </span>
-          <span class="material-symbols-outlined flecha" aria-hidden="true">expand_more</span>
-        </button>
-        @if (desplegadas().has(cat.titulo)) {
-        <ul class="categoria-opciones" [id]="'acceso-' + i">
-          @for (op of cat.opciones; track op.ruta) {
-            <li>
-              @if (bloqueada(op)) {
-                <span class="acceso bloqueado" title="Módulo no contratado en tu plan">
-                  <span class="material-symbols-outlined" aria-hidden="true">{{ op.icono }}</span>
-                  <span class="acceso-texto">{{ op.texto }}</span>
-                  <span class="material-symbols-outlined candado" aria-label="Bloqueado">lock</span>
-                </span>
-              } @else {
-                <a class="acceso" [routerLink]="op.ruta">
-                  <span class="material-symbols-outlined" aria-hidden="true">{{ op.icono }}</span>
-                  <span class="acceso-texto">{{ op.texto }}</span>
-                </a>
-              }
-            </li>
-          }
-        </ul>
-        }
-      </div>
+          <span class="material-symbols-outlined flecha" aria-hidden="true">arrow_forward</span>
+        </a>
+      } @else {
+        <div class="tarjeta categoria-acceso bloqueada" aria-disabled="true" title="Módulo no contratado en tu plan">
+          <span class="categoria-icono material-symbols-outlined" aria-hidden="true">{{ cat.icono }}</span>
+          <span class="categoria-nombre">
+            <span class="categoria-titulo">{{ cat.titulo }}</span>
+            <span class="categoria-cuenta">No contratado en tu plan</span>
+          </span>
+          <span class="material-symbols-outlined flecha candado" aria-label="Bloqueado">lock</span>
+        </div>
+      }
     }
   </section>
 

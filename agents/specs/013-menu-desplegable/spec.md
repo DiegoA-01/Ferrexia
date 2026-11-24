@@ -1,6 +1,6 @@
 # 013 - Menú lateral desplegable y categorías compactas en Inicio
 
-**Estado:** Hecha (2026-11-23, sin PR todavía) · **Rama:** `feature/menu-desplegable` (sale de `feature/inicio-categorias`) ·
+**Estado:** Hecha (2026-11-23, con el ajuste de Inicio; sin PR todavía) · **Rama:** `feature/menu-desplegable` (sale de `feature/inicio-categorias`) ·
 **Depende de:** 011, 012
 
 ## Objetivo
@@ -26,8 +26,11 @@ llegar a Reportes o Gestión; y las tarjetas de Inicio repiten esa misma lista c
 **Inicio**
 - Cada tarjeta muestra solo el icono, el nombre de la categoría y cuántas pantallas tiene ("5 pantallas"); ya no lista
   las pantallas.
-- Al hacer clic en la tarjeta se despliega dentro de ella la lista de sus pantallas (con su icono y su enlace); otro
-  clic la recoge. Todas salen recogidas al entrar.
+- **Ajuste del 2026-11-23 (pedido del usuario):** la tarjeta no despliega nada. Un clic entra directo a la categoría:
+  abre la primera pantalla de esa categoría que la persona puede usar (la primera de su lista en la barra lateral, sin
+  candado). Por ejemplo, el dueño entra a Ventas por "Pedidos de venta" y el cajero por "Punto de venta". Al llegar, la
+  barra lateral abre esa categoría, así se ven sus demás pantallas.
+- Si todas las pantallas de la categoría tienen el módulo apagado, la tarjeta sale con candado y no navega.
 - Las reglas de qué ve cada persona no cambian: mismas categorías y pantallas que en la barra lateral, y candado si el
   módulo no está contratado.
 
@@ -36,14 +39,19 @@ llegar a Reportes o Gestión; y las tarjetas de Inicio repiten esa misma lista c
 - [x] Un clic (o Enter) en una categoría la abre o la recoge; varias pueden estar abiertas.
 - [x] Al recargar la página se conservan las categorías que la persona dejó abiertas.
 - [x] Una categoría recogida muestra la suma de los contadores de sus pantallas.
-- [x] Las tarjetas de Inicio salen recogidas, con icono, nombre y número de pantallas; un clic muestra sus enlaces.
+- [x] Las tarjetas de Inicio muestran icono, nombre y número de pantallas; un clic entra a la primera pantalla de la
+  categoría que la persona puede usar, sin desplegar nada.
+- [x] Una tarjeta cuyas pantallas tienen todas el módulo apagado sale con candado y no navega.
 - [x] Nadie gana ni pierde acceso a ninguna pantalla.
 
-> Verificado el 2026-11-23: `shell.spec.ts` (categoría de la ruta abierta, abrir y recoger, guardado y recuperado,
-> contador en la categoría recogida) e `inicio.spec.ts` (tarjetas recogidas con "N pantallas" que se despliegan); 219
-> pruebas en verde y build sin advertencias. En Docker con el auditor: tarjetas compactas en una rejilla de tres
-> columnas, la tarjeta Compras despliega sus 9 enlaces, abrir Reportes en la barra lateral se guarda, al entrar a
-> Clientes se abre Ventas sin cerrar Reportes, y en celular el panel lateral despliega categorías sin scroll horizontal.
+> Verificado el 2026-11-23 (barra lateral): `shell.spec.ts` (categoría de la ruta abierta, abrir y recoger,
+> guardado y recuperado, contador en la categoría recogida). En Docker: abrir Reportes se guarda, al entrar a Clientes
+> se abre Ventas sin cerrar Reportes, y en celular el panel despliega categorías sin scroll horizontal.
+
+> Verificado el ajuste de Inicio (2026-11-23): `inicio.spec.ts` (cada tarjeta es un enlace a la primera pantalla
+> disponible según el rol, salta las de módulo apagado, candado sin enlace si no queda ninguna); 219 pruebas en verde y
+> build sin advertencias. En Docker con el auditor: la tarjeta Reportes abre el Tablero del dueño y la barra lateral
+> abre Reportes; ninguna tarjeta despliega nada.
 
 ## Fuera de alcance
 - Esconder toda la barra lateral (modo solo iconos).

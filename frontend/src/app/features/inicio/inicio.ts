@@ -4,7 +4,7 @@ import { forkJoin, map, of, catchError } from 'rxjs';
 
 import { Factura, Gasto, Producto, Proveedor, ProveedorRanking, SolicitudResumen, SugerenciaReorden } from '../../core/api/modelos';
 import { CompactoPipe, PesosPipe, PuntajePipe, horasDesde } from '../../core/formato/formato';
-import { OpcionMenu, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, seccionesVisibles } from '../../core/navegacion/menu';
+import { OpcionMenu, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, SeccionMenu, seccionesVisibles } from '../../core/navegacion/menu';
 import { ComprasService } from '../../core/servicios/compras.service';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { OrdenesService } from '../../core/servicios/ordenes.service';
@@ -60,8 +60,6 @@ export class Inicio implements OnInit {
 
   /** Categorías del menú (sin Inicio) con las opciones que el usuario ve en su barra lateral (spec 012). */
   protected readonly accesos = computed(() => seccionesVisibles(r => this.sesion.tieneRol(r)).filter(s => s.titulo));
-  /** Tarjetas de categoría desplegadas; al entrar todas salen recogidas (spec 013). */
-  protected readonly desplegadas = signal<ReadonlySet<string>>(new Set());
 
   protected readonly puedeReportes = computed(() => this.sesion.tieneRol(ROLES_REPORTES) && this.sesion.tieneModulo('REPORTES'));
   protected readonly puedeOrdenes = computed(() => this.sesion.tieneRol(ROLES_ORDENES) && this.sesion.tieneModulo('ORDENES_PAGOS'));
@@ -131,14 +129,13 @@ export class Inicio implements OnInit {
   ]);
 
   /**
-   * Despliega o recoge una tarjeta de categoría.
+   * Pantalla a la que entra la tarjeta de una categoría: la primera de su lista que la persona puede usar (spec 013).
    *
-   * @param titulo nombre de la categoría
+   * @param categoria categoría del menú, ya filtrada por los roles del usuario
+   * @return ruta de la primera opción sin candado, o {@code null} si todas tienen el módulo apagado
    */
-  protected alternar(titulo: string): void {
-    const nuevas = new Set(this.desplegadas());
-    if (nuevas.has(titulo)) { nuevas.delete(titulo); } else { nuevas.add(titulo); }
-    this.desplegadas.set(nuevas);
+  protected destino(categoria: SeccionMenu): string | null {
+    return categoria.opciones.find(o => !this.bloqueada(o))?.ruta ?? null;
   }
 
   /**

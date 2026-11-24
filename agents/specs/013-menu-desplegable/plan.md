@@ -15,11 +15,11 @@ Cambio solo de frontend. Sin migración, sin endpoints y sin tocar permisos.
 - `shell.scss`: estilo del botón de categoría y giro de la flecha.
 
 ## Inicio (`features/inicio/`)
-- `inicio.ts`: señal `desplegadas` (conjunto de títulos, vacía al entrar) y `alternar(titulo)`.
-- `inicio.html`: la cabecera de la tarjeta pasa a ser un `<button>` (icono, nombre, "N pantallas", flecha) con
-  `aria-expanded`; la lista de enlaces se pinta solo si la tarjeta está desplegada.
-- `inicio.scss`: la rejilla queda igual (tres, dos y una columna); `align-items: start` para que una tarjeta abierta no
-  estire a las demás.
+- `inicio.ts`: `destino(categoria)` = ruta de la primera opción sin candado (`!bloqueada`), o `null` si todas lo tienen.
+  Se quitan `desplegadas` y `alternar` (ajuste del 2026-11-23: la tarjeta navega, no despliega).
+- `inicio.html`: la tarjeta entera es un `<a [routerLink]="destino">` con icono, nombre, "N pantallas" y una flecha
+  (`arrow_forward`); sin destino es un `<div>` con candado y `aria-disabled`. Ya no lleva lista de enlaces.
+- `inicio.scss`: la rejilla queda igual (tres, dos y una columna); la tarjeta enlace se resalta al pasar el cursor.
 
 ## Pruebas
 - `shell.spec.ts`:
@@ -28,9 +28,10 @@ Cambio solo de frontend. Sin migración, sin endpoints y sin tocar permisos.
   - Lo abierto se guarda en `localStorage` y se recupera al crear el marco otra vez.
   - Con Compras recogida se ve el contador de solicitudes en la categoría.
 - `inicio.spec.ts`:
-  - Las tarjetas salen sin enlaces y muestran "N pantallas".
-  - Un clic en Ventas muestra sus enlaces; otro clic los esconde.
-  - Se conservan las pruebas de la 012 (orden, iconos, cajero sin Gestión, candado), haciendo clic antes de mirar
-    los enlaces.
+  - Cada tarjeta es un enlace a la primera pantalla de su categoría para ese rol (dueño: Ventas → `/app/pedidos-venta`;
+    cajero: Ventas → `/app/pos`) y muestra "N pantallas".
+  - Si la primera pantalla tiene el módulo apagado, la tarjeta va a la siguiente que no lo tenga.
+  - Con todos los módulos de una categoría apagados, la tarjeta no tiene enlace y lleva candado.
+  - Se conservan orden, iconos y cajero sin Gestión.
 
 Verificación final: `npm test`, `npm run build` sin advertencias y revisión en Docker en escritorio y celular.
