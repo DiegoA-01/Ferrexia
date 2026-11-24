@@ -38,6 +38,34 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 | [014-pestanas-categoria](014-pestanas-categoria/spec.md) | — | Fila de pestañas con las pantallas de la categoría actual en cada pantalla | `feature/pestanas-categoria` | 011, 013 | Hecha (sin migración, falta PR) |
 | [015-cajas-ocupadas](015-cajas-ocupadas/spec.md) | — | "Mi turno" muestra qué cajas están ocupadas, por quién y desde cuándo | `feature/cajas-ocupadas` | 003, 005 | Hecha (sin migración, falta PR) |
 
+### Reunión N.° 2 (2026-11-23)
+Specs que salen de los 55 puntos de la reunión N.° 2. El agrupado por tema, el reparto entre dos personas y las fases
+están en [`../plan-reunion-2.md`](../plan-reunion-2.md). Todas están en **Propuesta**: se revisan, se toman sus
+decisiones y se aprueban antes de escribir el plan.
+
+| Spec | Fase | Qué entrega | Rama | Depende de | Responsable | Estado |
+|---|---|---|---|---|---|---|
+| [016-pos-ajustes-rapidos](016-pos-ajustes-rapidos/spec.md) | 1 | Sin últimos 4 dígitos, voucher opcional, método de pago obligatorio, pedidos eliminados visibles | `feature/pos-ajustes-rapidos` | 005, 006 | Persona 1 | Propuesta |
+| [017-interfaz-general](017-interfaz-general/spec.md) | 1 | Punto de miles, sin flechas en números, sin scroll horizontal, pestañas fijas, una categoría abierta | `feature/interfaz-general` | 013, 014 | Persona 2 | Propuesta |
+| [018-mi-turno-claro](018-mi-turno-claro/spec.md) | 1 | "Mi turno" sin "crear turno" con turno abierto, botón de cerrar, acciones en menú, revisión del flujo de cajas | `feature/mi-turno-claro` | 003, 015 | Persona 1 | Propuesta |
+| [019-reorganizar-menu](019-reorganizar-menu/spec.md) | 1 | Reportes en su categoría (con el informe de compras) e Importación de datos en Configuración | `feature/reorganizar-menu` | 011, 013 | Persona 2 | Propuesta |
+| [020-empresa-sedes-simples](020-empresa-sedes-simples/spec.md) | 1 | Código de ingreso automático y sede con enlace de Google Maps | `feature/empresa-sedes-simples` | SaaS 2 | Persona 2 | Propuesta |
+| [021-mi-turno-movimientos](021-mi-turno-movimientos/spec.md) | 2 | Facturas del turno con paginación, ingresos y egresos con categoría, esperado antes de cerrar | `feature/mi-turno-movimientos` | 018 | Persona 1 | Propuesta (D20) |
+| [022-permisos-plantillas-rol](022-permisos-plantillas-rol/spec.md) | 2 | Permisos por acción, plantillas de rol, permisos sueltos y clave corta del personal | `feature/permisos-plantillas-rol` | SaaS 3 | Persona 2 | Propuesta (D10, D18) |
+| [023-cierre-por-denominacion](023-cierre-por-denominacion/spec.md) | 2 | Cierre contando billetes y monedas, vista de ventas por turno | `feature/cierre-por-denominacion` | 021 | Persona 1 | Propuesta |
+| [024-planes-simbolicos](024-planes-simbolicos/spec.md) | 2 | Todos los módulos para todos los planes; planes solo como etiqueta | `feature/planes-simbolicos` | SaaS 2 | Persona 2 | Propuesta (D11) |
+| [025-caja-con-permisos](025-caja-con-permisos/spec.md) | 3 | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | `feature/caja-con-permisos` | 022 | Persona 1 | Propuesta (D15) |
+| [026-producto-completo](026-producto-completo/spec.md) | 3 | Categoría y proveedor al vuelo, impuesto, unidad ajustable, stock máximo, proveedor y fecha del costo | `feature/producto-completo` | 001 | Persona 2 | Propuesta (D17) |
+| [027-venta-agil](027-venta-agil/spec.md) | 3 | Categorías en el pedido y el POS, cliente y pago en un paso | `feature/venta-agil` | 005, 016 | Persona 1 | Propuesta |
+| [028-variantes-producto](028-variantes-producto/spec.md) | 3 | Atributos y variantes con código, precio y stock propios | `feature/variantes-producto` | 026 | Persona 2 | Propuesta |
+| [029-anular-factura-metodo-pago](029-anular-factura-metodo-pago/spec.md) | 3 | Anular factura de un turno cerrado y cambiar el método de pago | `feature/anular-factura-metodo-pago` | 006, 022 | Persona 1 | Propuesta (D16) |
+| [030-venta-sin-stock](030-venta-sin-stock/spec.md) | 4 | Vender sin existencia con permiso, aviso y reporte | `feature/venta-sin-stock` | 004, 022 | Persona 1 | Propuesta (D13) |
+| [031-proveedor-sin-perfil](031-proveedor-sin-perfil/spec.md) | 4 | Proveedor sin cuenta que cotiza con un enlace de un solo uso y anti-bot | `feature/proveedor-sin-perfil` | 033 | Persona 2 | Propuesta (D14) |
+| [032-domicilios](032-domicilios/spec.md) | 4 | Venta a domicilio, domiciliarios, estados y dinero contraentrega | `feature/domicilios` | 004, 021 | Persona 1 | Propuesta (D19) |
+| [033-solicitudes-compra-mejoradas](033-solicitudes-compra-mejoradas/spec.md) | 4 | Proveedor específico o abierta, historial y edición, alertas que bloquean | `feature/solicitudes-compra-mejoradas` | — | Persona 2 | Propuesta |
+| [034-reportes-ventas-ampliados](034-reportes-ventas-ampliados/spec.md) | 4 | Ventas por categoría, empleado, producto, medio de pago, tipo de servicio y caja | `feature/reportes-ventas-ampliados` | 009, 019, 023, 032 | Persona 1 | Propuesta |
+| [035-sedes-super-admin](035-sedes-super-admin/spec.md) | 4 | Grupo de empresas con un super administrador | `feature/sedes-super-admin` | 020, 022 | Persona 2 | Propuesta (aclarar D12) |
+
 Al terminar la 006 el negocio ya puede **vender y cuadrar caja**. De la 007 en adelante se suman crédito, márgenes y
 control fino.
 
@@ -57,6 +85,17 @@ referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real
 | D7 | ¿Una caja puede descontar de varias bodegas? | **No**: una caja, una bodega. Los traslados ya existen. | **Tomada** (2026-11-19) | 003 |
 | D8 | ¿Quién fija precios: solo el dueño o también el jefe de compras? | El dueño, con opción de delegarlo a `ADMIN_COMPRAS`. | **Tomada** (construida en V29) | 001 |
 | D9 | ¿Precio distinto por caja y por unidad del mismo producto? | **Sí**, como pedía la spec original; hoy el precio se guarda solo en la unidad del producto. | **Tomada** (2026-11-19) | 001 |
+| D10 | ¿Cómo son las contraseñas del personal y quién las ve? | Dueño y administradores: clave fuerte (12+, mayúscula, número, símbolo) y MFA. Personal: clave corta o PIN de 6 dígitos que asigna el jefe. Nadie **ve** una clave (se guardan cifradas): se **restablece** y queda auditado. | Recomendada | 022 |
+| D11 | ¿Qué pasa con los planes? | Solo etiqueta: todas las empresas con todos los módulos (incluido Ventas); se quitan crear y eliminar planes; se conservan las tablas para SaaS 4. Falta decidir si quedan las excepciones de módulo por empresa. | Recomendada | 024 |
+| D12 | ¿Las sedes pasan a ser empresas separadas con un super administrador? | Grupo de empresas aisladas con un super administrador que cambia de empresa sin volver a ingresar. Faltan las tres preguntas de la spec 035. | **Pendiente: aclarar** | 035 |
+| D13 | ¿Se permite vender sin existencia? (revisa D1) | Sí, solo con permiso y motivo, con aviso y reporte. Falta elegir: stock negativo marcado o faltante pendiente sin bajar de cero. | Recomendada | 030 |
+| D14 | ¿El proveedor deja de tener cuenta? | Sí: cotiza con un enlace de un solo uso, solo el nombre obligatorio, límite de peticiones y anti-bot. El portal se deja de usar. | Recomendada | 031 |
+| D15 | ¿Retiros y gastos sin PIN? | Con el permiso, sin PIN; sin el permiso, PIN del supervisor como hoy. | Recomendada | 025 |
+| D16 | ¿Se puede cambiar el método de pago de una factura? | Sí en facturas POS, con permiso y motivo, ajustando la caja; nunca en facturas electrónicas DIAN. | Recomendada | 029 |
+| D17 | ¿Se puede superar el stock máximo? | Sí, con alerta; no bloquea. | Recomendada | 026 |
+| D18 | ¿Qué roles quedan? | Permisos por acción con plantillas: Dueño, Administrador, Cajero, Vendedor, Supervisor de ventas, Bodega, Compras y Contador/Auditor; cada usuario migra sin ganar ni perder acceso. | Recomendada | 022 |
+| D19 | ¿Qué alcance tiene domicilios? | Venta tipo domicilio con dirección y envío, domiciliario, estados y pago contraentrega en la caja; sin mapa en vivo ni app. | Recomendada | 032 |
+| D20 | ¿El cajero ve lo esperado antes de cerrar? (revisa el cierre ciego de la 003) | Cuenta primero y después ve lo esperado y la diferencia; quien tenga el permiso "ver esperado" lo ve siempre. | Recomendada | 021 |
 
 Una decisión **Recomendada** pasa a **Tomada** cuando la aprueba el equipo; se anota aquí antes de aprobar la spec.
 
