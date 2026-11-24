@@ -17,10 +17,20 @@
     </div>
 
     <nav>
-      @for (seccion of secciones(); track seccion.titulo) {
+      @for (seccion of secciones(); track seccion.titulo; let i = $index) {
         @if (seccion.titulo) {
-          <p class="seccion">{{ seccion.titulo }}</p>
+          <button type="button" class="categoria" [class.abierta]="abierta(seccion)" (click)="alternar(seccion.titulo)"
+                  [attr.aria-expanded]="abierta(seccion)" [attr.aria-controls]="'menu-seccion-' + i">
+            <span class="material-symbols-outlined">{{ seccion.icono }}</span>
+            <span class="texto">{{ seccion.titulo }}</span>
+            @if (!abierta(seccion) && contadorDe(seccion)) {
+              <span class="contador">{{ contadorDe(seccion) }}</span>
+            }
+            <span class="material-symbols-outlined flecha" aria-hidden="true">expand_more</span>
+          </button>
         }
+        @if (abierta(seccion)) {
+        <div class="opciones" [id]="'menu-seccion-' + i">
         @for (op of seccion.opciones; track op.ruta) {
           @if (bloqueada(op)) {
             <span class="opcion bloqueada" matTooltip="Módulo no contratado en tu plan" matTooltipPosition="right">
@@ -37,6 +47,8 @@
               }
             </a>
           }
+        }
+        </div>
         }
       }
     </nav>

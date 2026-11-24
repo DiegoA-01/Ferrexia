@@ -18,13 +18,19 @@
   </div>
 
   <section class="accesos" aria-label="Categorías">
-    @for (cat of accesos(); track cat.titulo) {
-      <div class="tarjeta categoria-acceso">
-        <div class="categoria-cabecera">
+    @for (cat of accesos(); track cat.titulo; let i = $index) {
+      <div class="tarjeta categoria-acceso" [class.desplegada]="desplegadas().has(cat.titulo)">
+        <button type="button" class="categoria-cabecera" (click)="alternar(cat.titulo)"
+                [attr.aria-expanded]="desplegadas().has(cat.titulo)" [attr.aria-controls]="'acceso-' + i">
           <span class="categoria-icono material-symbols-outlined" aria-hidden="true">{{ cat.icono }}</span>
-          <h2>{{ cat.titulo }}</h2>
-        </div>
-        <ul class="categoria-opciones">
+          <span class="categoria-nombre">
+            <span class="categoria-titulo">{{ cat.titulo }}</span>
+            <span class="categoria-cuenta">{{ cat.opciones.length }} {{ cat.opciones.length === 1 ? 'pantalla' : 'pantallas' }}</span>
+          </span>
+          <span class="material-symbols-outlined flecha" aria-hidden="true">expand_more</span>
+        </button>
+        @if (desplegadas().has(cat.titulo)) {
+        <ul class="categoria-opciones" [id]="'acceso-' + i">
           @for (op of cat.opciones; track op.ruta) {
             <li>
               @if (bloqueada(op)) {
@@ -42,6 +48,7 @@
             </li>
           }
         </ul>
+        }
       </div>
     }
   </section>

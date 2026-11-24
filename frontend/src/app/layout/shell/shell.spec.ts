@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { SesionService } from '../../core/sesion/sesion.service';
@@ -98,24 +98,72 @@ describe('Marco de la empresa: campana y menú', () => {
     expect(html().textContent).not.toContain('Ver como dueño');
   });
 
-  describe('menú por categorías (spec 011)', () => {
-    const titulos = () => [...html().querySelectorAll('nav .seccion')].map(p => p.textContent?.trim());
+  describe('menú por categorías (specs 011 y 013)', () => {
+    const titulos = () => [...html().querySelectorAll('nav .categoria .texto')].map(p => p.textContent?.trim());
     const textos = () => [...html().querySelectorAll('nav .opcion .texto')].map(s => s.textContent?.trim());
+    const categoria = (t: string) => [...html().querySelectorAll<HTMLButtonElement>('nav .categoria')]
+      .find(b => b.querySelector('.texto')?.textContent?.trim() === t)!;
+    const ir = async (url: string) => {
+      await TestBed.inject(Router).navigateByUrl(url);
+      fixture.detectChanges();
+    };
 
-    it('el dueño ve los seis grupos con título y la sección de Inicio no pinta título', () => {
+    beforeEach(() => localStorage.removeItem('sc.menu.abiertas'));
+
+    it('el dueño ve las seis categorías con título e Inicio arriba sin título', () => {
       crear(['ADMIN_SISTEMA']);
       backend.match(r => r.url === '/api/proveedores').forEach(r => r.flush(pagina([])));
       fixture.detectChanges();
       expect(titulos()).toEqual(['Ventas', 'Compras', 'Inventario', 'Reportes', 'Gestión humana', 'Gestión']);
-      expect(textos()[0]).toBe('Inicio');
+      expect(textos()).toEqual(['Inicio']);
     });
 
     it('el cajero no ve Gestión y en Gestión humana solo tiene Delegaciones', () => {
       crear(['CAJERO']);
       expect(titulos()).not.toContain('Gestión');
-      expect(titulos()).toContain('Gestión humana');
+      categoria('Gestión humana').click();
+      fixture.detectChanges();
       expect(textos()).toContain('Delegaciones');
       expect(textos()).not.toContain('Usuarios y roles');
+    });
+
+    it('abre la categoría de la pantalla actual y deja las demás recogidas', async () => {
+      crear(['CAJERO']);
+      await ir('/app/clientes');
+      expect(categoria('Ventas').getAttribute('aria-expanded')).toBe('true');
+      expect(categoria('Compras').getAttribute('aria-expanded')).toBe('false');
+      expect(textos()).toContain('Clientes');
+      expect(textos()).not.toContain('Solicitudes');
+    });
+
+    it('un clic abre otra categoría sin cerrar la actual, otro clic la recoge, y se recuerda', async () => {
+      crear(['CAJERO']);
+      await ir('/app/clientes');
+      categoria('Compras').click();
+      fixture.detectChanges();
+      expect(textos()).toEqual(expect.arrayContaining(['Clientes', 'Solicitudes']));
+      expect(JSON.parse(localStorage.getItem('sc.menu.abiertas')!)).toEqual(expect.arrayContaining(['Ventas', 'Compras']));
+
+      categoria('Compras').click();
+      fixture.detectChanges();
+      expect(textos()).not.toContain('Solicitudes');
+      expect(categoria('Compras').getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('recupera las categorías guardadas al volver a entrar', () => {
+      localStorage.setItem('sc.menu.abiertas', JSON.stringify(['Inventario']));
+      crear(['CAJERO']);
+      expect(textos()).toContain('Productos y stock');
+    });
+
+    it('una categoría recogida muestra la suma de los contadores de sus pantallas', () => {
+      crear(['CAJERO']);
+      c()['contadores'].set({ bajoMinimo: 3 });
+      fixture.detectChanges();
+      expect(categoria('Inventario').querySelector('.contador')?.textContent?.trim()).toBe('3');
+      categoria('Inventario').click();
+      fixture.detectChanges();
+      expect(categoria('Inventario').querySelector('.contador')).toBeNull();
     });
   });
 

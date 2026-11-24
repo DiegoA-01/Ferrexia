@@ -19,6 +19,8 @@ const sesionCon = (roles: string[], apagados: string[] = []) => ({
   tieneModulo: (m?: string) => !m || !apagados.includes(m),
 });
 
+let ultimo: { detectChanges(): void };
+
 /** Crea la página de Inicio con la sesión dada; las peticiones al backend quedan sin responder. */
 const crear = (roles: string[], apagados: string[] = []) => {
   TestBed.configureTestingModule({
@@ -27,12 +29,18 @@ const crear = (roles: string[], apagados: string[] = []) => {
   });
   const fixture = TestBed.createComponent(Inicio);
   fixture.detectChanges();
+  ultimo = fixture;
   return fixture.nativeElement as HTMLElement;
 };
 
 const tarjetas = (html: HTMLElement) => [...html.querySelectorAll('.accesos .categoria-acceso')];
-const titulo = (t: Element) => t.querySelector('h2')?.textContent?.trim();
+const titulo = (t: Element) => t.querySelector('.categoria-titulo')?.textContent?.trim();
 const icono = (t: Element) => t.querySelector('.categoria-icono')?.textContent?.trim();
+/** Despliega todas las tarjetas (salen recogidas desde la spec 013). */
+const desplegarTodo = (html: HTMLElement, fixture: { detectChanges(): void }) => {
+  html.querySelectorAll<HTMLButtonElement>('.categoria-cabecera').forEach(b => b.click());
+  fixture.detectChanges();
+};
 
 describe('Inicio: categorías del menú (spec 012)', () => {
   it('el dueño ve las seis categorías en el orden del menú, cada una con su icono', () => {
@@ -46,6 +54,7 @@ describe('Inicio: categorías del menú (spec 012)', () => {
   it('cada tarjeta enlaza las mismas pantallas que la barra lateral', () => {
     const roles = ['AUDITOR'];
     const html = crear(roles);
+    desplegarTodo(html, ultimo);
     const esperado = seccionesVisibles(r => !r?.length || r.some(x => roles.includes(x)))
       .filter(s => s.titulo)
       .map(s => s.opciones.map(o => o.ruta));
@@ -61,10 +70,29 @@ describe('Inicio: categorías del menú (spec 012)', () => {
 
   it('una opción de un módulo apagado sale con candado y sin enlace', () => {
     const html = crear(['ADMIN_SISTEMA'], ['CARTERA']);
+    desplegarTodo(html, ultimo);
     const ventas = tarjetas(html).find(t => titulo(t) === 'Ventas')!;
     const cartera = [...ventas.querySelectorAll('.acceso')].find(e => e.textContent?.includes('Cartera'))!;
     expect(cartera.tagName).toBe('SPAN');
     expect(cartera.classList).toContain('bloqueado');
     expect(cartera.querySelector('.candado')).not.toBeNull();
+  });
+
+  it('las tarjetas salen recogidas con el número de pantallas y un clic muestra sus enlaces (spec 013)', () => {
+    const html = crear(['CAJERO']);
+    const ventas = tarjetas(html).find(t => titulo(t) === 'Ventas')!;
+    const boton = ventas.querySelector<HTMLButtonElement>('.categoria-cabecera')!;
+    expect(ventas.querySelectorAll('.acceso').length).toBe(0);
+    expect(ventas.querySelector('.categoria-cuenta')?.textContent?.trim()).toBe('6 pantallas');
+    expect(boton.getAttribute('aria-expanded')).toBe('false');
+
+    boton.click();
+    ultimo.detectChanges();
+    expect(ventas.querySelectorAll('a.acceso').length).toBe(6);
+    expect(boton.getAttribute('aria-expanded')).toBe('true');
+
+    boton.click();
+    ultimo.detectChanges();
+    expect(ventas.querySelectorAll('.acceso').length).toBe(0);
   });
 });

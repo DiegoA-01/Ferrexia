@@ -60,6 +60,8 @@ export class Inicio implements OnInit {
 
   /** Categorías del menú (sin Inicio) con las opciones que el usuario ve en su barra lateral (spec 012). */
   protected readonly accesos = computed(() => seccionesVisibles(r => this.sesion.tieneRol(r)).filter(s => s.titulo));
+  /** Tarjetas de categoría desplegadas; al entrar todas salen recogidas (spec 013). */
+  protected readonly desplegadas = signal<ReadonlySet<string>>(new Set());
 
   protected readonly puedeReportes = computed(() => this.sesion.tieneRol(ROLES_REPORTES) && this.sesion.tieneModulo('REPORTES'));
   protected readonly puedeOrdenes = computed(() => this.sesion.tieneRol(ROLES_ORDENES) && this.sesion.tieneModulo('ORDENES_PAGOS'));
@@ -127,6 +129,17 @@ export class Inicio implements OnInit {
       accion: 'Habilitar', proveedorId: p.id,
     })),
   ]);
+
+  /**
+   * Despliega o recoge una tarjeta de categoría.
+   *
+   * @param titulo nombre de la categoría
+   */
+  protected alternar(titulo: string): void {
+    const nuevas = new Set(this.desplegadas());
+    if (nuevas.has(titulo)) { nuevas.delete(titulo); } else { nuevas.add(titulo); }
+    this.desplegadas.set(nuevas);
+  }
 
   /**
    * @param opcion opción del menú

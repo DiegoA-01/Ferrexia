@@ -30,13 +30,21 @@ h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 }
 
 /* Categorías del menú como accesos (spec 012): tres columnas en escritorio, dos en tableta, una en celular. */
-.accesos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.accesos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
 @media (max-width: 1200px) { .accesos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .accesos { grid-template-columns: minmax(0, 1fr); } }
 
 .categoria-acceso { display: flex; flex-direction: column; gap: 14px; }
-.categoria-cabecera { display: flex; align-items: center; gap: 14px;
-  h2 { margin: 0; font-size: 19px; } }
+.categoria-cabecera { display: flex; align-items: center; gap: 14px; width: 100%; padding: 0; border: 0;
+  background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer;
+  .categoria-titulo { font-size: 19px; font-weight: 600; }
+  .flecha { margin-left: auto; color: var(--sc-texto-2); transition: transform .2s; }
+  &:focus-visible { outline: 2px solid var(--sc-primario); outline-offset: 4px; border-radius: 12px; } }
+.categoria-nombre { display: flex; flex-direction: column; gap: 2px; }
+.categoria-cuenta { font-size: 13px; color: var(--sc-texto-2); }
+.categoria-acceso { transition: border-color .15s;
+  &:hover { border-color: #f0b9a4; }
+  &.desplegada .flecha { transform: rotate(180deg); } }
 .categoria-icono { display: grid; place-items: center; width: 52px; height: 52px; flex-shrink: 0; border-radius: 16px;
   background: var(--sc-primario-suave); color: var(--sc-primario); font-size: 30px; }
 
