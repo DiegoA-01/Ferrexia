@@ -4,7 +4,7 @@ import { forkJoin, map, of, catchError } from 'rxjs';
 
 import { Factura, Gasto, Producto, Proveedor, ProveedorRanking, SolicitudResumen, SugerenciaReorden } from '../../core/api/modelos';
 import { CompactoPipe, PesosPipe, PuntajePipe, horasDesde } from '../../core/formato/formato';
-import { ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES } from '../../core/navegacion/menu';
+import { OpcionMenu, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, seccionesVisibles } from '../../core/navegacion/menu';
 import { ComprasService } from '../../core/servicios/compras.service';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { OrdenesService } from '../../core/servicios/ordenes.service';
@@ -58,6 +58,9 @@ export class Inicio implements OnInit {
   protected readonly facturasRevision = signal<Factura[]>([]);
   protected readonly proveedoresNuevos = signal<Proveedor[]>([]);
 
+  /** Categorías del menú (sin Inicio) con las opciones que el usuario ve en su barra lateral (spec 012). */
+  protected readonly accesos = computed(() => seccionesVisibles(r => this.sesion.tieneRol(r)).filter(s => s.titulo));
+
   protected readonly puedeReportes = computed(() => this.sesion.tieneRol(ROLES_REPORTES) && this.sesion.tieneModulo('REPORTES'));
   protected readonly puedeOrdenes = computed(() => this.sesion.tieneRol(ROLES_ORDENES) && this.sesion.tieneModulo('ORDENES_PAGOS'));
 
@@ -95,7 +98,7 @@ export class Inicio implements OnInit {
     }));
   });
 
-  protected readonly categorias = computed(() => {
+  protected readonly gastoPorCategoria = computed(() => {
     const cats = [...(this.gastoPeriodo()?.porCategoria ?? [])].sort((a, b) => (b.total ?? 0) - (a.total ?? 0)).slice(0, 5);
     const max = Math.max(1, ...cats.map(c => c.total ?? 0));
     return cats.map(c => ({ nombre: c.nombre, total: c.total ?? 0, ancho: Math.round(((c.total ?? 0) / max) * 100) }));
@@ -124,6 +127,14 @@ export class Inicio implements OnInit {
       accion: 'Habilitar', proveedorId: p.id,
     })),
   ]);
+
+  /**
+   * @param opcion opción del menú
+   * @return {@code true} si su módulo no está contratado (sale con candado, como en la barra lateral)
+   */
+  protected bloqueada(opcion: OpcionMenu): boolean {
+    return !this.sesion.tieneModulo(opcion.modulo);
+  }
 
   ngOnInit(): void {
     this.cargarPeriodo();

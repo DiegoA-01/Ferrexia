@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { MENU } from './menu';
+import { MENU, seccionesVisibles } from './menu';
 
 /**
  * Permisos de cada opción tal como estaban antes de agrupar el menú por categorías (spec 011).
@@ -84,5 +84,21 @@ describe('Menú lateral por categorías (spec 011)', () => {
   it('los contadores siguen en sus opciones', () => {
     expect(opciones().find(o => o.ruta === '/app/solicitudes')?.contador).toBe('solicitudes');
     expect(opciones().find(o => o.ruta === '/app/inventario')?.contador).toBe('bajoMinimo');
+  });
+
+  it('cada categoría tiene su icono (spec 012) y la sección de Inicio no lleva', () => {
+    expect(MENU.map(s => [s.titulo, s.icono])).toEqual([
+      ['', undefined], ['Ventas', 'point_of_sale'], ['Compras', 'shopping_cart'], ['Inventario', 'inventory_2'],
+      ['Reportes', 'bar_chart'], ['Gestión humana', 'groups'], ['Gestión', 'settings'],
+    ]);
+  });
+
+  it('seccionesVisibles deja solo lo que el rol puede usar y quita los grupos vacíos', () => {
+    const con = (roles: string[]) => (r?: readonly string[]) => !r?.length || r.some(x => roles.includes(x));
+    expect(seccionesVisibles(con(['ADMIN_SISTEMA'])).map(s => s.titulo))
+      .toEqual(['', 'Ventas', 'Compras', 'Inventario', 'Reportes', 'Gestión humana', 'Gestión']);
+    const cajero = seccionesVisibles(con(['CAJERO']));
+    expect(cajero.map(s => s.titulo)).not.toContain('Gestión');
+    expect(cajero.find(s => s.titulo === 'Gestión humana')?.opciones.map(o => o.texto)).toEqual(['Delegaciones']);
   });
 });
