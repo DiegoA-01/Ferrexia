@@ -78,6 +78,7 @@ export const MENU: SeccionMenu[] = [
       { texto: 'Pedidos de venta', icono: 'receipt_long', ruta: '/app/pedidos-venta', roles: ROLES_PEDIDOS_VENTA, modulo: 'VENTAS' },
       { texto: 'Ventas', icono: 'point_of_sale', ruta: '/app/ventas', roles: ROLES_VENTAS, modulo: 'VENTAS', exacta: true },
       { texto: 'Clientes', icono: 'groups', ruta: '/app/clientes', roles: ROLES_CLIENTES, modulo: 'VENTAS' },
+      { texto: 'Precios y margen', icono: 'sell', ruta: '/app/precios', roles: ROLES_PRECIOS, modulo: 'VENTAS' },
       { texto: 'Cartera', icono: 'account_balance_wallet', ruta: '/app/cartera', roles: ROLES_CARTERA, modulo: 'CARTERA' },
       { texto: 'Cajas y turnos', icono: 'storefront', ruta: '/app/caja', roles: ROLES_CAJA, modulo: 'CAJA', exacta: true },
     ],
@@ -112,11 +113,10 @@ export const MENU: SeccionMenu[] = [
     icono: 'bar_chart',
     opciones: [
       { texto: 'Tablero del dueño', icono: 'monitoring', ruta: '/app/tablero', roles: ROLES_TABLERO, modulo: 'REPORTES' },
-      { texto: 'Reportes de compras', icono: 'bar_chart', ruta: '/app/reportes', roles: ROLES_REPORTES, modulo: 'REPORTES' },
-      { texto: 'Reportes de ventas', icono: 'query_stats', ruta: '/app/ventas/reportes', roles: ROLES_VENTAS, modulo: 'VENTAS' },
+      { texto: 'Reportes de compras', icono: 'bar_chart', ruta: '/app/reportes', roles: ROLES_REPORTES, modulo: 'REPORTES', exacta: true },
+      { texto: 'Reportes de ventas', icono: 'query_stats', ruta: '/app/reportes/ventas', roles: ROLES_VENTAS, modulo: 'VENTAS' },
       { texto: 'Rotación de productos', icono: 'trending_up', ruta: '/app/inventario/rotacion', roles: ROLES_ROTACION, modulo: 'REPORTES' },
       { texto: 'Informe de compras', icono: 'summarize', ruta: '/app/informes', roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS'], modulo: 'COMPRAS' },
-      { texto: 'Precios y margen', icono: 'sell', ruta: '/app/precios', roles: ROLES_PRECIOS, modulo: 'VENTAS' },
     ],
   },
   {
@@ -153,8 +153,8 @@ export function seccionesVisibles(tieneRol: (roles?: readonly string[]) => boole
 
 /**
  * Categoría a la que pertenece una pantalla (spec 014): la de la opción cuya ruta coincide más largo con la dirección,
- * también en sus subpáginas ({@code /app/ordenes/15} es de Compras). Así {@code /app/ventas/reportes} es de Reportes
- * y {@code /app/ventas} es de Ventas.
+ * también en sus subpáginas ({@code /app/ordenes/15} es de Compras). Así {@code /app/inventario/rotacion} es de
+ * Reportes y {@code /app/inventario} es de Inventario.
  *
  * @param secciones secciones visibles para el usuario
  * @param url dirección actual (puede traer {@code ?} o {@code #})

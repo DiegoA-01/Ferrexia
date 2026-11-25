@@ -196,24 +196,33 @@ describe('Marco de la empresa: campana y menú', () => {
 
     const textos = () => pestanas().map(p => p.querySelector('span:not(.material-symbols-outlined)')?.textContent?.trim());
 
-    it('el auditor en el Tablero ve sus cinco pantallas de Reportes, con el Tablero activo', async () => {
+    it('el auditor en el Tablero ve sus cuatro pantallas de Reportes, con el Tablero activo', async () => {
       crear(['AUDITOR']);
       await ir('/app/tablero');
+      // Spec 019: "Precios y margen" pasó a Ventas
       expect(textos()).toEqual([
-        'Tablero del dueño', 'Reportes de compras', 'Reportes de ventas', 'Rotación de productos', 'Precios y margen',
+        'Tablero del dueño', 'Reportes de compras', 'Reportes de ventas', 'Rotación de productos',
       ]);
       const activa = html().querySelector('main nav.pestanas .pestana.activa');
       expect(activa?.getAttribute('href')).toBe('/app/tablero');
       expect(activa?.getAttribute('aria-current')).toBe('page');
     });
 
-    it('el dueño ve en Reportes sus cinco pantallas (sin Reportes de compras)', async () => {
+    it('el dueño ve en Reportes sus cuatro pantallas (sin Reportes de compras)', async () => {
       crear(['ADMIN_SISTEMA']);
       backend.match(r => r.url === '/api/proveedores').forEach(r => r.flush(pagina([])));
       await ir('/app/tablero');
       expect(textos()).toEqual([
-        'Tablero del dueño', 'Reportes de ventas', 'Rotación de productos', 'Informe de compras', 'Precios y margen',
+        'Tablero del dueño', 'Reportes de ventas', 'Rotación de productos', 'Informe de compras',
       ]);
+    });
+
+    it('los reportes de ventas marcan su pestaña y no la de Reportes de compras (spec 019)', async () => {
+      crear(['AUDITOR']);
+      await ir('/app/reportes/ventas');
+      const activas = [...html().querySelectorAll('main nav.pestanas .pestana.activa')].map(a => a.textContent?.trim());
+      expect(activas.length).toBe(1);
+      expect(activas[0]).toContain('Reportes de ventas');
     });
 
     it('en una subpágina muestra las pestañas de su categoría', async () => {
@@ -235,10 +244,10 @@ describe('Marco de la empresa: campana y menú', () => {
       crear(['AUDITOR']);
       (c()['sesion'] as { tieneModulo: (m?: string) => boolean }).tieneModulo = m => m !== 'VENTAS';
       await ir('/app/tablero');
-      const precios = pestanas().find(p => p.textContent?.includes('Precios y margen'))!;
-      expect(precios.tagName).toBe('SPAN');
-      expect(precios.getAttribute('href')).toBeNull();
-      expect(precios.querySelector('.candado')).not.toBeNull();
+      const ventas = pestanas().find(p => p.textContent?.includes('Reportes de ventas'))!;
+      expect(ventas.tagName).toBe('SPAN');
+      expect(ventas.getAttribute('href')).toBeNull();
+      expect(ventas.querySelector('.candado')).not.toBeNull();
     });
 
     it('al bajar, las pestañas pasan a la versión compacta y al subir vuelven (spec 017)', async () => {

@@ -33,7 +33,7 @@
     @if (ventas(); as v) {
       <section class="tarjeta ventas">
         <h2>Ventas <span class="texto-2 texto-chico">netas, del 1 al {{ v.hoy | fecha }}</span>
-          <a class="texto-chico" routerLink="/app/ventas/reportes">Ver reportes</a></h2>
+          <a class="texto-chico" routerLink="/app/reportes/ventas">Ver reportes</a></h2>
         <div class="rejilla kpis">
           <div class="kpi"><div class="etiqueta">Hoy</div><div class="valor">{{ v.ventasHoy | pesos }}</div>
             <div class="nota">{{ v.numeroVentasHoy }} ventas</div></div>
@@ -41,7 +41,7 @@
             <div class="nota">{{ v.numeroVentasMes }} ventas · ticket {{ v.ticketPromedioMes | pesos }}</div></div>
           <div class="kpi"><div class="etiqueta">Margen del mes</div><div class="valor">{{ v.margenMes | compacto }}</div>
             <div class="nota">@if (v.margenMesPct != null) { {{ v.margenMesPct | numero }} % sobre la base }</div></div>
-          <a class="kpi enlace-kpi" routerLink="/app/ventas/reportes"><div class="etiqueta">Diferencias de caja</div>
+          <a class="kpi enlace-kpi" routerLink="/app/reportes/ventas"><div class="etiqueta">Diferencias de caja</div>
             <div class="valor" [class.peligro]="+(v.faltantesMes ?? 0) < 0">{{ v.diferenciaCajaMes | pesos }}</div>
             <div class="nota">{{ v.turnosPorAprobar }} turnos por aprobar</div></a>
         </div>

@@ -14,6 +14,8 @@ interface Entrada {
   edita: string[];
   /** Módulo que debe tener activo la empresa. */
   modulo?: string;
+  /** Si existe, solo estos roles ven la tarjeta (la pantalla no tiene modo consulta). */
+  soloPara?: string[];
 }
 
 /**
@@ -46,6 +48,13 @@ export class Configuracion {
       ],
     },
     {
+      titulo: 'Datos',
+      entradas: [
+        // Spec 019: un solo lugar para las cargas por Excel
+        { titulo: 'Importación de datos', descripcion: 'Trae productos y precios desde Excel. Se revisa todo el archivo antes de cambiar algo.', icono: 'upload_file', ruta: '/app/configuracion/importacion', edita: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS'], soloPara: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS'] },
+      ],
+    },
+    {
       titulo: 'Reglas de compra',
       entradas: [
         { titulo: 'Políticas de aprobación', descripcion: 'Qué rol aprueba una solicitud o una adjudicación según el monto.', icono: 'rule', ruta: '/app/configuracion/politicas', edita: ['ADMIN_COMPRAS'], modulo: 'COMPRAS' },
@@ -64,7 +73,8 @@ export class Configuracion {
   ];
 
   /** Solo las tarjetas del módulo activo, para no mostrar lo que la empresa no tiene contratado. */
-  protected readonly visibles = computed(() => this.grupos.map(g => ({ ...g, entradas: g.entradas.filter(e => this.sesion.tieneModulo(e.modulo)) })).filter(g => g.entradas.length));
+  protected readonly visibles = computed(() => this.grupos.map(g => ({ ...g, entradas: g.entradas.filter(e =>
+    this.sesion.tieneModulo(e.modulo) && (!e.soloPara || this.sesion.tieneRol(e.soloPara))) })).filter(g => g.entradas.length));
 
   /** @param e entrada; {@code true} si el usuario puede cambiarla */
   protected puedeEditar(e: Entrada): boolean {

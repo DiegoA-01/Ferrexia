@@ -143,27 +143,8 @@
 
       <section class="tarjeta">
         <h2>Cambiar precios con Excel</h2>
-        <p class="texto-chico texto-2">Sube un Excel con las columnas codigo, lista, unidad, precio, precio_minimo y motivo. Primero se revisa todo el archivo: si una fila tiene un error no se cambia ningún precio. Lista vacía = General; unidad vacía = la del producto.</p>
-        <div class="fila">
-          <button type="button" class="boton" (click)="bajarPlantilla()">Descargar plantilla</button>
-          <label class="boton" for="excel-precios">Elegir archivo</label>
-          <input id="excel-precios" class="oculto" type="file" accept=".xlsx" (change)="elegirArchivo($event)">
-          @if (archivo(); as f) { <span class="texto-chico">{{ f.name }}</span> }
-        </div>
-        @if (cargando()) { <p class="cargando">Revisando el archivo…</p> }
-        @if (carga(); as r) {
-          @if ((r.errores ?? []).length > 0) {
-            <div class="resultado-carga error">
-              <p class="sin-margen"><strong>No se cambió ningún precio.</strong> Corrige estas filas y vuelve a subir el archivo:</p>
-              <ul>@for (x of r.errores ?? []; track x.fila) { <li>Fila {{ x.fila }}: {{ x.mensaje }}</li> }</ul>
-            </div>
-          } @else if (r.soloValidar) {
-            <div class="resultado-carga">
-              <p class="sin-margen">El archivo está bien: se fijarán {{ r.precios }} precios en {{ r.filas }} filas.</p>
-              <button type="button" class="boton primario" [disabled]="cargando()" (click)="subir(false)">Fijar los precios</button>
-            </div>
-          }
-        }
+        <p class="texto-chico texto-2">La carga de precios por Excel está en Configuración, junto con la de productos.</p>
+        <a class="boton" routerLink="/app/configuracion/importacion"><span class="material-symbols-outlined">upload</span> Importar desde Excel</a>
       </section>
     }
   } @else {

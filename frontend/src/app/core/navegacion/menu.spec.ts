@@ -26,7 +26,7 @@ const PERMISOS: Record<string, { roles?: string[]; modulo?: string }> = {
   '/app/caja/mi-turno': { roles: ['CAJERO', 'SUPERVISOR_VENTAS'], modulo: 'CAJA' },
   '/app/pedidos-venta': { roles: ['VENDEDOR', 'CAJERO', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA'], modulo: 'VENTAS' },
   '/app/ventas': { roles: ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR', 'CAJERO'], modulo: 'VENTAS' },
-  '/app/ventas/reportes': { roles: ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR', 'CAJERO'], modulo: 'VENTAS' },
+  '/app/reportes/ventas': { roles: ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR', 'CAJERO'], modulo: 'VENTAS' },
   '/app/clientes': { roles: ['CAJERO', 'VENDEDOR', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'], modulo: 'VENTAS' },
   '/app/cartera': { roles: ['CAJERO', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'], modulo: 'CARTERA' },
   '/app/caja': { roles: ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'], modulo: 'CAJA' },
@@ -65,9 +65,9 @@ describe('Menú lateral por categorías (spec 011)', () => {
   });
 
   it('cada pantalla queda en el grupo acordado', () => {
-    expect(seccionDe('/app/precios')).toBe('Reportes');
+    expect(seccionDe('/app/precios')).toBe('Ventas');
     expect(seccionDe('/app/tablero')).toBe('Reportes');
-    expect(seccionDe('/app/ventas/reportes')).toBe('Reportes');
+    expect(seccionDe('/app/reportes/ventas')).toBe('Reportes');
     expect(seccionDe('/app/inventario/rotacion')).toBe('Reportes');
     expect(seccionDe('/app/informes')).toBe('Reportes');
     expect(seccionDe('/app/proveedores')).toBe('Compras');
@@ -75,6 +75,16 @@ describe('Menú lateral por categorías (spec 011)', () => {
     expect(seccionDe('/app/usuarios')).toBe('Gestión humana');
     expect(seccionDe('/app/delegaciones')).toBe('Gestión humana');
     expect(seccionDe('/app/auditoria')).toBe('Gestión');
+  });
+
+  it('spec 019: Ventas trae Precios y margen; Reportes trae todos los reportes, incluido el informe de compras', () => {
+    const titulos = (t: string) => MENU.find(s => s.titulo === t)!.opciones.map(o => o.texto);
+    expect(titulos('Ventas')).toContain('Precios y margen');
+    expect(titulos('Reportes')).not.toContain('Precios y margen');
+    expect(titulos('Reportes')).toEqual(['Tablero del dueño', 'Reportes de compras', 'Reportes de ventas', 'Rotación de productos', 'Informe de compras']);
+    expect(titulos('Ventas').some(t => t.toLowerCase().includes('reporte'))).toBe(false);
+    // "Reportes de compras" no queda marcada al abrir los reportes de ventas, que cuelgan de su ruta
+    expect(opciones().find(o => o.ruta === '/app/reportes')?.exacta).toBe(true);
   });
 
   it('"Reportes" pasa a llamarse "Reportes de compras" sin cambiar de ruta', () => {
@@ -106,7 +116,9 @@ describe('Menú lateral por categorías (spec 011)', () => {
     const todas = seccionesVisibles(() => true);
     const de = (url: string) => seccionDeRuta(todas, url)?.titulo ?? null;
     expect(de('/app/tablero')).toBe('Reportes');
-    expect(de('/app/ventas/reportes')).toBe('Reportes');
+    expect(de('/app/reportes/ventas')).toBe('Reportes');
+    expect(de('/app/reportes')).toBe('Reportes');
+    expect(de('/app/precios')).toBe('Ventas');
     expect(de('/app/ventas')).toBe('Ventas');
     expect(de('/app/ventas?desde=2026-11-01')).toBe('Ventas');
     expect(de('/app/ordenes/15')).toBe('Compras');
