@@ -32,6 +32,10 @@ export class Empresas implements OnInit {
   protected readonly planElegido = signal<string | null>(null);
   /** Muestra la contraseña inicial del administrador para revisarla antes de crear la empresa. */
   protected readonly verClave = signal(false);
+  /** Spec 020: el código de ingreso se genera solo; esto permite escribirlo a mano. */
+  protected readonly codigoAMano = signal(false);
+  /** Empresa recién creada y su código de ingreso, para mostrarlo y copiarlo. */
+  protected readonly creada = signal<{ razonSocial: string; codigo: string } | null>(null);
 
   protected readonly filtradas = computed(() => {
     const t = this.busqueda().trim().toLowerCase();
@@ -47,8 +51,9 @@ export class Empresas implements OnInit {
   protected readonly nueva = inject(FormBuilder).nonNullable.group({
     razonSocial: ['', Validators.required],
     nit: ['', Validators.required],
-    // texto libre (espacios, mayúsculas, tildes); solo se excluye lo que rompe la dirección del registro: / \ ? # %
-    codigoPublico: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(40), Validators.pattern(/^[^/\\?#%\u0000-\u001f]+$/)]],
+    // Opcional (spec 020): vacío = el backend lo genera desde la razón social. Si se escribe: texto libre (espacios,
+    // mayúsculas, tildes); solo se excluye lo que rompe la dirección del registro: / \ ? # %
+    codigoPublico: ['', [Validators.minLength(3), Validators.maxLength(40), Validators.pattern(/^[^/\\?#%\u0000-\u001f]+$/)]],
     planCodigo: ['', Validators.required],
     estadoInicial: ['PRUEBA' as EstadoSuscripcion],
     adminNombre: ['', Validators.required],
@@ -164,18 +169,39 @@ export class Empresas implements OnInit {
     });
   }
 
+  /** Muestra u oculta el campo para escribir el código a mano; al ocultarlo se borra lo escrito. */
+  protected alternarCodigoAMano(): void {
+    const aMano = !this.codigoAMano();
+    this.codigoAMano.set(aMano);
+    if (!aMano) {
+      this.nueva.controls.codigoPublico.setValue('');
+    }
+  }
+
+  /** @param codigo código de ingreso que se copia al portapapeles */
+  protected copiarCodigo(codigo: string): void {
+    navigator.clipboard?.writeText(codigo).then(
+      () => this.avisos.ok('Código copiado.'),
+      () => this.avisos.ok(`Código de ingreso: ${codigo}`),
+    );
+  }
+
   protected crear(): void {
     if (this.nueva.invalid) {
       this.nueva.markAllAsTouched();
       return;
     }
     this.trabajando.set(true);
-    this.servicio.crear(this.nueva.getRawValue()).subscribe({
+    const datos = this.nueva.getRawValue();
+    const escrito = this.codigoAMano() ? datos.codigoPublico.trim() : '';
+    this.servicio.crear({ ...datos, codigoPublico: escrito || undefined }).subscribe({
       next: d => {
         this.trabajando.set(false);
         this.creando.set(false);
         this.nueva.reset();
+        this.codigoAMano.set(false);
         this.detalle.set(d);
+        this.creada.set({ razonSocial: d.empresa?.razonSocial ?? '', codigo: d.empresa?.codigoPublico ?? '' });
         this.avisos.ok(`Empresa ${d.empresa?.razonSocial} creada con su administrador.`);
         this.cargar();
       },

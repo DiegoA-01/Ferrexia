@@ -4145,17 +4145,14 @@ export interface components {
         SedeRequest: {
             nombre: string;
             direccion?: string;
-            latitud?: number;
-            longitud?: number;
-            coordenadasCompletas?: boolean;
+            enlaceMapa?: string;
         };
         SedeResponse: {
             /** Format: int64 */
             id?: number;
             nombre?: string;
             direccion?: string;
-            latitud?: number;
-            longitud?: number;
+            enlaceMapa?: string;
             activo?: boolean;
         };
         EspecificacionRequest: {
@@ -5335,7 +5332,7 @@ export interface components {
         EmpresaCrearRequest: {
             razonSocial: string;
             nit: string;
-            codigoPublico: string;
+            codigoPublico?: string;
             planCodigo: string;
             /** @enum {string} */
             estadoInicial?: "PRUEBA" | "ACTIVA" | "MOROSA" | "SUSPENDIDA" | "CANCELADA";

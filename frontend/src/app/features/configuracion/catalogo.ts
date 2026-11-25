@@ -97,6 +97,24 @@ export class Catalogo {
     this.cargar();
   }
 
+  /**
+   * Enlace que se puede abrir en "Ver en el mapa" (spec 020). Aunque el backend ya solo acepta enlaces de Google Maps,
+   * aquí se exige otra vez {@code https:} para no abrir nunca un {@code javascript:} u otro esquema.
+   *
+   * @param valor valor guardado
+   * @returns el enlace si es {@code https}, o {@code null}
+   */
+  protected enlaceSeguro(valor: unknown): string | null {
+    if (typeof valor !== 'string' || !valor.trim()) {
+      return null;
+    }
+    try {
+      return new URL(valor.trim()).protocol === 'https:' ? valor.trim() : null;
+    } catch {
+      return null;
+    }
+  }
+
   /** @param f fila; texto que se muestra en la tabla para un campo */
   protected celda(f: FilaCatalogo, k: CampoCatalogo): string {
     const v = f[k.mostrar ?? k.clave];

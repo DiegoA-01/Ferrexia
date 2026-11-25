@@ -91,6 +91,43 @@ describe('Catálogo simple', () => {
     backend.expectOne(r => r.url === '/api/unidades-medida').flush([]);
   });
 
+  describe('sede con enlace de Google Maps (spec 020)', () => {
+    it('el formulario pide el enlace, no latitud ni longitud, y lo envía', () => {
+      crear('sedes', ['ADMIN_SISTEMA'], []);
+      c()['nuevo']();
+      fixture.detectChanges();
+      const html = fixture.nativeElement as HTMLElement;
+      expect(html.querySelector('#campo-enlaceMapa')?.getAttribute('type')).toBe('url');
+      expect(html.querySelector('#campo-latitud')).toBeNull();
+      expect(html.querySelector('#campo-longitud')).toBeNull();
+      const campos = c()['config']().campos;
+      c()['escribir'](campos[0], 'Sede Sur');
+      c()['escribir'](campos.find((k: { clave: string }) => k.clave === 'enlaceMapa'), 'https://maps.app.goo.gl/AbC123');
+      c()['guardar']();
+      const p = backend.expectOne('/api/sedes');
+      expect(p.request.body).toEqual({ nombre: 'Sede Sur', enlaceMapa: 'https://maps.app.goo.gl/AbC123' });
+      p.flush({ id: 9, nombre: 'Sede Sur', activo: true });
+      backend.expectOne(r => r.url === '/api/sedes').flush([]);
+    });
+
+    it('la tabla muestra "Ver en el mapa" que abre el enlace en otra pestaña', () => {
+      crear('sedes', ['ADMIN_SISTEMA'], [
+        { id: 1, nombre: 'Norte', enlaceMapa: 'https://maps.app.goo.gl/AbC123', activo: true },
+        { id: 2, nombre: 'Sin mapa', activo: true },
+      ]);
+      const enlaces = [...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>('a')].filter(a => a.textContent?.includes('Ver en el mapa'));
+      expect(enlaces.length).toBe(1);
+      expect(enlaces[0].getAttribute('href')).toBe('https://maps.app.goo.gl/AbC123');
+      expect(enlaces[0].getAttribute('target')).toBe('_blank');
+      expect(enlaces[0].getAttribute('rel')).toContain('noopener');
+    });
+
+    it('un enlace que no es https no se vuelve un enlace', () => {
+      crear('sedes', ['ADMIN_SISTEMA'], [{ id: 1, nombre: 'Rara', enlaceMapa: 'javascript:alert(1)', activo: true }]);
+      expect([...(fixture.nativeElement as HTMLElement).querySelectorAll('a')].some(a => a.textContent?.includes('Ver en el mapa'))).toBe(false);
+    });
+  });
+
   it('desactivar pide confirmación y activa con PATCH', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     crear('sedes', ['ADMIN_SISTEMA'], [{ id: 1, nombre: 'Norte', activo: true }]);

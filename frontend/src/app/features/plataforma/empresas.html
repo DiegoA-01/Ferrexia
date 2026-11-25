@@ -14,8 +14,15 @@
       <form [formGroup]="nueva" (ngSubmit)="crear()" class="formulario dos">
         <div class="campo"><label for="rs">Razón social</label><input id="rs" class="entrada" formControlName="razonSocial"></div>
         <div class="campo"><label for="nit">NIT</label><input id="nit" class="entrada" formControlName="nit"></div>
-        <div class="campo"><label for="cod">Código de ingreso</label><input id="cod" class="entrada" formControlName="codigoPublico" placeholder="Ferretería Centro">
-          <span class="ayuda">Lo escriben sus usuarios al ingresar. Puede llevar espacios, mayúsculas y números; no lleva / \ ? # %.</span></div>
+        <div class="campo">
+          <label class="opcion-codigo"><input type="checkbox" [checked]="codigoAMano()" (change)="alternarCodigoAMano()"> Escribir el código de ingreso a mano</label>
+          @if (codigoAMano()) {
+            <input id="cod" class="entrada" formControlName="codigoPublico" placeholder="Ferretería Centro" aria-label="Código de ingreso">
+            <span class="ayuda">Lo escriben sus usuarios al ingresar. Puede llevar espacios, mayúsculas y números; no lleva / \ ? # %.</span>
+          } @else {
+            <span class="ayuda">El código de ingreso se arma solo con la razón social (por ejemplo "ferreteria-centro") y te lo mostramos al crear la empresa.</span>
+          }
+        </div>
         <div class="campo"><label for="plan">Plan</label>
           <select id="plan" class="entrada" formControlName="planCodigo">
             <option value="" disabled>Elige</option>
@@ -36,6 +43,16 @@
         <div class="fila"><button type="submit" class="boton primario" [disabled]="trabajando()">Crear empresa</button>
           <button type="button" class="boton" (click)="creando.set(false)">Cancelar</button></div>
       </form>
+    </section>
+  }
+
+  @if (creada(); as c) {
+    <section class="tarjeta codigo-creado" role="status">
+      <span class="material-symbols-outlined">key</span>
+      <div><strong>{{ c.razonSocial }}</strong> quedó creada. Código de ingreso: <code>{{ c.codigo }}</code>
+        <p class="texto-chico texto-2 sin-margen">Envíaselo al administrador: lo escribe en "Código de empresa" al ingresar.</p></div>
+      <button type="button" class="boton chico" (click)="copiarCodigo(c.codigo)"><span class="material-symbols-outlined">content_copy</span> Copiar</button>
+      <button type="button" class="boton chico" (click)="creada.set(null)" aria-label="Cerrar aviso">Cerrar</button>
     </section>
   }
 
