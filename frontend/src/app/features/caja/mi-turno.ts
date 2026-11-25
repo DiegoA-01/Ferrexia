@@ -1,163 +1,150 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 
-import { AccionAutorizada, Caja, Cliente, MedioPago, Turno } from '../../core/api/modelos';
+import { Caja, MedioPago, Turno } from '../../core/api/modelos';
 import { FechaPipe, PesosPipe } from '../../core/formato/formato';
 import { CajaService } from '../../core/servicios/caja.service';
-import { CarteraService } from '../../core/servicios/cartera.service';
-import { ClientesService } from '../../core/servicios/clientes.service';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
-import { AutorizacionPin } from './autorizacion-pin';
-import { htmlRecibo, imprimirHtml } from '../pos/tiquete';
-import { MEDIOS } from './caja';
-
 import { Cifra } from '../../core/ui/cifra';
-/** Movimiento de efectivo que registra el cajero. */
-type TipoMovimiento = 'RETIRO' | 'GASTO' | 'INGRESO';
+import { MEDIOS } from './caja';
+import { AbonoTurno } from './turno/abono-turno';
+import { CierreTurno } from './turno/cierre-turno';
+import { MovimientoCaja, TipoMovimiento } from './turno/movimiento-caja';
 
-/** Texto de cada movimiento. */
-const TIPOS: Record<TipoMovimiento, string> = { RETIRO: 'Retiro a la bóveda', GASTO: 'Gasto menor', INGRESO: 'Ingreso de efectivo' };
+/** Lo que puede hacer el cajero con su turno abierto (spec 018). */
+export type AccionTurno = 'retiro' | 'gasto' | 'ingreso' | 'abono' | 'cerrar';
+
+/** Texto de cada acción en el selector. */
+const ACCIONES: Record<AccionTurno, string> = {
+  retiro: 'Registrar retiro a la bóveda',
+  gasto: 'Registrar gasto menor',
+  ingreso: 'Registrar ingreso de efectivo',
+  abono: 'Recibir abono de cliente',
+  cerrar: 'Cerrar turno',
+};
+
+/** Tipo de movimiento de caja de cada acción que lo es. */
+const MOVIMIENTO: Partial<Record<AccionTurno, TipoMovimiento>> = { retiro: 'RETIRO', gasto: 'GASTO', ingreso: 'INGRESO' };
+
+/** Estado de la pantalla. */
+type Vista = 'CARGANDO' | 'SIN_TURNO' | 'ABIERTO' | 'RECIEN_CERRADO';
 
 /**
- * Mi turno (spec 005): el cajero abre su turno con una base, registra retiros, gastos e ingresos con la autorización
- * del supervisor y cierra a ciegas: escribe lo que contó sin ver lo esperado; el esperado y las diferencias aparecen
- * solo después de guardar el cierre. Con el módulo de cartera, aquí también se reciben los abonos de los clientes
- * (spec 007): entran a la caja del turno y dejan recibo.
+ * Mi turno (specs 005 y 018). Sin turno, solo se abre uno. Con el turno abierto se ve su resumen, los botones "Ir a
+ * vender" y "Cerrar turno", y un selector con lo que se puede hacer: elegir una acción muestra solo su formulario (y
+ * queda en la URL, `?accion=gasto`, para que recargar no la pierda). Al cerrar se ve el resultado del cierre ciego y, si
+ * se quiere, "Abrir otro turno".
  */
 @Component({
   selector: 'sc-mi-turno',
-  imports: [Cifra, FormsModule, RouterLink, PesosPipe, FechaPipe, AutorizacionPin],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, FechaPipe, MovimientoCaja, AbonoTurno, CierreTurno],
   template: `
     <div class="pagina">
-      <div class="encabezado"><div><h1>Mi turno</h1><p>Abra su caja, registre el efectivo que sale o entra y ciérrela contando a ciegas.</p></div>
-        @if (turno()?.estado === 'ABIERTO') { <a class="boton primario" routerLink="/app/pos"><span class="material-symbols-outlined">point_of_sale</span> Ir a vender</a> }</div>
+      <div class="encabezado"><div><h1>Mi turno</h1><p>Abra su caja, registre el efectivo que sale o entra y ciérrela contando a ciegas.</p></div></div>
 
-      @if (!cargado()) {
-        <p class="cargando">Buscando su turno…</p>
-      } @else if (cerrado(); as c) {
-        <section class="tarjeta">
-          <h2>Turno cerrado</h2>
-          <p class="sin-margen">{{ c.caja }} · cerrado {{ c.cerradoEn | fecha: 'hora' }}</p>
-          <div class="tabla-contenedor"><table class="tabla">
-            <thead><tr><th>Medio</th><th class="num">Esperado</th><th class="num">Contado</th><th class="num">Diferencia</th></tr></thead>
-            <tbody>@for (m of medios; track m) {
-              <tr><td>{{ textoMedio(m) }}</td><td class="num">{{ valor(c.esperado, m) | pesos }}</td><td class="num">{{ valor(c.contado, m) | pesos }}</td>
-                <td class="num" [class.rojo]="valor(c.diferencias, m) !== 0">{{ valor(c.diferencias, m) | pesos }}</td></tr>
-            }</tbody>
-          </table></div>
-          @if (c.requiereAprobacion) {
-            <div class="aviso ambar" role="status"><span class="material-symbols-outlined">gavel</span> La diferencia pasa la tolerancia: un supervisor debe aprobarla.</div>
-          } @else { <div class="aviso verde" role="status"><span class="material-symbols-outlined">check_circle</span> El turno cuadró dentro de la tolerancia.</div> }
-          <button type="button" class="boton" (click)="nuevo()">Abrir otro turno</button>
-        </section>
-      } @else if (turno(); as t) {
-        <section class="tarjeta resumen">
-          <div><span class="sub">Caja</span><strong>{{ t.caja }}</strong></div>
-          <div><span class="sub">Abierto</span><strong>{{ t.abiertoEn | fecha: 'hora' }}</strong></div>
-          <div><span class="sub">Base</span><strong>{{ t.baseApertura | pesos }}</strong></div>
-        </section>
-        @if (t.debeRetirar) {
-          <div class="aviso ambar" role="alert"><span class="material-symbols-outlined">savings</span> La caja pasó su tope de efectivo: haga un retiro a la bóveda.</div>
+      @switch (vista()) {
+        @case ('CARGANDO') {
+          <p class="cargando">Buscando su turno…</p>
         }
-
-        <section class="tarjeta">
-          <h2>Retiro, gasto o ingreso de efectivo</h2>
-          <div class="formulario">
-            <div class="campo"><label for="mt-tipo">Tipo</label>
-              <select id="mt-tipo" class="entrada" [ngModel]="tipo()" (ngModelChange)="tipo.set($event)">
-                @for (k of tipos; track k) { <option [ngValue]="k">{{ textoTipo(k) }}</option> }
-              </select></div>
-            <div class="campo"><label for="mt-monto">Monto</label>
-              <input scCifra id="mt-monto" min="0" class="entrada" [ngModel]="monto()" (ngModelChange)="monto.set($event)"></div>
-            <div class="campo ancho"><label for="mt-motivo">Motivo</label>
-              <input id="mt-motivo" class="entrada" maxlength="300" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)"></div>
-            <div class="campo"><label for="mt-soporte">Soporte (recibo)</label>
-              <input id="mt-soporte" class="entrada" maxlength="100" placeholder="Opcional" [ngModel]="soporte()" (ngModelChange)="soporte.set($event)"></div>
-          </div>
-          @if (pidiendo()) {
-            <sc-autorizacion-pin [accion]="accionDelTipo()" [turnoId]="t.id!" (autorizado)="registrar($event.token)" (cancelado)="pidiendo.set(false)" />
-          } @else {
-            <button type="button" class="boton" [disabled]="!movimientoValido()" (click)="pidiendo.set(true)">Registrar (pide PIN)</button>
+        @case ('RECIEN_CERRADO') {
+          @if (cerrado(); as c) {
+            <section class="tarjeta">
+              <h2>Turno cerrado</h2>
+              <p class="sin-margen">{{ c.caja }} · cerrado {{ c.cerradoEn | fecha: 'hora' }}</p>
+              <div class="tabla-contenedor"><table class="tabla">
+                <thead><tr><th>Medio</th><th class="num">Esperado</th><th class="num">Contado</th><th class="num">Diferencia</th></tr></thead>
+                <tbody>@for (m of medios; track m) {
+                  <tr><td>{{ textoMedio(m) }}</td><td class="num">{{ valor(c.esperado, m) | pesos }}</td><td class="num">{{ valor(c.contado, m) | pesos }}</td>
+                    <td class="num" [class.rojo]="valor(c.diferencias, m) !== 0">{{ valor(c.diferencias, m) | pesos }}</td></tr>
+                }</tbody>
+              </table></div>
+              @if (c.requiereAprobacion) {
+                <div class="aviso ambar" role="status"><span class="material-symbols-outlined">gavel</span> La diferencia pasa la tolerancia: un supervisor debe aprobarla.</div>
+              } @else { <div class="aviso verde" role="status"><span class="material-symbols-outlined">check_circle</span> El turno cuadró dentro de la tolerancia.</div> }
+              <button type="button" class="boton" (click)="nuevo()">Abrir otro turno</button>
+            </section>
           }
-          @if (movimientos().length) {
-            <ul class="lista">@for (m of movimientos(); track m.id) {
-              <li><span>{{ m.tipo }} · {{ m.motivo }}</span><span class="num">{{ m.monto | pesos }}</span></li>
-            }</ul>
-          }
-        </section>
-
-        @if (conCartera()) {
-          <section class="tarjeta">
-            <h2>Abono de cliente</h2>
-            <div class="formulario">
-              <div class="campo ancho"><label for="ab-cliente">Cliente</label>
-                <div class="fila"><input id="ab-cliente" class="entrada" placeholder="Documento o nombre" [ngModel]="buscarCliente()" (ngModelChange)="buscarCliente.set($event)" (keydown.enter)="buscarClientes()">
-                  <button type="button" class="boton" (click)="buscarClientes()">Buscar</button></div>
-                @if (clientes().length && !clienteAbono()) {
-                  <ul class="lista">@for (c of clientes(); track c.id) {
-                    <li><button type="button" class="boton chico" (click)="clienteAbono.set(c)">{{ c.nombre }} · {{ c.numeroDocumento }}</button></li>
-                  }</ul>
-                }
-                @if (clienteAbono(); as c) { <span class="sub">Abona: <strong>{{ c.nombre }}</strong> <button type="button" class="boton chico" (click)="clienteAbono.set(null)">Cambiar</button></span> }
+        }
+        @case ('ABIERTO') {
+          @if (turno(); as t) {
+            <section class="tarjeta turno-abierto">
+              <div class="resumen">
+                <div><span class="sub">Caja</span><strong>{{ t.caja }}</strong></div>
+                <div><span class="sub">Abierto</span><strong>{{ t.abiertoEn | fecha: 'hora' }}</strong></div>
+                <div><span class="sub">Base</span><strong>{{ t.baseApertura | pesos }}</strong></div>
               </div>
-              <div class="campo"><label for="ab-valor">Valor</label>
-                <input scCifra id="ab-valor" min="0" class="entrada" [ngModel]="valorAbono()" (ngModelChange)="valorAbono.set($event)"></div>
-              <div class="campo"><label for="ab-medio">Medio</label>
-                <select id="ab-medio" class="entrada" [ngModel]="medioAbono()" (ngModelChange)="medioAbono.set($event)">
-                  @for (m of medios; track m) { <option [ngValue]="m">{{ textoMedio(m) }}</option> }
-                </select></div>
-              <div class="campo"><label for="ab-ref">Referencia</label>
-                <input id="ab-ref" class="entrada" maxlength="40" [placeholder]="medioAbono() === 'EFECTIVO' ? 'Opcional' : 'Obligatoria'" [ngModel]="referenciaAbono()" (ngModelChange)="referenciaAbono.set($event)"></div>
-            </div>
-            <button type="button" class="boton primario" [disabled]="!clienteAbono() || (valorAbono() ?? 0) <= 0 || enviando() || (medioAbono() !== 'EFECTIVO' && !referenciaAbono().trim())" (click)="abonar()">Registrar abono e imprimir recibo</button>
+              <div class="acciones-turno">
+                <a class="boton primario" routerLink="/app/pos"><span class="material-symbols-outlined">point_of_sale</span> Ir a vender</a>
+                <button type="button" class="boton peligro" (click)="elegir('cerrar')"><span class="material-symbols-outlined">lock</span> Cerrar turno</button>
+              </div>
+            </section>
+            @if (t.debeRetirar) {
+              <div class="aviso ambar" role="alert"><span class="material-symbols-outlined">savings</span> La caja pasó su tope de efectivo: haga un retiro a la bóveda.
+                <button type="button" class="boton chico" (click)="elegir('retiro')">Hacer retiro</button></div>
+            }
+
+            <section class="tarjeta selector">
+              <label for="mt-accion">¿Qué quiere hacer?</label>
+              <select id="mt-accion" class="entrada" [ngModel]="accion()" (ngModelChange)="elegir($event)">
+                <option [ngValue]="null">Elija una acción</option>
+                @for (a of acciones(); track a) { <option [ngValue]="a">{{ textoAccion(a) }}</option> }
+              </select>
+            </section>
+
+            @switch (accion()) {
+              @case ('abono') { <sc-abono-turno (registrado)="refrescar()" /> }
+              @case ('cerrar') { <sc-cierre-turno [turnoId]="t.id!" (cerrado)="alCerrar($event)" /> }
+              @case (null) { }
+              @default {
+                @if (movimientoDe(accion()); as tipo) {
+                  <sc-movimiento-caja [turnoId]="t.id!" [tipo]="tipo" (actualizado)="turno.set($event)" />
+                }
+              }
+            }
+
+            @if (movimientos().length) {
+              <section class="tarjeta">
+                <h2>Movimientos del turno</h2>
+                <ul class="lista">@for (m of movimientos(); track m.id) {
+                  <li><span>{{ m.tipo }} · {{ m.motivo }}</span><span class="num">{{ m.monto | pesos }}</span></li>
+                }</ul>
+              </section>
+            }
+          }
+        }
+        @case ('SIN_TURNO') {
+          <section class="tarjeta">
+            <h2>Abrir turno</h2>
+            @if (cajasCargadas() && !cajasLibres().length) {
+              <div class="sin-cajas" role="alert">
+                <strong>Todas las cajas tienen un turno abierto.</strong>
+                <p>Pide a quien la está usando que cierre su turno, o pide al administrador que cree otra caja en
+                  Configuración, Cajas.</p>
+                <ul>
+                  @for (c of cajas(); track c.id) {
+                    <li>{{ c.nombre }}: ocupada por {{ c.turnoAbiertoPor ?? 'otra persona' }} desde {{ c.turnoAbiertoDesde | fecha: 'hora' }}</li>
+                  }
+                </ul>
+              </div>
+            } @else {
+              <div class="formulario">
+                <div class="campo"><label for="ab-caja">Caja</label>
+                  <select id="ab-caja" class="entrada" [ngModel]="cajaId()" (ngModelChange)="cajaId.set($event)">
+                    <option [ngValue]="null">Elija la caja</option>
+                    @for (c of cajas(); track c.id) {
+                      <option [ngValue]="c.id" [disabled]="c.turnoAbierto">{{ textoCaja(c) }}</option>
+                    }
+                  </select></div>
+                <div class="campo"><label for="ab-base">Base en efectivo</label>
+                  <input scCifra id="ab-base" min="0" class="entrada" [ngModel]="base()" (ngModelChange)="base.set($event)"></div>
+              </div>
+              <button type="button" class="boton primario" [disabled]="!cajaId() || base() == null || enviando()" (click)="abrir()">Abrir turno</button>
+            }
           </section>
         }
-
-        <section class="tarjeta">
-          <h2>Cierre ciego</h2>
-          <p class="sub">Cuente el efectivo y los comprobantes y escriba lo que hay. El esperado aparece después de guardar.</p>
-          <div class="formulario">
-            @for (m of medios; track m) {
-              <div class="campo"><label [for]="'cc-' + m">{{ textoMedio(m) }}</label>
-                <input scCifra [id]="'cc-' + m" min="0" class="entrada" [ngModel]="contado()[m] ?? null" (ngModelChange)="contar(m, $event)"></div>
-            }
-            <div class="campo ancho"><label for="cc-obs">Observación</label>
-              <input id="cc-obs" class="entrada" maxlength="500" placeholder="Opcional" [ngModel]="observacion()" (ngModelChange)="observacion.set($event)"></div>
-          </div>
-          <button type="button" class="boton primario" [disabled]="contado()['EFECTIVO'] == null || enviando()" (click)="cerrar()">Cerrar turno</button>
-        </section>
-      } @else {
-        <section class="tarjeta">
-          <h2>Abrir turno</h2>
-          @if (cajasCargadas() && !cajasLibres().length) {
-            <div class="sin-cajas" role="alert">
-              <strong>Todas las cajas tienen un turno abierto.</strong>
-              <p>Pide a quien la está usando que cierre su turno, o pide al administrador que cree otra caja en
-                Configuración, Cajas.</p>
-              <ul>
-                @for (c of cajas(); track c.id) {
-                  <li>{{ c.nombre }}: ocupada por {{ c.turnoAbiertoPor ?? 'otra persona' }} desde {{ c.turnoAbiertoDesde | fecha: 'hora' }}</li>
-                }
-              </ul>
-            </div>
-          } @else {
-            <div class="formulario">
-              <div class="campo"><label for="ab-caja">Caja</label>
-                <select id="ab-caja" class="entrada" [ngModel]="cajaId()" (ngModelChange)="cajaId.set($event)">
-                  <option [ngValue]="null">Elija la caja</option>
-                  @for (c of cajas(); track c.id) {
-                    <option [ngValue]="c.id" [disabled]="c.turnoAbierto">{{ textoCaja(c) }}</option>
-                  }
-                </select></div>
-              <div class="campo"><label for="ab-base">Base en efectivo</label>
-                <input scCifra id="ab-base" min="0" class="entrada" [ngModel]="base()" (ngModelChange)="base.set($event)"></div>
-            </div>
-            <button type="button" class="boton primario" [disabled]="!cajaId() || base() == null || enviando()" (click)="abrir()">Abrir turno</button>
-          }
-        </section>
       }
     </div>
   `,
@@ -165,23 +152,25 @@ const TIPOS: Record<TipoMovimiento, string> = { RETIRO: 'Retiro a la bóveda', G
     h2 { margin: 0 0 8px; }
     .sin-cajas { padding: 14px 16px; border-radius: 12px; background: #fff7ed; border: 1px solid #fed7aa; color: #7c2d12;
       p { margin: 6px 0; } ul { margin: 6px 0 0; padding-left: 18px; } }
-    .resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .turno-abierto { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+    .resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; flex: 1 1 320px; }
+    .acciones-turno { display: flex; flex-wrap: wrap; gap: 8px; }
+    .selector { display: grid; gap: 6px; max-width: 420px; label { font-weight: 600; } }
     .sub { display: block; font-size: 12px; color: var(--sc-texto-2); }
-    .formulario { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px; .ancho { grid-column: 1 / -1; } }
-    .lista { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 4px; li { display: flex; justify-content: space-between; } }
+    .formulario { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px; }
+    .lista { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; li { display: flex; justify-content: space-between; gap: 12px; } }
     td.rojo { color: #b3261e; font-weight: 600; }
   `,
 })
 export class MiTurno implements OnInit {
   private readonly caja = inject(CajaService);
-  private readonly cartera = inject(CarteraService);
-  private readonly clientesService = inject(ClientesService);
   private readonly sesion = inject(SesionService);
   private readonly avisos = inject(Avisos);
+  private readonly router = inject(Router);
+  private readonly ruta = inject(ActivatedRoute);
   private readonly fecha = new FechaPipe();
 
   protected readonly medios = Object.keys(MEDIOS) as MedioPago[];
-  protected readonly tipos = Object.keys(TIPOS) as TipoMovimiento[];
   protected readonly cargado = signal(false);
   protected readonly turno = signal<Turno | null>(null);
   protected readonly cerrado = signal<Turno | null>(null);
@@ -193,29 +182,31 @@ export class MiTurno implements OnInit {
   protected readonly base = signal<number | null>(null);
   protected readonly enviando = signal(false);
 
-  protected readonly tipo = signal<TipoMovimiento>('RETIRO');
-  protected readonly monto = signal<number | null>(null);
-  protected readonly motivo = signal('');
-  protected readonly soporte = signal('');
-  protected readonly pidiendo = signal(false);
-
-  protected readonly contado = signal<Partial<Record<MedioPago, number>>>({});
-  protected readonly observacion = signal('');
-
+  /** Acción elegida en el selector (spec 018); {@code null} = ninguna. */
+  protected readonly accion = signal<AccionTurno | null>(null);
   /** Abonos de cartera (spec 007): solo con el módulo de cartera. */
   protected readonly conCartera = computed(() => this.sesion.tieneModulo('CARTERA'));
-  protected readonly buscarCliente = signal('');
-  protected readonly clientes = signal<Cliente[]>([]);
-  protected readonly clienteAbono = signal<Cliente | null>(null);
-  protected readonly valorAbono = signal<number | null>(null);
-  protected readonly medioAbono = signal<MedioPago>('EFECTIVO');
-  protected readonly referenciaAbono = signal('');
+  /** Acciones que ofrece el selector. */
+  protected readonly acciones = computed(() =>
+    (Object.keys(ACCIONES) as AccionTurno[]).filter(a => a !== 'abono' || this.conCartera()));
+
+  protected readonly vista = computed<Vista>(() => {
+    if (!this.cargado()) {
+      return 'CARGANDO';
+    }
+    if (this.cerrado()) {
+      return 'RECIEN_CERRADO';
+    }
+    return this.turno() ? 'ABIERTO' : 'SIN_TURNO';
+  });
 
   protected readonly movimientos = computed(() => (this.turno()?.movimientos ?? []).filter(m => m.tipo !== 'BASE'));
-  protected readonly movimientoValido = computed(() => (this.monto() ?? 0) > 0 && this.motivo().trim().length > 2);
-  protected readonly accionDelTipo = computed<AccionAutorizada>(() => this.tipo());
 
   ngOnInit(): void {
+    const pedida = this.ruta.snapshot.queryParamMap.get('accion') as AccionTurno | null;
+    if (pedida && pedida in ACCIONES) {
+      this.accion.set(pedida);
+    }
     this.caja.actual().subscribe({
       next: t => {
         this.turno.set(t);
@@ -223,12 +214,29 @@ export class MiTurno implements OnInit {
       },
       error: (e: HttpErrorResponse) => {
         this.cargado.set(true);
+        this.accion.set(null);
         if (e.status !== 404) {
           this.avisos.error(e);
         }
         this.cargarCajas();
       },
     });
+  }
+
+  /**
+   * Elige la acción del turno y la deja en la URL.
+   *
+   * @param a acción ({@code null} = ninguna)
+   */
+  protected elegir(a: AccionTurno | null): void {
+    const valida = a && this.acciones().includes(a) ? a : null;
+    this.accion.set(valida);
+    this.router.navigate([], { relativeTo: this.ruta, queryParams: { accion: valida }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+
+  /** @param a acción @returns tipo de movimiento de caja, si la acción es uno */
+  protected movimientoDe(a: AccionTurno | null): TipoMovimiento | null {
+    return a ? MOVIMIENTO[a] ?? null : null;
   }
 
   protected abrir(): void {
@@ -246,90 +254,31 @@ export class MiTurno implements OnInit {
     });
   }
 
-  /** @param token permiso de un solo uso del supervisor */
-  protected registrar(token: string): void {
-    const t = this.turno()!;
-    this.pidiendo.set(false);
-    this.caja.movimiento(t.id!, { tipo: this.tipo(), monto: this.monto()!, motivo: this.motivo().trim(), soporte: this.soporte().trim() || null, autorizacion: token })
-      .subscribe({
-        next: nuevo => {
-          this.turno.set(nuevo);
-          this.monto.set(null);
-          this.motivo.set('');
-          this.soporte.set('');
-          this.avisos.ok('Movimiento registrado.');
-        },
-        error: e => this.avisos.error(e),
-      });
+  /** Vuelve a leer el turno (después de un abono). */
+  protected refrescar(): void {
+    this.caja.actual().subscribe({ next: t => this.turno.set(t), error: () => undefined });
   }
 
-  protected buscarClientes(): void {
-    const q = this.buscarCliente().trim();
-    if (q) {
-      this.clienteAbono.set(null);
-      this.clientesService.buscar(q, true).subscribe({ next: p => this.clientes.set(p.contenido ?? []), error: e => this.avisos.error(e) });
-    }
-  }
-
-  /** Registra el abono, imprime el recibo y refresca el turno. */
-  protected abonar(): void {
-    this.enviando.set(true);
-    this.cartera.abonar(this.clienteAbono()!.id!, this.valorAbono()!, this.medioAbono(), this.referenciaAbono().trim() || null).subscribe({
-      next: ab => {
-        this.enviando.set(false);
-        this.avisos.ok(`Abono ${ab.consecutivo} registrado. Le quedan ${ab.saldoPendiente} por pagar.`);
-        imprimirHtml(htmlRecibo(ab));
-        this.clienteAbono.set(null);
-        this.valorAbono.set(null);
-        this.referenciaAbono.set('');
-        this.clientes.set([]);
-        this.caja.actual().subscribe({ next: t => this.turno.set(t), error: () => undefined });
-      },
-      error: e => {
-        this.enviando.set(false);
-        this.avisos.error(e);
-      },
-    });
-  }
-
-  /** @param m medio; @param valor contado */
-  protected contar(m: MedioPago, valor: number | null): void {
-    this.contado.update(c => ({ ...c, [m]: valor ?? undefined }));
-  }
-
-  protected cerrar(): void {
-    const c = this.contado();
-    const otros: Partial<Record<MedioPago, number>> = {};
-    this.medios.filter(m => m !== 'EFECTIVO').forEach(m => (otros[m] = c[m] ?? 0));
-    this.enviando.set(true);
-    this.caja.cerrar(this.turno()!.id!, c['EFECTIVO'] ?? 0, otros, this.observacion().trim() || null).subscribe({
-      next: t => {
-        this.enviando.set(false);
-        this.turno.set(null);
-        this.cerrado.set(t);
-      },
-      error: e => {
-        this.enviando.set(false);
-        this.avisos.error(e);
-      },
-    });
+  /** @param t turno cerrado con lo esperado y las diferencias */
+  protected alCerrar(t: Turno): void {
+    this.turno.set(null);
+    this.cerrado.set(t);
+    this.elegir(null);
   }
 
   protected nuevo(): void {
     this.cerrado.set(null);
-    this.contado.set({});
-    this.observacion.set('');
     this.cargarCajas();
+  }
+
+  /** @param a acción @returns texto */
+  protected textoAccion(a: AccionTurno): string {
+    return ACCIONES[a];
   }
 
   /** @param m medio @returns texto */
   protected textoMedio(m: MedioPago): string {
     return MEDIOS[m];
-  }
-
-  /** @param k tipo @returns texto */
-  protected textoTipo(k: TipoMovimiento): string {
-    return TIPOS[k];
   }
 
   /** @param mapa valores por medio; @param m medio @returns valor (0 si no hay) */
