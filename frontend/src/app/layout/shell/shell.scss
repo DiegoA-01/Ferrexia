@@ -165,4 +165,5 @@ a.notif { color: inherit; text-decoration: none; &:not(.sin-enlace):hover { back
   .pestana { padding: 5px 12px; font-size: 13px; }
   .pestana .material-symbols-outlined { font-size: 17px; }
 }
-.pestanas { transition: padding .15s, box-shadow .15s; }
+// Solo se anima la sombra: animar el relleno movería el contenido durante el cambio
+.pestanas { transition: box-shadow .15s; }

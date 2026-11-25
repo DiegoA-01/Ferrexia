@@ -47,7 +47,7 @@ decisiones y se aprueban antes de escribir el plan.
 |---|---|---|---|---|---|---|
 | [016-pos-ajustes-rapidos](016-pos-ajustes-rapidos/spec.md) | 1 | Sin últimos 4 dígitos, voucher opcional, método de pago obligatorio, pedidos eliminados visibles | `feature/pos-ajustes-rapidos` | 005, 006 | Persona 1 | Hecha (V40, falta PR) |
 | [017-interfaz-general](017-interfaz-general/spec.md) | 1 | Punto de miles, sin flechas en números, sin scroll horizontal, pestañas fijas, una categoría abierta | `feature/interfaz-general` | 013, 014 | Persona 2 | Hecha (sin migración, falta PR) |
-| [018-mi-turno-claro](018-mi-turno-claro/spec.md) | 1 | "Mi turno" sin "crear turno" con turno abierto, botón de cerrar, acciones en menú, revisión del flujo de cajas | `feature/mi-turno-claro` | 003, 015 | Persona 1 | Propuesta |
+| [018-mi-turno-claro](018-mi-turno-claro/spec.md) | 1 | "Mi turno" sin "crear turno" con turno abierto, botón de cerrar, acciones en menú, revisión del flujo de cajas | `feature/mi-turno-claro` | 003, 015 | Persona 1 | En construcción (código y pruebas listos; falta CI, Docker y revisión del flujo) |
 | [019-reorganizar-menu](019-reorganizar-menu/spec.md) | 1 | Reportes en su categoría (con el informe de compras) e Importación de datos en Configuración | `feature/reorganizar-menu` | 011, 013 | Persona 2 | Propuesta |
 | [020-empresa-sedes-simples](020-empresa-sedes-simples/spec.md) | 1 | Código de ingreso automático y sede con enlace de Google Maps | `feature/empresa-sedes-simples` | SaaS 2 | Persona 2 | Propuesta |
 | [021-mi-turno-movimientos](021-mi-turno-movimientos/spec.md) | 2 | Facturas del turno con paginación, ingresos y egresos con categoría, esperado antes de cerrar | `feature/mi-turno-movimientos` | 018 | Persona 1 | Propuesta (D20) |
@@ -96,6 +96,7 @@ referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real
 | D18 | ¿Qué roles quedan? | Permisos por acción con plantillas: Dueño, Administrador, Cajero, Vendedor, Supervisor de ventas, Bodega, Compras y Contador/Auditor; cada usuario migra sin ganar ni perder acceso. | Recomendada | 022 |
 | D19 | ¿Qué alcance tiene domicilios? | Venta tipo domicilio con dirección y envío, domiciliario, estados y pago contraentrega en la caja; sin mapa en vivo ni app. | Recomendada | 032 |
 | D20 | ¿El cajero ve lo esperado antes de cerrar? (revisa el cierre ciego de la 003) | Cuenta primero y después ve lo esperado y la diferencia; quien tenga el permiso "ver esperado" lo ve siempre. | Recomendada | 021 |
+| D21 | ¿Las alertas de presupuesto excedido y solicitud duplicada se pueden saltar con justificación? (revisa la 18-a) | Solo quien tenga el permiso `SOLICITUD_EXCEPCION` (por defecto el Dueño); los demás quedan bloqueados. | Recomendada | 033 |
 
 Una decisión **Recomendada** pasa a **Tomada** cuando la aprueba el equipo; se anota aquí antes de aprobar la spec.
 
@@ -117,6 +118,11 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V39 | `feature/ventas-endurecimiento` | Umbrales de anulaciones y descuentos por cajero y registro de alertas (spec 010) |
 | V40 | `feature/pos-ajustes-rapidos` | Quién, cuándo y por qué se descartó un pedido de venta (spec 016) |
 | V41 en adelante | libre | Se reserva al empezar cada spec |
+
+**Numeración propuesta en los planes 018 a 035 (no es reserva):** V41 (020), V42 (021), V43 y V44 (022), V45 (023),
+V46 (025), V47 (026), V48 (028), V49 (029), V50 (030), V51 (031), V52 (032), V53 (033), V54 (035). Las specs 018, 019,
+024, 027 y 034 no llevan migración. Cada rama reserva su número en esta tabla en su primer commit; si otra rama ya lo tomó,
+usa el siguiente libre y corrige su plan.
 
 ## Riesgos generales
 

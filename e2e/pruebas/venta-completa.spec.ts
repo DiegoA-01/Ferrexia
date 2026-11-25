@@ -74,7 +74,10 @@ test('abrir turno, vender, anular con PIN y cerrar el turno cuadrado', async ({ 
   await page.locator('#ab-caja').selectOption((await opcionCaja.getAttribute('value'))!);
   await page.locator('#ab-base').fill('100000');
   await page.getByRole('button', { name: 'Abrir turno' }).click();
-  await expect(page.getByRole('heading', { name: 'Cierre ciego' })).toBeVisible();
+  // spec 018: con el turno abierto ya no está el formulario de abrir; hay selector de acción y "Cerrar turno"
+  await expect(page.getByLabel('¿Qué quiere hacer?')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cerrar turno' })).toBeVisible();
+  await expect(page.locator('#ab-caja')).toHaveCount(0);
 
   // 2. Venta: el lector tiene el foco; Enter agrega el producto y F9 abre el cobro
   await page.goto('/app/pos');
@@ -116,8 +119,10 @@ test('abrir turno, vender, anular con PIN y cerrar el turno cuadrado', async ({ 
 
   // 4. Cierre ciego: la venta anulada devolvió el dinero, así que en la caja está solo la base
   await page.goto('/app/caja/mi-turno');
-  await page.locator('#cc-EFECTIVO').fill('100000');
   await page.getByRole('button', { name: 'Cerrar turno' }).click();
+  await expect(page.getByRole('heading', { name: 'Cierre ciego' })).toBeVisible();
+  await page.locator('#cc-EFECTIVO').fill('100000');
+  await page.getByRole('button', { name: 'Confirmar cierre' }).click();
   await expect(page.getByRole('heading', { name: 'Turno cerrado' })).toBeVisible();
   await expect(page.getByText('El turno cuadró dentro de la tolerancia.')).toBeVisible();
 });

@@ -256,6 +256,30 @@ describe('Marco de la empresa: campana y menú', () => {
       expect(fila().classList).not.toContain('compacta');
     });
 
+    it('las pestañas no oscilan cerca del borde: entran a compactas pasados 32 px y salen solo al verse el ancla', async () => {
+      crear(['CAJERO']);
+      await ir('/app/pos');
+      const ancla = html().querySelector<HTMLElement>('.ancla-pestanas')!;
+      const fila = () => html().querySelector('main nav.pestanas')!;
+      /** @param top posición del ancla tras desplazar */
+      const desplazar = (top: number) => {
+        ancla.getBoundingClientRect = () => ({ top } as DOMRect);
+        window.dispatchEvent(new Event('scroll'));
+        fixture.detectChanges();
+      };
+      desplazar(-20);
+      expect(fila().classList).not.toContain('compacta');
+      desplazar(-33);
+      expect(fila().classList).toContain('compacta');
+      // Al encogerse la fila, la página se acorta y el ancla baja unos 16 px: sigue compacta
+      desplazar(-17);
+      expect(fila().classList).toContain('compacta');
+      desplazar(-1);
+      expect(fila().classList).toContain('compacta');
+      desplazar(0);
+      expect(fila().classList).not.toContain('compacta');
+    });
+
     it('en Inicio y en el perfil no hay fila de pestañas', async () => {
       crear(['CAJERO']);
       await ir('/app/inicio');
