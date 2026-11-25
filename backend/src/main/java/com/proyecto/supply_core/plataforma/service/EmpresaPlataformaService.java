@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -140,11 +141,7 @@ public class EmpresaPlataformaService {
         if (empresaRepository.existsByNitIgnoreCase(nit)) {
             throw new NegocioException("NIT_DUPLICADO", "Ya existe una empresa con el NIT " + nit);
         }
-        if (EmpresaContexto.sinEmpresa(() -> empresaRepository.idPorCodigoPublico(EmpresaAltaService.normalizarCodigo(req.codigoPublico())))
-                .isPresent()) {
-            throw new NegocioException("CODIGO_DUPLICADO", "Ya existe una empresa con el código " + EmpresaAltaService.normalizarCodigo(req.codigoPublico()));
-        }
-        Empresa empresa = altaService.crearEmpresa(req, plan, estado);
+        Empresa empresa = crearConCodigo(req, plan, estado);
         try {
             EmpresaContexto.como(empresa.getId(),
                     () -> altaService.sembrarAdministrador(req.adminNombre(), req.adminCorreo(), req.adminPassword()));
@@ -160,6 +157,63 @@ public class EmpresaPlataformaService {
                         + estado + "; admin=" + req.adminCorreo().trim().toLowerCase());
         return obtener(empresa.getId());
     }
+
+    /**
+     * Crea la empresa con su código de ingreso (spec 020). Si el dueño de la plataforma escribió uno, se respeta y debe
+     * estar libre. Si no, se genera desde la razón social ({@link GeneradorCodigoEmpresa}) y, si ya existe, se le
+     * agrega {@code -2}, {@code -3}… Si dos altas llegan a la vez con el mismo código generado, el índice único de la
+     * base rechaza la segunda y se intenta una vez más con el siguiente libre.
+     *
+     * @param req    datos del alta
+     * @param plan   plan asignado
+     * @param estado estado inicial
+     * @return empresa creada
+     * @throws NegocioException si el código escrito ya existe o no se encuentra uno libre
+     */
+    private Empresa crearConCodigo(EmpresaCrearRequest req, Plan plan, EstadoSuscripcion estado) {
+        boolean escrito = req.codigoPublico() != null && !req.codigoPublico().isBlank();
+        if (escrito) {
+            String codigo = EmpresaAltaService.normalizarCodigo(req.codigoPublico());
+            if (codigoOcupado(codigo)) {
+                throw new NegocioException("CODIGO_DUPLICADO", "Ya existe una empresa con el código " + codigo);
+            }
+            return altaService.crearEmpresa(req, codigo, plan, estado);
+        }
+        try {
+            return altaService.crearEmpresa(req, codigoLibre(req.razonSocial()), plan, estado);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("El código generado para {} se ocupó al mismo tiempo; se intenta con el siguiente", req.razonSocial());
+            return altaService.crearEmpresa(req, codigoLibre(req.razonSocial()), plan, estado);
+        }
+    }
+
+    /**
+     * @param razonSocial nombre legal de la empresa nueva
+     * @return el primer código libre: el base o el base con {@code -2}, {@code -3}…
+     * @throws NegocioException si no hay uno libre entre los primeros {@value #INTENTOS_CODIGO}
+     */
+    private String codigoLibre(String razonSocial) {
+        String base = GeneradorCodigoEmpresa.base(razonSocial);
+        for (int n = 1; n <= INTENTOS_CODIGO; n++) {
+            String candidato = n == 1 ? base : GeneradorCodigoEmpresa.conNumero(base, n);
+            if (!codigoOcupado(candidato)) {
+                return candidato;
+            }
+        }
+        throw new NegocioException("CODIGO_DUPLICADO", "No se encontró un código libre para " + razonSocial
+                + ": escríbalo a mano");
+    }
+
+    /**
+     * @param codigo código de ingreso
+     * @return {@code true} si otra empresa ya lo usa (sin distinguir mayúsculas)
+     */
+    private boolean codigoOcupado(String codigo) {
+        return EmpresaContexto.sinEmpresa(() -> empresaRepository.idPorCodigoPublico(codigo)).isPresent();
+    }
+
+    /** Cuántos códigos con número se prueban antes de pedir que se escriba a mano. */
+    private static final int INTENTOS_CODIGO = 50;
 
     /**
      * Cambia el plan de una empresa.

@@ -8,7 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -39,7 +38,7 @@ class SedeYCentroCostoServiceTest {
     void sedeConNombreRepetidoSeRechazaEnAltaYEdicion() {
         when(sedes.existsByEmpresaIdAndNombreIgnoreCase(1L, "Principal")).thenReturn(true);
         assertEquals("NOMBRE_DUPLICADO", assertThrows(NegocioException.class,
-                () -> sedeService.crear(new SedeRequest(" Principal ", null, null, null))).getCodigo());
+                () -> sedeService.crear(new SedeRequest(" Principal ", null, null))).getCodigo());
 
         Sede s = new Sede();
         s.setId(2L);
@@ -47,7 +46,7 @@ class SedeYCentroCostoServiceTest {
         when(sedes.findById(2L)).thenReturn(Optional.of(s));
         when(sedes.existsByEmpresaIdAndNombreIgnoreCaseAndIdNot(1L, "Principal", 2L)).thenReturn(true);
         assertThrows(NegocioException.class,
-                () -> sedeService.actualizar(2L, new SedeRequest("Principal", null, null, null)));
+                () -> sedeService.actualizar(2L, new SedeRequest("Principal", null, null)));
         verifyNoInteractions(auditoria);
     }
 
@@ -58,9 +57,13 @@ class SedeYCentroCostoServiceTest {
             s.setId(1L);
             return s;
         });
-        var r = sedeService.crear(new SedeRequest(" Bodega Norte ", "  ", new BigDecimal("4.65"), new BigDecimal("-74.05")));
+        var r = sedeService.crear(new SedeRequest(" Bodega Norte ", "  ", "  https://maps.app.goo.gl/AbC123 "));
         assertEquals("Bodega Norte", r.nombre());
         assertEquals(null, r.direccion());
+        assertEquals("https://maps.app.goo.gl/AbC123", r.enlaceMapa());   // spec 020: el enlace se guarda sin espacios
+
+        var sinEnlace = sedeService.crear(new SedeRequest("Sur", null, "   "));
+        assertEquals(null, sinEnlace.enlaceMapa());
 
         Sede s = new Sede();
         s.setId(1L);

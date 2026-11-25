@@ -29,10 +29,18 @@ class EmpresaCrearRequestTest {
     }
 
     @Test
-    void soloSeRechazaLoQueRompeLaDireccionDelRegistroOEstaVacio() {
-        for (String codigo : new String[] { "a/b c", "x?y z", "ver #1", "100% real", "con\\barra", "campana\u0007x", "ab", "   " }) {
+    void soloSeRechazaLoQueRompeLaDireccionDelRegistroOEsMuyCorto() {
+        for (String codigo : new String[] { "a/b c", "x?y z", "ver #1", "100% real", "con\\barra", "campana\u0007x", "ab" }) {
             assertEquals(false, validar(codigo).isEmpty(), "debería rechazar: " + codigo);
         }
+    }
+
+    @Test
+    void elCodigoEsOpcionalPorqueSeGeneraDesdeLaRazonSocial() {
+        // Spec 020: vacío o en blanco = el servicio lo genera
+        assertTrue(validar(null).isEmpty());
+        assertTrue(validar("").isEmpty());
+        assertTrue(validar("   ").isEmpty());
     }
 
     @Test
