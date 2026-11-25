@@ -1,9 +1,10 @@
 # Ferrexia (antes Supply-Core) — Progreso
 
-> **Última actualización: 2026-11-25.** El proyecto sigue en el repositorio `DiegoA-01/Ferrexia` (Supply-Core quedó como
-> histórico). Estado: **specs 000 a 018 hechas y mezcladas en `develop`** (Ventas y Caja completo, menú por categorías,
-> ajustes del POS e interfaz general, "Mi turno" más claro); **specs 019 a 035 escritas con su plan y sus tasks** a partir
-> de la reunión N.° 2 (ver la **sección 8**, que manda sobre las anteriores). Migraciones: 40 (V1 a V40), **próxima V41**.
+> **Última actualización: 2026-11-25 (tarde).** El proyecto sigue en el repositorio `DiegoA-01/Ferrexia` (Supply-Core quedó
+> como histórico). Estado: **specs 000 a 020 hechas y mezcladas en `develop`** (`22933e9`, PR #24): Ventas y Caja completo,
+> menú por categorías, ajustes del POS, interfaz general, "Mi turno" más claro, menú reorganizado y empresa y sedes
+> simples. **Faltan las specs 021 a 035** (todas en Propuesta, con plan y tasks; ver la **sección 8**, que manda sobre las
+> anteriores). Migraciones: 41 (V1 a V41), **próxima V42**.
 > Pruebas: backend 838 en verde (1 omitida, Gemini en vivo); frontend 267; e2e de Playwright con 4 pruebas en el CI.
 > Las secciones 0 a 7 se dejan como historia.
 
@@ -649,6 +650,9 @@ de aceptación verificados → rama propia desde `develop` → PR que crea y mez
 | Arreglo de pestañas | Las pestañas compactas oscilaban al bajar al final de una página corta y el e2e `venta-completa` fallaba; ahora con histéresis | — | #22 |
 | 018 | "Mi turno": estados claros, botón Cerrar turno, selector de acción en la URL, formularios en `features/caja/turno/`, revisión del flujo de cajas | — | #22 |
 | Planes | `plan.md` y `tasks.md` de las specs 018 a 035 | — | #21 |
+| 019 | Menú reorganizado: reportes de ventas en Reportes, Precios y margen en Ventas, Importación de datos en Configuración | — | #23 |
+| 020 | Empresa y sedes simples: código de ingreso automático al crear la empresa, sede con enlace de Google Maps ("Ver en el mapa") | V41 | #24 |
+| Docker | El proyecto de Compose y las imágenes pasan a llamarse `ferrexia` (ver "Docker" más abajo) | — | #23 |
 
 Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agents/specs/018-mi-turno-claro/revision-flujo-cajas.md`.
 
@@ -661,13 +665,57 @@ Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agen
   que aclararla antes de todo).
 - Numeración propuesta de migraciones en los planes: V41 (020) a V54 (035); cada rama la reserva al empezar.
 
+### Specs: hechas y faltantes (corte 2026-11-25, para retomar tras compactar)
+**Hechas y mezcladas en `develop`:** 000 a 020. Las últimas: 011 a 015 (#12 a #16), 016 (V40, #19), 017 (#20), 018 (#22),
+019 (#23) y 020 (V41, #24). Detalle y verificación de cada una en su `spec.md` (criterios marcados) y su `tasks.md`.
+
+**Faltan (todas en Propuesta, con `plan.md` y `tasks.md` escritos; ninguna empezada):**
+
+| Spec | Qué entrega | Responsable | Decisión que la bloquea | Migración propuesta |
+|---|---|---|---|---|
+| 021 Mi turno: movimientos | Facturas del turno paginadas, ingresos y egresos con categoría, esperado antes de cerrar | Persona 1 | D20 | V42 |
+| 022 Permisos y plantillas de rol | Permisos por acción, plantillas de rol, permisos sueltos, clave corta del personal (en dos partes) | Persona 2 | D10, D18 | V43, V44 |
+| 023 Cierre por denominación | Contar el efectivo por billetes y monedas al cerrar | Persona 1 | — | V45 |
+| 024 Planes simbólicos | Todos los módulos para todos los planes; el plan queda como etiqueta | Persona 2 | D11 | — |
+| 025 Caja con permisos | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | Persona 1 | D15 (y la 022) | V46 |
+| 026 Producto completo | Categoría y proveedor al vuelo, impuesto, unidad, stock máximo, proveedor y fecha del costo | Persona 2 | D17 | V47 |
+| 027 Venta ágil | Categorías en el pedido y el POS; cliente y pago en un paso | Persona 1 | — (depende de 016) | — |
+| 028 Variantes de producto | Variantes (talla, color, medida) de un mismo producto | Persona 2 | — | V48 |
+| 029 Anular factura y método de pago | Anular factura de un turno cerrado y cambiar el método de pago | Persona 1 | D16 (y la 022) | V49 |
+| 030 Venta sin stock | Vender sin existencia con permiso, aviso y reporte | Persona 1 | D13 (y la 022) | V50 |
+| 031 Proveedor sin perfil | Cotizar con enlace de un solo uso y anti-bot, sin cuenta | Persona 2 | D14 (depende de 033) | V51 |
+| 032 Domicilios | Venta a domicilio, domiciliarios, estados, contraentrega | Persona 1 | D19 | V52 |
+| 033 Solicitudes de compra mejoradas | Mejoras de solicitudes, alertas con excepción por permiso | Persona 2 | D21 | V53 |
+| 034 Reportes de ventas ampliados | Más reportes de ventas | Persona 1 | — | — |
+| 035 Sedes con super administrador | Grupo de empresas con un super administrador | Persona 2 | D12 (hay que aclararla antes) | V54 |
+
+Las decisiones D10 a D21 están en `agents/specs/README.md`, casi todas en "Recomendada": hay que tomarlas antes de aprobar
+la spec que bloquean. Las migraciones de la tabla son la numeración propuesta en los planes; cada rama la reserva en el
+índice al empezar (la próxima libre es V42).
+
 ### Qué sigue, en orden
-1. **Fase 1:** 019 reorganizar menú (en construcción, rama `feature/reorganizar-menu`) y 020 empresa y sedes (V41).
-2. **Reunión de decisiones** D10 a D21.
+1. **Reunión de decisiones** D10 a D21 (D12 primero: hay que aclararla).
+2. **Revisar la 018 en Docker con el cajero** y leer `agents/specs/018-mi-turno-claro/revision-flujo-cajas.md`.
 3. **Fase 2:** 021 y 023 (Persona 1); 022 permisos, en dos partes, y 024 (Persona 2). La 022 desbloquea 025, 029 y 030.
 4. **Fases 3 y 4:** 025 a 035 según `agents/plan-reunion-2.md`.
 5. Siguen abiertos de antes: paso 19 del backend (SMTP real, archivos por empresa, `permisos.sql`, OWASP), IA con
    cotizaciones reales, SaaS 4 y mezclar `develop` en `main`.
+
+### Entorno local de DiegoA-01 (2026-11-25)
+- Copia local en `develop` = `origin/develop` (`22933e9`). `backend/mvnw.cmd` aparece modificado solo por el fin de línea:
+  no se sube. Ramas locales ya mezcladas (`feature/menu-*`, `feature/inicio-categorias`, `feature/pestanas-categoria`,
+  `feature/cajas-ocupadas`, `feature/pos-ajustes-rapidos`, `feature/interfaz-general`) se pueden borrar.
+- Archivos locales que git ignora: `.env` (claves del stack), `credenciales-docker.local.txt` (cuentas de la demo, con la
+  cuenta `todo@ferreteriademo.local` que tiene los 11 roles internos y pide MFA la primera vez) y
+  `backend/src/main/resources/application-local.yaml` (clave del MySQL local para `./mvnw test`), copiados del proyecto
+  viejo `Proyecto Formativo Supply-core`.
+- Los datos de la demo (Ferretería Demo, Caja 1 con el turno del cajero desde el 20 nov, Caja 2 con el turno de
+  "Usuario Total") quedaron en los volúmenes viejos `supply-core_db-data` y `supply-core_storage`. Con el cambio de nombre
+  el stack `ferrexia` arranca vacío: copiar esos volúmenes a `ferrexia_*` o volver a sembrar.
+- E2E en local: `cd e2e && npm ci`; con Google Chrome instalado se puede correr con una configuración temporal que use
+  `channel: 'chrome'` (no se sube) y `E2E_CREDENCIALES` apuntando a un JSON con `empresa` y `cuentas`. Las pruebas que
+  recorren muchas pantallas deben navegar sin recargar: cada recarga renueva la sesión y `/api/auth/refresh` tiene un
+  límite de 20 peticiones por minuto por IP.
 
 ### Docker (cambio del 2026-11-25)
 - El proyecto de Compose pasó a llamarse **`ferrexia`** y las imágenes **`ferrexia-api`** y **`ferrexia-web`** (antes
