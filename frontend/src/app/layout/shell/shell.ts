@@ -95,15 +95,34 @@ export class Shell implements OnInit {
     this.guardarAbiertas();
   }
 
-  /** Marca las pestañas como compactas cuando su lugar original ya salió por arriba de la pantalla. */
+  /**
+   * Marca las pestañas como compactas cuando su lugar original ya salió por arriba de la pantalla.
+   *
+   * <p>Con histéresis: pasan a compactas cuando el ancla salió más de {@link Shell.ENTRAR_COMPACTA} px y vuelven a la
+   * versión normal solo cuando el ancla vuelve a verse ({@code top >= 0}). La versión compacta es unos 16 px más baja;
+   * sin ese margen, en una página corta desplazada hasta el fondo, encoger la fila acorta la página, el navegador sube
+   * el desplazamiento, el ancla vuelve a verse y la fila crece otra vez, en un bucle que nunca deja quieto el contenido
+   * (lo encontró el e2e `venta-completa`: el botón "Anular (pide PIN)" no se estabilizaba).
+   */
   @HostListener('window:scroll')
   protected alBajar(): void {
     const ancla = this.anclaPestanas()?.nativeElement;
-    const compactas = !!ancla && ancla.getBoundingClientRect().top < 0;
-    if (compactas !== this.pestanasCompactas()) {
-      this.pestanasCompactas.set(compactas);
+    if (!ancla) {
+      if (this.pestanasCompactas()) {
+        this.pestanasCompactas.set(false);
+      }
+      return;
+    }
+    const top = ancla.getBoundingClientRect().top;
+    if (!this.pestanasCompactas() && top < Shell.ENTRAR_COMPACTA) {
+      this.pestanasCompactas.set(true);
+    } else if (this.pestanasCompactas() && top >= 0) {
+      this.pestanasCompactas.set(false);
     }
   }
+
+  /** Cuánto debe salir el ancla por arriba (px) para pasar a compactas: el doble de lo que se encoge la fila. */
+  private static readonly ENTRAR_COMPACTA = -32;
 
   /**
    * @param seccion categoría del menú
