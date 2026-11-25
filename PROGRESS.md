@@ -1,6 +1,13 @@
-# Supply-Core — Progreso del backend
+# Ferrexia (antes Supply-Core) — Progreso
 
-> Última actualización: 2026-11-19 · Estado: **Ventas y Caja en construcción por specs: hechas la 000 (CI), 001 (catálogo de venta), 002 (clientes) y 003 (cajas y turnos); sigue la 004, la venta (ver sección 7)**. Antes: frontend completo (fases 0 a 8), stack de Docker e informe de compras para el dueño (V25). Antes: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), exportación a Excel y PDF con archivos legibles, y cruce de totales de la IA con Gemini como proveedor de lectura (sin migración)**.
+> **Última actualización: 2026-11-25.** El proyecto sigue en el repositorio `DiegoA-01/Ferrexia` (Supply-Core quedó como
+> histórico). Estado: **specs 000 a 018 hechas y mezcladas en `develop`** (Ventas y Caja completo, menú por categorías,
+> ajustes del POS e interfaz general, "Mi turno" más claro); **specs 019 a 035 escritas con su plan y sus tasks** a partir
+> de la reunión N.° 2 (ver la **sección 8**, que manda sobre las anteriores). Migraciones: 40 (V1 a V40), **próxima V41**.
+> Pruebas: backend 838 en verde (1 omitida, Gemini en vivo); frontend 267; e2e de Playwright con 4 pruebas en el CI.
+> Las secciones 0 a 7 se dejan como historia.
+
+> Estado al 2026-11-19 (historia): **Ventas y Caja en construcción por specs: hechas la 000 (CI), 001 (catálogo de venta), 002 (clientes) y 003 (cajas y turnos); sigue la 004, la venta (ver sección 7)**. Antes: frontend completo (fases 0 a 8), stack de Docker e informe de compras para el dueño (V25). Antes: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), exportación a Excel y PDF con archivos legibles, y cruce de totales de la IA con Gemini como proveedor de lectura (sin migración)**.
 > **796 pruebas del backend en verde** (1 omitida: la prueba en vivo contra Gemini), Javadoc sin advertencias (`doclint=all`), 33 migraciones Flyway (próxima V34); **166 pruebas del frontend** (Vitest, 29 archivos). CI con GitHub Actions en cada PR (spec 000), con la zona horaria de Bogotá. Specs de ventas en `agents/specs/`: 000 a 003 hechas. Al 2026-11-17 eran 714 pruebas del backend y 24 migraciones.
 > Detalle vivo para Claude: `.claude/skills/supply-core/references/estado.md`, `plan-backend.md` y `saas.md`. Reglas no negociables: `CLAUDE.md`.
 
@@ -617,3 +624,69 @@ de aceptación verificados → rama propia desde `develop` → PR que crea y mez
   GitHub; los registros del CI y la creación de PR se ven desde el navegador del usuario.
 - **Límite de intentos:** `/api/autorizaciones` comparte el límite por IP de `RateLimitFilter`; en pruebas se sube con
   `app.sesion.limite-por-minuto`.
+
+---
+
+## 8. Ferrexia: estado al 2026-11-25 y lo que sigue (esta sección manda sobre las anteriores)
+
+### Repositorio y forma de trabajo
+- El proyecto pasó a **`https://github.com/DiegoA-01/Ferrexia`** (rama de trabajo `develop`; `main` sigue en el commit
+  inicial). La copia local está en el escritorio (`Ferrexia`). La carpeta vieja `C:\proyectos\Supply-core` ya no se usa.
+- Flujo: cada spec en su rama nueva desde `develop` actualizado → PR hacia `develop` → CI en verde → el dueño del
+  repositorio mezcla con **"Create a merge commit"** (no "Squash"). Después: `git switch develop`, `git pull` y borrar la
+  rama local ya mezclada.
+- Las cuentas de GitHub: los PR y merges los hace `Advilmar24`; la PC tenía guardada otra cuenta (`advilmar2409`) sin
+  permisos, por eso el remoto se dejó con `https://Advilmar24@github.com/DiegoA-01/Ferrexia.git` cuando hizo falta.
+
+### Hecho desde la sección 7
+| Spec / cambio | Qué quedó | Migración | PR |
+|---|---|---|---|
+| 004 a 010 | Venta, POS, anulación y devolución, cartera, costo promedio, reportes y cuadre, endurecimiento | V34 a V39 | Ya en `develop` |
+| 011 a 015 | Menú por categorías, Inicio por categorías, menú desplegable, pestañas de la categoría, cajas ocupadas | — | #12 a #16 |
+| Arreglo del turno | Abrir la misma caja a la vez respondía 500 por un interbloqueo de MySQL; ahora 409 `TURNO_ABIERTO` (`TurnoServiceTest`) | — | #18 |
+| 016 | POS: sin últimos 4 de la tarjeta, voucher opcional, método de pago obligatorio, pedidos eliminados con quién, cuándo y por qué | V40 | #19 |
+| 017 | Punto de miles (`scCifra`), sin flechas en números, sin scroll horizontal (tablas en tarjetas), pestañas fijas, una categoría abierta | — | #20 |
+| Arreglo de pestañas | Las pestañas compactas oscilaban al bajar al final de una página corta y el e2e `venta-completa` fallaba; ahora con histéresis | — | #22 |
+| 018 | "Mi turno": estados claros, botón Cerrar turno, selector de acción en la URL, formularios en `features/caja/turno/`, revisión del flujo de cajas | — | #22 |
+| Planes | `plan.md` y `tasks.md` de las specs 018 a 035 | — | #21 |
+
+Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agents/specs/018-mi-turno-claro/revision-flujo-cajas.md`.
+
+### Reunión N.° 2 (2026-11-23)
+- 55 puntos observados al recorrer el sistema, agrupados en `agents/plan-reunion-2.md` y convertidos en las specs
+  **016 a 035**, repartidas entre dos personas (Persona 1: ventas, caja, reportes y domicilios; Persona 2: interfaz,
+  permisos, plataforma, catálogo y compras), en 4 fases.
+- Decisiones nuevas **D10 a D21** en `agents/specs/README.md`, casi todas en "Recomendada". Bloquean trabajo:
+  D20 (021), D10 y D18 (022), D11 (024), D15 (025), D16 (029), D13 (030), D14 (031), D19 (032), D21 (033) y D12 (035, hay
+  que aclararla antes de todo).
+- Numeración propuesta de migraciones en los planes: V41 (020) a V54 (035); cada rama la reserva al empezar.
+
+### Qué sigue, en orden
+1. **Fase 1:** 019 reorganizar menú (en construcción, rama `feature/reorganizar-menu`) y 020 empresa y sedes (V41).
+2. **Reunión de decisiones** D10 a D21.
+3. **Fase 2:** 021 y 023 (Persona 1); 022 permisos, en dos partes, y 024 (Persona 2). La 022 desbloquea 025, 029 y 030.
+4. **Fases 3 y 4:** 025 a 035 según `agents/plan-reunion-2.md`.
+5. Siguen abiertos de antes: paso 19 del backend (SMTP real, archivos por empresa, `permisos.sql`, OWASP), IA con
+   cotizaciones reales, SaaS 4 y mezclar `develop` en `main`.
+
+### Docker (cambio del 2026-11-25)
+- El proyecto de Compose pasó a llamarse **`ferrexia`** y las imágenes **`ferrexia-api`** y **`ferrexia-web`** (antes
+  `supply-core-*`, iguales a las del proyecto viejo, y se pisaban si los dos corrían en el mismo equipo). Los volúmenes
+  ahora son `ferrexia_db-data` y `ferrexia_storage`: la primera vez el stack arranca vacío y hay que sembrar la demo.
+- Si Supply-Core sigue corriendo en el 8088, Ferrexia se levanta con `WEB_PORT=8098` en su `.env` (y `PUBLIC_URL` con el
+  mismo puerto). El e2e se corre con `E2E_BASE_URL=http://localhost:8098`.
+
+### Trampas nuevas de este entorno
+- **Pruebas del frontend:** se corren con `npx ng test --watch=false` (o `npm test`); `npx vitest` directo falla por el
+  compilador JIT de Angular. Para una carpeta: `npx ng test --watch=false --include="src/app/features/caja/**/*.spec.ts"`.
+- **Build de producción local:** `npm run build` falla si el equipo no puede descargar la fuente Inter de Google Fonts
+  (inlining de fuentes); el CI sí la descarga. Mientras tanto, `npx tsc -p tsconfig.app.json --noEmit` revisa los tipos.
+- **PowerShell 5.1 y tildes:** `Get-Content`/`Set-Content` sin `-Encoding utf8` dañan las tildes de archivos UTF-8 sin
+  BOM; editar con el editor o con Python.
+- **Docker con dos stacks:** con Supply-Core y Ferrexia a la vez (dos MySQL y dos Java) Docker Desktop se cayó por
+  memoria; apagar uno mientras se prueba el otro.
+- **Siembra cortada a la mitad:** si `sembrar_demo.py` se interrumpe, la cuenta del dueño de la plataforma queda con MFA
+  y el script ya no puede seguir; hay que empezar de cero (`docker compose down -v`, `up -d`, borrar
+  `credenciales-docker.local.*`).
+- **Registros del CI:** GitHub no muestra los registros sin sesión; para ver un fallo hay que abrir el job desde el
+  navegador del usuario o reproducirlo en Docker.
