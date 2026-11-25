@@ -8,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.proyecto.supply_core.caja.service.CategoriaMovimientoCajaService;
 import com.proyecto.supply_core.compra.analisis.service.PesosService;
 import com.proyecto.supply_core.empresa.entity.Empresa;
 import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
@@ -40,6 +41,7 @@ public class EmpresaAltaService {
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
     private final PesosService pesosService;
+    private final CategoriaMovimientoCajaService categoriaCajaService;
 
     /**
      * @param empresaRepository     empresas
@@ -48,16 +50,18 @@ public class EmpresaAltaService {
      * @param rolRepository         rol ADMIN_SISTEMA
      * @param passwordEncoder       hash BCrypt de la contraseña inicial
      * @param pesosService          matriz de pesos inicial
+     * @param categoriaCajaService  categorías de ingresos y egresos de caja por defecto (spec 021)
      */
     public EmpresaAltaService(EmpresaRepository empresaRepository, SuscripcionRepository suscripcionRepository,
             UsuarioRepository usuarioRepository, RolRepository rolRepository, PasswordEncoder passwordEncoder,
-            PesosService pesosService) {
+            PesosService pesosService, CategoriaMovimientoCajaService categoriaCajaService) {
         this.empresaRepository = empresaRepository;
         this.suscripcionRepository = suscripcionRepository;
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
         this.passwordEncoder = passwordEncoder;
         this.pesosService = pesosService;
+        this.categoriaCajaService = categoriaCajaService;
     }
 
     /**
@@ -98,7 +102,7 @@ public class EmpresaAltaService {
     }
 
     /**
-     * Paso 2: crea el administrador de la empresa y su matriz de pesos inicial. Debe llamarse con el contexto de la
+     * Paso 2: crea el administrador de la empresa, su matriz de pesos inicial y las categorías de caja por defecto. Debe llamarse con el contexto de la
      * empresa nueva ya fijado ({@code EmpresaContexto.como}), para que la transacción se abra dentro de ella.
      *
      * @param nombre   nombre del administrador
@@ -115,6 +119,7 @@ public class EmpresaAltaService {
                 .orElseThrow(() -> new IllegalStateException("Falta el rol ADMIN_SISTEMA (V2)")));
         usuarioRepository.save(admin);
         pesosService.cambiar(PESOS_INICIALES);
+        categoriaCajaService.sembrarPorDefecto();
     }
 
     /**

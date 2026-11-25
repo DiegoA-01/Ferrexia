@@ -476,8 +476,8 @@ public class VentaService {
 
     /**
      * Historial de ventas según quién mira: supervisor, dueño y auditor ven todas; el vendedor, las suyas; el cajero
-     * solo busca una venta por su consecutivo (para reimprimirla, anularla o devolverla), nunca la lista: el cierre es
-     * ciego y no debe ver cuánto lleva vendido.
+     * busca una venta por su consecutivo (para reimprimirla, anularla o devolverla) o lista las facturas de su turno
+     * abierto (spec 021, "Mi turno"), y ninguna otra lista. El esperado de caja sigue oculto (cierre ciego, D20).
      *
      * @param cajaId      caja
      * @param turnoId     turno
@@ -488,7 +488,7 @@ public class VentaService {
      * @param hasta       hasta (excluido)
      * @param pageable    página y orden
      * @return ventas
-     * @throws AccesoDenegadoException si un cajero busca sin consecutivo
+     * @throws AccesoDenegadoException si un cajero busca sin consecutivo y sin su turno abierto
      */
     @Transactional(readOnly = true)
     public PageResponse<VentaResumen> buscar(Long cajaId, Long turnoId, Long clienteId, EstadoVenta estado,
@@ -501,8 +501,11 @@ public class VentaService {
             if (roles.contains(Roles.VENDEDOR)) {
                 vendedor = yo;
             } else {
-                if (exacto == null) {
-                    throw new AccesoDenegadoException("El cajero busca sus ventas por consecutivo");
+                boolean suTurno = turnoId != null && turnoRepository.abiertoDe(yo)
+                        .map(t -> t.getId().equals(turnoId)).orElse(false);
+                if (exacto == null && !suTurno) {
+                    throw new AccesoDenegadoException(
+                            "El cajero ve las facturas de su turno abierto o busca una venta por consecutivo");
                 }
             }
         }
@@ -521,7 +524,8 @@ public class VentaService {
         Map<Long, String> nombres = nombres(usuarios);
         return PageResponse.of(pagina, v -> new VentaResumen(v.getId(), v.getConsecutivo(), v.getEstado(),
                 cajas.get(v.getCajaId()), v.getTurnoId(), clientes.get(v.getClienteId()), nombres.get(v.getCajeroUsuarioId()),
-                nombres.get(v.getVendedorUsuarioId()), v.totalAPagar(), v.getConfirmadaEn()));
+                nombres.get(v.getVendedorUsuarioId()), v.totalAPagar(), v.getConfirmadaEn(),
+                v.getPagos().stream().map(p -> p.getMedio()).distinct().toList()));
     }
 
     /**

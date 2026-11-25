@@ -77,6 +77,8 @@ public enum EntidadAuditada {
     CLIENTE,
     /** Tabla {@code caja}. */
     CAJA,
+    /** Tabla {@code categoria_movimiento_caja} (spec 021). */
+    CATEGORIA_MOVIMIENTO_CAJA,
     /** Tabla {@code turno_caja}. */
     TURNO_CAJA,
     /** Tabla {@code autorizacion_supervisor}. */

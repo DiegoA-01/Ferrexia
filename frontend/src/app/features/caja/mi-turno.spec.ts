@@ -53,7 +53,11 @@ describe('Mi turno', () => {
     fixture.detectChanges();
   };
 
-  afterEach(() => backend.verify());
+  afterEach(() => {
+    // los formularios de gasto, ingreso y retiro piden sus categorías (spec 021); aquí no importan
+    backend.match(r => r.url === '/api/cajas/categorias-movimiento').forEach(r => r.flush([]));
+    backend.verify();
+  });
 
   describe('estados de la pantalla (spec 018)', () => {
     it('sin turno solo se ve el formulario de abrir', () => {
@@ -114,6 +118,22 @@ describe('Mi turno', () => {
       expect(raiz().querySelectorAll('sc-movimiento-caja').length).toBe(1);
       expect(texto()).toContain('Registrar gasto menor');
       expect(raiz().querySelector('sc-cierre-turno')).toBeNull();
+    });
+
+    it('"Ver facturas del turno" lista las facturas de este turno (spec 021)', () => {
+      crear(abierto);
+      elegir('facturas');
+      const r = backend.expectOne(x => x.url === '/api/ventas');
+      expect(r.request.params.get('turnoId')).toBe('4');
+      r.flush({ contenido: [], pagina: 0, tamano: 20, totalElementos: 0, totalPaginas: 0 });
+      fixture.detectChanges();
+      expect(texto()).toContain('Facturas del turno');
+      expect(raiz().querySelector('sc-movimiento-caja')).toBeNull();
+    });
+
+    it('la lista de movimientos muestra la categoría', () => {
+      crear({ ...abierto, movimientos: [{ id: 2, tipo: 'GASTO', medioPago: 'EFECTIVO', monto: -5000, motivo: 'Resma', categoria: 'Papelería' }] });
+      expect(texto()).toMatch(/GASTO\s*·\s*Papelería\s*·\s*Resma/);
     });
 
     it('cambiar a "cerrar" reemplaza el formulario por el cierre', () => {

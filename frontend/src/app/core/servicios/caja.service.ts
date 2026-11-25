@@ -3,7 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  AccionAutorizada, Autorizacion, Caja, CajaRequest, ConfiguracionCaja, EstadoTurno, MedioPago, Pagina, Turno,
+  AccionAutorizada, Autorizacion, Caja, CajaRequest, CategoriaMovimientoCaja, ConfiguracionCaja, EsperadoTurno, EstadoTurno, MedioPago,
+  Pagina, TipoCategoriaMovimiento, Turno,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -74,10 +75,10 @@ export class CajaService {
    * Retiro, gasto o ingreso con autorización.
    *
    * @param turnoId turno
-   * @param datos   tipo, monto, motivo, soporte y token de autorización
+   * @param datos   tipo, monto, motivo, soporte, token de autorización y categoría (spec 021)
    */
   movimiento(turnoId: number, datos: { tipo: 'RETIRO' | 'GASTO' | 'INGRESO'; monto: number; motivo: string; soporte?: string | null;
-    autorizacion: string }): Observable<Turno> {
+    autorizacion: string; categoriaId?: number | null }): Observable<Turno> {
     return this.http.post<Turno>(api(`/api/turnos/${turnoId}/movimientos`), datos);
   }
 
@@ -100,6 +101,35 @@ export class CajaService {
    */
   autorizar(datos: { correo: string; pin: string; accion: AccionAutorizada; turnoId: number; referenciaId?: number | null }): Observable<Autorizacion> {
     return this.http.post<Autorizacion>(api('/api/autorizaciones'), datos);
+  }
+
+  /**
+   * Lo que debería haber en un turno (spec 021, D20): solo para quien supervisa; el cajero cierra a ciegas.
+   *
+   * @param turnoId turno
+   */
+  esperado(turnoId: number): Observable<EsperadoTurno> {
+    return this.http.get<EsperadoTurno>(api(`/api/turnos/${turnoId}/esperado`));
+  }
+
+  /**
+   * Categorías de ingresos y egresos de caja (spec 021).
+   *
+   * @param tipo   filtro por tipo (null = los dos)
+   * @param activa filtro por estado (null = todas)
+   */
+  categorias(tipo: TipoCategoriaMovimiento | null = null, activa: boolean | null = null): Observable<CategoriaMovimientoCaja[]> {
+    return this.http.get<CategoriaMovimientoCaja[]>(api('/api/cajas/categorias-movimiento'), { params: parametros({ tipo, activa }) });
+  }
+
+  /** @param tipo ingreso o egreso; @param nombre nombre visible */
+  crearCategoria(tipo: TipoCategoriaMovimiento, nombre: string): Observable<CategoriaMovimientoCaja> {
+    return this.http.post<CategoriaMovimientoCaja>(api('/api/cajas/categorias-movimiento'), { tipo, nombre });
+  }
+
+  /** @param id categoría; @param nombre nombre nuevo; @param activa si se puede elegir */
+  editarCategoria(id: number, nombre: string, activa: boolean): Observable<CategoriaMovimientoCaja> {
+    return this.http.put<CategoriaMovimientoCaja>(api(`/api/cajas/categorias-movimiento/${id}`), { nombre, activa });
   }
 
   /** Si la sesión ya fijó su PIN de supervisor. */

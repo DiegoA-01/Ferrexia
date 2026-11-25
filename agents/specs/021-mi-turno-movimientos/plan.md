@@ -1,7 +1,7 @@
 # Plan 021
 
 Rama `feature/mi-turno-movimientos`, sacada de `develop` actualizado **después de mezclar la 018** (usa sus componentes
-hijos). Migración propuesta **V42**. Decisión **D20** pendiente (lo esperado antes de cerrar).
+hijos). Migración **V42** (reservada). Decisión **D20** tomada: opción A, cierre ciego.
 
 ## Lo que hay hoy (revisado en el código)
 - **Ventas del turno:** `GET /api/ventas` ya filtra por `turnoId`, pagina y el tiquete se reimprime con
@@ -42,8 +42,10 @@ hijos). Migración propuesta **V42**. Decisión **D20** pendiente (lo esperado a
   **Editar** (desactivado hasta la spec 029, con texto "Disponible con la spec 029").
 - **Registrar ingreso / gasto:** select de categoría (solo activas del tipo), monto con `scCifra`, motivo, foto opcional
   del soporte (ya existe en gastos).
-- **Configuración › Caja › Categorías de ingresos y egresos:** lista con crear, renombrar y activar/desactivar.
-- **Cierre:** según D20 (resumen después de cerrar, o tarjeta "Lo que debería haber" antes de contar).
+- **Configuración › Caja › Categorías de ingresos y egresos:** lista con crear, renombrar y activar/desactivar. Quedó en
+  la pestaña Cajas de "Cajas y turnos", junto a la tolerancia (es donde vive la configuración de caja).
+- **Cierre:** según D20, opción A: el cajero ve lo esperado y la diferencia en el resumen después de cerrar. El supervisor
+  ve "Lo que debería haber ahora" en el detalle de un turno abierto (Cajas y turnos).
 
 ## Pruebas
 - `VentaServiceTest`: el cajero lista su turno abierto; no lista un turno ajeno ni uno cerrado (403).

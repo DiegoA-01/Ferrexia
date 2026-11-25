@@ -227,6 +227,10 @@ public enum AccionAuditoria {
     CAJA_EDITAR,
     /** Se cambió la tolerancia de diferencia de caja. */
     CAJA_CONFIGURAR,
+    /** Se creó una categoría de ingreso o egreso de caja (spec 021). */
+    CATEGORIA_CAJA_CREAR,
+    /** Se renombró, desactivó o reactivó una categoría de caja. */
+    CATEGORIA_CAJA_EDITAR,
     /** Un cajero abrió su turno con una base. */
     TURNO_ABRIR,
     /** Retiro, gasto o ingreso de efectivo en un turno, con autorización. */

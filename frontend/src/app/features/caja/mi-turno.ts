@@ -12,13 +12,15 @@ import { Cifra } from '../../core/ui/cifra';
 import { MEDIOS } from './caja';
 import { AbonoTurno } from './turno/abono-turno';
 import { CierreTurno } from './turno/cierre-turno';
+import { FacturasTurno } from './turno/facturas-turno';
 import { MovimientoCaja, TipoMovimiento } from './turno/movimiento-caja';
 
 /** Lo que puede hacer el cajero con su turno abierto (spec 018). */
-export type AccionTurno = 'retiro' | 'gasto' | 'ingreso' | 'abono' | 'cerrar';
+export type AccionTurno = 'facturas' | 'retiro' | 'gasto' | 'ingreso' | 'abono' | 'cerrar';
 
 /** Texto de cada acción en el selector. */
 const ACCIONES: Record<AccionTurno, string> = {
+  facturas: 'Ver facturas del turno',
   retiro: 'Registrar retiro a la bóveda',
   gasto: 'Registrar gasto menor',
   ingreso: 'Registrar ingreso de efectivo',
@@ -33,14 +35,15 @@ const MOVIMIENTO: Partial<Record<AccionTurno, TipoMovimiento>> = { retiro: 'RETI
 type Vista = 'CARGANDO' | 'SIN_TURNO' | 'ABIERTO' | 'RECIEN_CERRADO';
 
 /**
- * Mi turno (specs 005 y 018). Sin turno, solo se abre uno. Con el turno abierto se ve su resumen, los botones "Ir a
+ * Mi turno (specs 005, 018 y 021). Sin turno, solo se abre uno. Con el turno abierto se ve su resumen, los botones "Ir a
  * vender" y "Cerrar turno", y un selector con lo que se puede hacer: elegir una acción muestra solo su formulario (y
- * queda en la URL, `?accion=gasto`, para que recargar no la pierda). Al cerrar se ve el resultado del cierre ciego y, si
- * se quiere, "Abrir otro turno".
+ * queda en la URL, `?accion=gasto`, para que recargar no la pierda). Entre las acciones están las facturas del turno y el
+ * gasto o ingreso con su categoría (spec 021). Al cerrar se ve lo esperado, lo contado y la diferencia (el cierre sigue
+ * ciego, decisión D20) y, si se quiere, "Abrir otro turno".
  */
 @Component({
   selector: 'sc-mi-turno',
-  imports: [Cifra, FormsModule, RouterLink, PesosPipe, FechaPipe, MovimientoCaja, AbonoTurno, CierreTurno],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, FechaPipe, MovimientoCaja, AbonoTurno, CierreTurno, FacturasTurno],
   template: `
     <div class="pagina">
       <div class="encabezado"><div><h1>Mi turno</h1><p>Abra su caja, registre el efectivo que sale o entra y ciérrela contando a ciegas.</p></div></div>
@@ -95,6 +98,7 @@ type Vista = 'CARGANDO' | 'SIN_TURNO' | 'ABIERTO' | 'RECIEN_CERRADO';
             </section>
 
             @switch (accion()) {
+              @case ('facturas') { <sc-facturas-turno [turnoId]="t.id!" /> }
               @case ('abono') { <sc-abono-turno (registrado)="refrescar()" /> }
               @case ('cerrar') { <sc-cierre-turno [turnoId]="t.id!" (cerrado)="alCerrar($event)" /> }
               @case (null) { }
@@ -109,7 +113,7 @@ type Vista = 'CARGANDO' | 'SIN_TURNO' | 'ABIERTO' | 'RECIEN_CERRADO';
               <section class="tarjeta">
                 <h2>Movimientos del turno</h2>
                 <ul class="lista">@for (m of movimientos(); track m.id) {
-                  <li><span>{{ m.tipo }} · {{ m.motivo }}</span><span class="num">{{ m.monto | pesos }}</span></li>
+                  <li><span>{{ m.tipo }}@if (m.categoria) { · {{ m.categoria }} } · {{ m.motivo }}</span><span class="num">{{ m.monto | pesos }}</span></li>
                 }</ul>
               </section>
             }

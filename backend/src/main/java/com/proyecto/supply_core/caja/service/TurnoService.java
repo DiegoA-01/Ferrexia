@@ -22,17 +22,21 @@ import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.caja.dto.AbrirTurnoRequest;
 import com.proyecto.supply_core.caja.dto.AprobarTurnoRequest;
 import com.proyecto.supply_core.caja.dto.CerrarTurnoRequest;
+import com.proyecto.supply_core.caja.dto.EsperadoTurnoResponse;
 import com.proyecto.supply_core.caja.dto.MovimientoCajaRequest;
 import com.proyecto.supply_core.caja.dto.MovimientoCajaResponse;
 import com.proyecto.supply_core.caja.dto.TurnoResponse;
 import com.proyecto.supply_core.caja.entity.Caja;
+import com.proyecto.supply_core.caja.entity.CategoriaMovimientoCaja;
 import com.proyecto.supply_core.caja.entity.MovimientoCaja;
 import com.proyecto.supply_core.caja.entity.TurnoCaja;
 import com.proyecto.supply_core.caja.enums.AccionAutorizada;
 import com.proyecto.supply_core.caja.enums.EstadoTurno;
 import com.proyecto.supply_core.caja.enums.MedioPago;
+import com.proyecto.supply_core.caja.enums.TipoCategoriaMovimiento;
 import com.proyecto.supply_core.caja.enums.TipoMovimientoCaja;
 import com.proyecto.supply_core.caja.repository.CajaRepository;
+import com.proyecto.supply_core.caja.repository.CategoriaMovimientoCajaRepository;
 import com.proyecto.supply_core.caja.repository.MovimientoCajaRepository;
 import com.proyecto.supply_core.caja.repository.TurnoCajaRepository;
 import com.proyecto.supply_core.common.dto.PageResponse;
@@ -76,6 +80,8 @@ public class TurnoService {
     private final AutorizacionService autorizacionService;
     private final NotificacionService notificacionService;
     private final AuditoriaService auditoriaService;
+    private final CategoriaMovimientoCajaService categoriaService;
+    private final CategoriaMovimientoCajaRepository categoriaRepository;
     private final JsonMapper json = JsonMapper.builder().build();
 
     /**
@@ -87,11 +93,14 @@ public class TurnoService {
      * @param autorizacionService  autorizaciones de un solo uso
      * @param notificacionService  aviso de diferencias por aprobar
      * @param auditoriaService     registro de cada acción
+     * @param categoriaService     validación de la categoría de un ingreso o egreso (spec 021)
+     * @param categoriaRepository  nombres de las categorías en el libro de caja
      */
     public TurnoService(TurnoCajaRepository turnoRepository, CajaRepository cajaRepository,
             MovimientoCajaRepository movimientoRepository, EmpresaRepository empresaRepository,
             UsuarioRepository usuarioRepository, AutorizacionService autorizacionService,
-            NotificacionService notificacionService, AuditoriaService auditoriaService) {
+            NotificacionService notificacionService, AuditoriaService auditoriaService,
+            CategoriaMovimientoCajaService categoriaService, CategoriaMovimientoCajaRepository categoriaRepository) {
         this.turnoRepository = turnoRepository;
         this.cajaRepository = cajaRepository;
         this.movimientoRepository = movimientoRepository;
@@ -100,6 +109,8 @@ public class TurnoService {
         this.autorizacionService = autorizacionService;
         this.notificacionService = notificacionService;
         this.auditoriaService = auditoriaService;
+        this.categoriaService = categoriaService;
+        this.categoriaRepository = categoriaRepository;
     }
 
     /**
@@ -156,13 +167,14 @@ public class TurnoService {
     }
 
     /**
-     * Retiro a la bóveda, gasto menor o ingreso de efectivo, con autorización de un supervisor.
+     * Retiro a la bóveda, gasto menor o ingreso de efectivo, con autorización de un supervisor. El gasto y el ingreso
+     * llevan una categoría activa de su tipo; el retiro puede llevar una de egreso (spec 021).
      *
      * @param turnoId turno
-     * @param req     tipo, monto, motivo, soporte y autorización
+     * @param req     tipo, monto, motivo, soporte, autorización y categoría
      * @return turno con el movimiento
-     * @throws NegocioException si el turno no está abierto o no es de la sesión, el tipo no es válido, no hay efectivo
-     *                          suficiente o la autorización no sirve
+     * @throws NegocioException si el turno no está abierto o no es de la sesión, el tipo no es válido, falta la
+     *                          categoría o no sirve, no hay efectivo suficiente o la autorización no sirve
      */
     @Transactional
     public TurnoResponse registrarMovimiento(Long turnoId, MovimientoCajaRequest req) {
@@ -174,17 +186,20 @@ public class TurnoService {
             default -> throw new NegocioException("TIPO_NO_PERMITIDO",
                     "Aquí solo se registran retiros, gastos e ingresos de efectivo");
         };
+        CategoriaMovimientoCaja categoria = categoria(req);
         BigDecimal monto = req.monto().setScale(2, RoundingMode.HALF_UP);
         boolean sale = req.tipo() != TipoMovimientoCaja.INGRESO;
         if (sale && movimientoRepository.saldo(t.getId(), MedioPago.EFECTIVO).compareTo(monto) < 0) {
             throw new NegocioException("EFECTIVO_INSUFICIENTE", "No hay suficiente efectivo en la caja para ese monto");
         }
         Long supervisor = autorizacionService.consumir(req.autorizacion(), accion, t.getId(), null);
-        MovimientoCaja m = movimientoRepository.save(movimiento(t, req.tipo(), sale ? monto.negate() : monto,
-                req.motivo().trim(), req.soporte() == null || req.soporte().isBlank() ? null : req.soporte().trim(),
-                supervisor));
+        MovimientoCaja m = movimiento(t, req.tipo(), sale ? monto.negate() : monto, req.motivo().trim(),
+                req.soporte() == null || req.soporte().isBlank() ? null : req.soporte().trim(), supervisor);
+        m.setCategoriaId(categoria == null ? null : categoria.getId());
+        movimientoRepository.save(m);
         auditoriaService.exito(AccionAuditoria.TURNO_MOVIMIENTO, EntidadAuditada.TURNO_CAJA, t.getId(),
-                req.tipo() + " " + monto + "; movimiento=" + m.getId() + "; autorizó=" + supervisor);
+                req.tipo() + " " + monto + "; movimiento=" + m.getId() + "; autorizó=" + supervisor
+                        + (categoria == null ? "" : "; categoría=" + categoria.getNombre()));
         return respuesta(t);
     }
 
@@ -275,7 +290,7 @@ public class TurnoService {
         var pagina = turnoRepository.buscar(estado, pendientes, cajaId, pageable);
         Map<Long, String> nombres = nombres(pagina.getContent().stream()
                 .flatMap(t -> java.util.stream.Stream.of(t.getCajeroUsuarioId(), t.getAprobadoPorUsuarioId())).toList());
-        return PageResponse.of(pagina, t -> armar(t, false, List.of(), nombres));
+        return PageResponse.of(pagina, t -> armar(t, false, List.of(), nombres, Map.of()));
     }
 
     /**
@@ -295,7 +310,43 @@ public class TurnoService {
         return respuesta(t);
     }
 
+    /**
+     * Lo que debería haber en el turno ahora mismo (spec 021, decisión D20). El cajero no lo pide: cierra a ciegas y ve
+     * lo esperado después de guardar su conteo. Lo consultan quienes supervisan (el controlador limita los roles).
+     *
+     * @param turnoId turno
+     * @return esperado por medio de pago y total; en un turno cerrado, el que se guardó al cerrar
+     * @throws NoEncontradoException si el turno no es de la empresa
+     */
+    @Transactional(readOnly = true)
+    public EsperadoTurnoResponse esperado(Long turnoId) {
+        TurnoCaja t = turnoRepository.conCaja(turnoId).orElseThrow(() -> new NoEncontradoException("Turno no encontrado"));
+        Map<MedioPago, BigDecimal> esperado = t.getEstado() == EstadoTurno.ABIERTO
+                ? CalculoCaja.esperado(movimientoRepository.findByTurnoIdOrderByIdAsc(t.getId()))
+                : conEfectivo(t.getEsperadoEfectivo(), deJson(t.getEsperadoOtros()));
+        return new EsperadoTurnoResponse(t.getId(), t.getEstado(), esperado, CalculoCaja.total(esperado));
+    }
+
     // ----------------------------------------------------------------- apoyo
+
+    /**
+     * @param req movimiento pedido
+     * @return la categoría validada, o {@code null} en un retiro sin categoría
+     * @throws NegocioException {@code CATEGORIA_OBLIGATORIA} si un gasto o un ingreso llega sin ella, o
+     *                          {@code CATEGORIA_INVALIDA} si no sirve
+     */
+    private CategoriaMovimientoCaja categoria(MovimientoCajaRequest req) {
+        TipoCategoriaMovimiento tipo = req.tipo() == TipoMovimientoCaja.INGRESO ? TipoCategoriaMovimiento.INGRESO
+                : TipoCategoriaMovimiento.EGRESO;
+        if (req.categoriaId() == null) {
+            if (req.tipo() == TipoMovimientoCaja.RETIRO) {
+                return null;
+            }
+            throw new NegocioException("CATEGORIA_OBLIGATORIA", "Elija la categoría del "
+                    + (tipo == TipoCategoriaMovimiento.INGRESO ? "ingreso" : "gasto"));
+        }
+        return categoriaService.paraMovimiento(req.categoriaId(), tipo);
+    }
 
     /**
      * @param turnoId turno
@@ -327,13 +378,19 @@ public class TurnoService {
             ids.add(m.getAutorizadoPorUsuarioId());
         });
         Map<Long, String> nombres = nombres(ids);
+        Map<Long, String> categorias = new HashMap<>();
+        List<Long> idsCategoria = movimientos.stream().map(MovimientoCaja::getCategoriaId)
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        if (!idsCategoria.isEmpty()) {
+            categoriaRepository.findAllById(idsCategoria).forEach(c -> categorias.put(c.getId(), c.getNombre()));
+        }
         boolean ocultar = t.getEstado() == EstadoTurno.ABIERTO && !supervisa();
         List<MovimientoCaja> visibles = ocultar
                 ? movimientos.stream().filter(m -> VISIBLES_AL_CAJERO.contains(m.getTipo())).toList()
                 : movimientos;
         boolean debeRetirar = t.getEstado() == EstadoTurno.ABIERTO && CalculoCaja.debeRetirar(
                 CalculoCaja.esperado(movimientos).get(MedioPago.EFECTIVO), t.getCaja().getTopeEfectivo());
-        return armar(t, debeRetirar, visibles, nombres);
+        return armar(t, debeRetirar, visibles, nombres, categorias);
     }
 
     /**
@@ -341,10 +398,11 @@ public class TurnoService {
      * @param debeRetirar marca de tope de efectivo
      * @param movimientos movimientos que se muestran
      * @param nombres     nombres de usuario por id
+     * @param categorias  nombres de categoría por id
      * @return respuesta
      */
     private TurnoResponse armar(TurnoCaja t, boolean debeRetirar, List<MovimientoCaja> movimientos,
-            Map<Long, String> nombres) {
+            Map<Long, String> nombres, Map<Long, String> categorias) {
         boolean cerrado = t.getEstado() != EstadoTurno.ABIERTO;
         Map<MedioPago, BigDecimal> esperado = null;
         Map<MedioPago, BigDecimal> contado = null;
@@ -355,7 +413,7 @@ public class TurnoService {
         List<MovimientoCajaResponse> lista = movimientos.stream().map(m -> new MovimientoCajaResponse(m.getId(),
                 m.getTipo(), m.getMedioPago(), m.getMonto(), m.getMotivo(), m.getSoporte(), nombres.get(m.getUsuarioId()),
                 m.getAutorizadoPorUsuarioId() == null ? null : nombres.get(m.getAutorizadoPorUsuarioId()),
-                m.getCreadoEn())).toList();
+                m.getCreadoEn(), m.getCategoriaId() == null ? null : categorias.get(m.getCategoriaId()))).toList();
         return new TurnoResponse(t.getId(), t.getCaja().getId(), t.getCaja().getNombre(),
                 t.getCaja().getBodega() == null ? null : t.getCaja().getBodega().getNombre(), t.getCajeroUsuarioId(),
                 nombres.get(t.getCajeroUsuarioId()), t.getEstado(), t.getAbiertoEn(), t.getBaseApertura(), debeRetirar,

@@ -18,7 +18,9 @@ import com.proyecto.supply_core.caja.enums.TipoMovimientoCaja;
  * @param usuario      quién lo registró
  * @param autorizadoPor quién lo autorizó o {@code null}
  * @param creadoEn     cuándo
+ * @param categoria    nombre de la categoría del ingreso o egreso (spec 021) o {@code null}
  */
 public record MovimientoCajaResponse(Long id, TipoMovimientoCaja tipo, MedioPago medioPago, BigDecimal monto,
-        String motivo, String soporte, String usuario, String autorizadoPor, LocalDateTime creadoEn) {
+        String motivo, String soporte, String usuario, String autorizadoPor, LocalDateTime creadoEn,
+        String categoria) {
 }

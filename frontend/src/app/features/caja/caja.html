@@ -53,6 +53,17 @@
             <button type="button" class="boton chico" (click)="detalle.set(null)">Cerrar</button>
           </div>
           <p class="texto-chico texto-2 sin-margen">Abrió {{ d.abiertoEn | fecha }} con base {{ d.baseApertura | pesos }}@if (d.cerradoEn) { · cerró {{ d.cerradoEn | fecha }} }</p>
+          @if (d.estado === 'ABIERTO' && esperado(); as e) {
+            <h3>Lo que debería haber ahora</h3>
+            <table class="tabla cuadre">
+              <thead><tr><th>Medio</th><th class="num">Esperado</th></tr></thead>
+              <tbody>
+                @for (m of ordenMedios; track m) { <tr><td>{{ medios[m] }}</td><td class="num">{{ valor(e.esperado, m) | pesos }}</td></tr> }
+                <tr class="total"><td>Total</td><td class="num">{{ e.total | pesos }}</td></tr>
+              </tbody>
+            </table>
+            <p class="texto-chico texto-2">El cajero no ve este valor: cierra contando a ciegas y lo ve después de guardar su conteo.</p>
+          }
           @if (d.estado !== 'ABIERTO') {
             <table class="tabla cuadre">
               <thead><tr><th>Medio</th><th class="num">Esperado</th><th class="num">Contado</th><th class="num">Diferencia</th></tr></thead>
@@ -82,7 +93,7 @@
             <tbody>
               @for (m of d.movimientos ?? []; track m.id) {
                 <tr><td>{{ m.creadoEn | fecha }}</td><td>{{ m.tipo }}</td><td>{{ medios[m.medioPago!] }}</td>
-                  <td class="num" [class.rojo]="(m.monto ?? 0) < 0">{{ m.monto | pesos }}</td><td>{{ m.motivo ?? '—' }}@if (m.soporte) { <span class="sub">soporte {{ m.soporte }}</span> }</td>
+                  <td class="num" [class.rojo]="(m.monto ?? 0) < 0">{{ m.monto | pesos }}</td><td>@if (m.categoria) { <strong>{{ m.categoria }}</strong> · }{{ m.motivo ?? '—' }}@if (m.soporte) { <span class="sub">soporte {{ m.soporte }}</span> }</td>
                   <td>{{ m.autorizadoPor ?? '—' }}</td></tr>
               } @empty { <tr><td colspan="6" class="vacio">Sin movimientos.</td></tr> }
             </tbody>
@@ -136,6 +147,8 @@
           </div>
         </section>
       }
+
+      <sc-categorias-caja />
 
       <section class="tarjeta">
         <h2>Tolerancia de diferencia</h2>

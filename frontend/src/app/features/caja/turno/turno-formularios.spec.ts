@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { Turno } from '../../../core/api/modelos';
 import { AbonoTurno } from './abono-turno';
 import { CierreTurno } from './cierre-turno';
+import { FacturasTurno } from './facturas-turno';
 import { MovimientoCaja } from './movimiento-caja';
 
 const abierto: Turno = { id: 4, cajaId: 1, caja: 'Caja 1', estado: 'ABIERTO', abiertoEn: '2026-11-20T08:00:00', baseApertura: 50000,
@@ -29,6 +30,11 @@ describe('Formularios del turno', () => {
     f.componentRef.setInput('turnoId', 4);
     f.componentRef.setInput('tipo', 'RETIRO');
     f.detectChanges();
+    // el retiro ofrece las categorías de egreso, pero no las exige
+    const cat = backend.expectOne(r => r.url === '/api/cajas/categorias-movimiento');
+    expect(cat.request.params.get('tipo')).toBe('EGRESO');
+    expect(cat.request.params.get('activa')).toBe('true');
+    cat.flush([]);
     const c = f.componentInstance as unknown as Record<string, any>;
     let recibido: Turno | null = null;
     f.componentInstance.actualizado.subscribe(t => (recibido = t));
@@ -37,7 +43,7 @@ describe('Formularios del turno', () => {
     c['motivo'].set('A la bóveda');
     c['registrar']('permiso-9');
     const r = backend.expectOne('/api/turnos/4/movimientos');
-    expect(r.request.body).toEqual({ tipo: 'RETIRO', monto: 30000, motivo: 'A la bóveda', soporte: null, autorizacion: 'permiso-9' });
+    expect(r.request.body).toEqual({ tipo: 'RETIRO', monto: 30000, motivo: 'A la bóveda', soporte: null, autorizacion: 'permiso-9', categoriaId: null });
     r.flush({ ...abierto, debeRetirar: false });
     expect(recibido).not.toBeNull();
     expect(c['monto']()).toBeNull();
@@ -49,8 +55,71 @@ describe('Formularios del turno', () => {
     f.componentRef.setInput('turnoId', 4);
     f.componentRef.setInput('tipo', 'GASTO');
     f.detectChanges();
+    backend.expectOne(r => r.url === '/api/cajas/categorias-movimiento').flush([]);
     const boton = (f.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button')!;
     expect(boton.disabled).toBe(true);
+  });
+
+  it('el gasto exige su categoría de egreso y la envía (spec 021)', () => {
+    preparar();
+    const f = TestBed.createComponent(MovimientoCaja);
+    f.componentRef.setInput('turnoId', 4);
+    f.componentRef.setInput('tipo', 'GASTO');
+    f.detectChanges();
+    backend.expectOne(r => r.url === '/api/cajas/categorias-movimiento' && r.params.get('tipo') === 'EGRESO')
+      .flush([{ id: 7, tipo: 'EGRESO', nombre: 'Papelería', activa: true }]);
+    f.detectChanges();
+    const c = f.componentInstance as unknown as Record<string, any>;
+    const raiz = f.nativeElement as HTMLElement;
+    expect([...raiz.querySelectorAll('#mt-categoria option')].map(o => o.textContent?.trim())).toEqual(['Elija la categoría', 'Papelería']);
+    c['monto'].set(5000);
+    c['motivo'].set('Resma de papel');
+    expect(c['valido']()).toBe(false);
+    c['categoriaId'].set(7);
+    expect(c['valido']()).toBe(true);
+    c['registrar']('permiso-3');
+    const r = backend.expectOne('/api/turnos/4/movimientos');
+    expect(r.request.body.categoriaId).toBe(7);
+    r.flush(abierto);
+    expect(c['categoriaId']()).toBeNull();
+  });
+
+  it('el ingreso pide categorías de ingreso', () => {
+    preparar();
+    const f = TestBed.createComponent(MovimientoCaja);
+    f.componentRef.setInput('turnoId', 4);
+    f.componentRef.setInput('tipo', 'INGRESO');
+    f.detectChanges();
+    backend.expectOne(r => r.url === '/api/cajas/categorias-movimiento' && r.params.get('tipo') === 'INGRESO').flush([]);
+    f.detectChanges();
+    expect((f.nativeElement as HTMLElement).textContent).toContain('No hay categorías activas');
+  });
+
+  it('las facturas del turno se listan paginadas, se reimprimen y muestran su detalle (spec 021)', () => {
+    preparar();
+    const f = TestBed.createComponent(FacturasTurno);
+    f.componentRef.setInput('turnoId', 4);
+    f.detectChanges();
+    const lista = backend.expectOne(r => r.url === '/api/ventas');
+    expect(lista.request.params.get('turnoId')).toBe('4');
+    expect(lista.request.params.get('size')).toBe('20');
+    lista.flush({ contenido: [{ id: 11, consecutivo: 'C1-000011', estado: 'CONFIRMADA', cliente: 'Consumidor final', totalAPagar: 11950,
+      confirmadaEn: '2026-11-20T10:00:00', medios: ['EFECTIVO', 'TRANSFERENCIA'] }], pagina: 0, tamano: 20, totalElementos: 21, totalPaginas: 2 });
+    f.detectChanges();
+    const raiz = f.nativeElement as HTMLElement;
+    expect(raiz.textContent).toContain('C1-000011');
+    expect(raiz.textContent).toContain('Efectivo y Transferencia');
+    expect(raiz.textContent).toContain('Página 1 de 2');
+    const editar = [...raiz.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent?.trim() === 'Editar')!;
+    expect(editar.disabled).toBe(true);
+    const c = f.componentInstance as unknown as Record<string, any>;
+    c['ver']({ id: 11 });
+    backend.expectOne('/api/ventas/11').flush({ id: 11, consecutivo: 'C1-000011', cliente: 'Consumidor final', totalAPagar: 11950,
+      lineas: [{ nombre: 'Cable 12', cantidad: 1, unidad: 'm', precioUnitario: 11930, totalLinea: 11930 }], pagos: [{ medio: 'EFECTIVO', monto: 11950 }] });
+    f.detectChanges();
+    expect(raiz.textContent).toContain('Cable 12');
+    c['cargar'](1);
+    expect(backend.expectOne(r => r.url === '/api/ventas').request.params.get('page')).toBe('1');
   });
 
   it('el abono de un cliente va al servidor y avisa para refrescar el turno', () => {

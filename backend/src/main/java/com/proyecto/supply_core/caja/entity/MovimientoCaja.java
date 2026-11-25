@@ -70,6 +70,10 @@ public class MovimientoCaja {
     @Column(length = 100)
     private String soporte;
 
+    /** Categoría del ingreso o egreso (spec 021); {@code null} en ventas, bases y movimientos anteriores a V42. */
+    @Column(name = "categoria_id")
+    private Long categoriaId;
+
     @Column(name = "usuario_id", nullable = false)
     private Long usuarioId;
 
