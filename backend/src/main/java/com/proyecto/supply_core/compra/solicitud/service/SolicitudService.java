@@ -45,6 +45,7 @@ import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
 import com.proyecto.supply_core.presupuesto.dto.EvaluacionPresupuesto;
 import com.proyecto.supply_core.presupuesto.service.PresupuestoService;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.Roles;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
@@ -68,8 +69,6 @@ public class SolicitudService {
     /** Campos por los que se puede ordenar el listado. */
     private static final Set<String> CAMPOS_ORDENABLES = Set.of("creadoEn", "enviadoEn", "fechaRequerida",
             "consecutivo", "estado", "montoEstimado");
-    /** Roles que ven todas las solicitudes; el resto solo ve las propias. */
-    static final String[] ROLES_VEN_TODAS = { Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.AUDITOR, Roles.APROBADOR };
     /** Estados en los que una solicitud ya enviada todavía no tiene RFQ: cuentan para detectar duplicadas. */
     private static final Set<EstadoSolicitud> ESTADOS_ABIERTAS = Set.of(EstadoSolicitud.PENDIENTE_APROBACION,
             EstadoSolicitud.APROBADA);
@@ -275,7 +274,7 @@ public class SolicitudService {
     public SolicitudResponse cancelar(Long id) {
         UsuarioAutenticado sesion = SesionActual.usuario();
         SolicitudCompra s = bloquear(id);
-        if (!s.getUsuarioSolicitanteId().equals(sesion.id()) && !sesion.tieneAlgunRol(Roles.ADMIN_COMPRAS)) {
+        if (!s.getUsuarioSolicitanteId().equals(sesion.id()) && !sesion.tienePermiso(Permisos.SOLICITUD_CANCELAR_AJENA)) {
             throw new AccesoDenegadoException("Solo el solicitante o compras pueden cancelar la solicitud");
         }
         if (!s.getEstado().esCancelable()) {
@@ -301,14 +300,14 @@ public class SolicitudService {
         SolicitudCompra s = solicitudRepository.findWithLineasById(id)
                 .orElseThrow(() -> new NoEncontradoException("Solicitud", id));
         UsuarioAutenticado sesion = SesionActual.usuario();
-        if (!sesion.tieneAlgunRol(ROLES_VEN_TODAS) && !s.getUsuarioSolicitanteId().equals(sesion.id())) {
+        if (!sesion.tienePermiso(Permisos.SOLICITUD_VER_TODAS) && !s.getUsuarioSolicitanteId().equals(sesion.id())) {
             throw new NoEncontradoException("Solicitud", id);
         }
         return respuesta(s);
     }
 
     /**
-     * Lista solicitudes con filtros. Quien no tiene un rol de {@link #ROLES_VEN_TODAS} solo ve las propias.
+     * Lista solicitudes con filtros. Quien no tiene el permiso {@code SOLICITUD_VER_TODAS} solo ve las propias.
      *
      * @param texto         coincidencia en el consecutivo
      * @param estado        estado
@@ -321,7 +320,7 @@ public class SolicitudService {
     public PageResponse<SolicitudResumenResponse> buscar(String texto, EstadoSolicitud estado, Long solicitanteId,
             Long centroCostoId, Pageable pageable) {
         UsuarioAutenticado sesion = SesionActual.usuario();
-        Long solicitante = sesion.tieneAlgunRol(ROLES_VEN_TODAS) ? solicitanteId : sesion.id();
+        Long solicitante = sesion.tienePermiso(Permisos.SOLICITUD_VER_TODAS) ? solicitanteId : sesion.id();
         String filtro = texto == null || texto.isBlank() ? null : texto.trim().toUpperCase();
         return PageResponse.of(solicitudRepository.buscar(filtro, estado, solicitante, centroCostoId,
                 Ordenamiento.validar(pageable, CAMPOS_ORDENABLES)), SolicitudResumenResponse::of);

@@ -26,7 +26,7 @@ import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.util.ConsecutivoGenerator;
 import com.proyecto.supply_core.inventario.entity.Producto;
 import com.proyecto.supply_core.inventario.repository.ProductoRepository;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.usuario.entity.Usuario;
 import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
@@ -174,9 +174,8 @@ public class PedidoVentaService {
      * @return {@code true} si la sesión vende pero no cobra ni supervisa
      */
     private static boolean soloVendedor() {
-        Set<String> roles = SesionActual.usuario().roles();
-        return roles.contains(Roles.VENDEDOR) && !roles.contains(Roles.CAJERO) && !roles.contains(Roles.SUPERVISOR_VENTAS)
-                && !roles.contains(Roles.ADMIN_SISTEMA);
+        var sesion = SesionActual.usuario();
+        return sesion.tienePermiso(Permisos.VENTA_VER_PROPIAS) && !sesion.tienePermiso(Permisos.PEDIDO_VENTA_VER_TODOS);
     }
 
     /**
@@ -185,8 +184,7 @@ public class PedidoVentaService {
      */
     private PedidoVenta pendiente(Long id) {
         PedidoVenta p = pedidoRepository.bloquear(id).orElseThrow(() -> new NoEncontradoException("Pedido no encontrado"));
-        Set<String> roles = SesionActual.usuario().roles();
-        boolean supervisa = roles.contains(Roles.SUPERVISOR_VENTAS) || roles.contains(Roles.ADMIN_SISTEMA);
+        boolean supervisa = SesionActual.usuario().tienePermiso(Permisos.VENTA_SUPERVISAR);
         if (!supervisa && !p.getVendedorUsuarioId().equals(SesionActual.usuario().id())) {
             throw new AccesoDenegadoException("Solo quien armó el pedido o un supervisor lo cambia");
         }

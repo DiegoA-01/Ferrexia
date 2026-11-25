@@ -2,20 +2,33 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { CentroCosto, Rol, Usuario } from '../../core/api/modelos';
+import { CentroCosto, PermisoUsuario, Rol, Usuario } from '../../core/api/modelos';
 import { nombreRol } from '../../core/formato/etiquetas';
 import { FechaPipe } from '../../core/formato/formato';
 import { ComprasService } from '../../core/servicios/compras.service';
 import { UsuariosService } from '../../core/servicios/usuarios.service';
 import { Avisos } from '../../core/ui/avisos';
-import { PATRON_CLAVE } from '../../core/sesion/clave';
+import { conPermiso } from '../../core/sesion/acceso';
 import { SesionService } from '../../core/sesion/sesion.service';
+import { MODULOS_PERMISO } from './roles';
 
-type Panel = { tipo: 'ninguno' } | { tipo: 'nuevo' } | { tipo: 'editar'; usuario: Usuario } | { tipo: 'clave'; usuario: Usuario };
+type Panel = { tipo: 'ninguno' } | { tipo: 'nuevo' } | { tipo: 'editar'; usuario: Usuario } | { tipo: 'clave'; usuario: Usuario }
+  | { tipo: 'permisos'; usuario: Usuario };
+
+/** Ajuste de un permiso en la ficha: como dice su rol, sumado o quitado (spec 022). */
+type Ajuste = 'ROL' | 'SUMADO' | 'QUITADO';
+
+/** Quien administra usuarios (spec 022: por permiso). */
+const ROLES_GESTIONAR_USUARIOS = conPermiso(['ADMIN_SISTEMA'], 'USUARIO_GESTIONAR');
+
+/** Una clave o PIN que el backend aceptaría según el rol (allá está la regla completa, spec 022 D10). */
+const LARGO_MINIMO = 6;
 
 /**
- * Usuarios y roles: el administrador de la empresa (ADMIN_SISTEMA) crea a sus empleados, les asigna roles y los
- * activa o desactiva; el auditor solo consulta. Los usuarios de proveedores nacen en el portal, no aquí.
+ * Usuarios y roles: el administrador de la empresa crea a sus empleados, les asigna roles (plantillas o propios), les
+ * suma o quita permisos sueltos y los activa o desactiva; el auditor solo consulta. El personal entra con un PIN de 6
+ * dígitos que asigna el jefe; quien administra usuarios, con clave fuerte (spec 022, D10). Ninguna clave se puede ver:
+ * se restablece. Los usuarios de proveedores nacen en el portal, no aquí.
  */
 @Component({
   selector: 'sc-usuarios',
@@ -39,7 +52,19 @@ export class Usuarios implements OnInit {
   protected readonly trabajando = signal(false);
   protected readonly verClave = signal(false);
 
-  protected readonly puedeEditar = computed(() => this.sesion.tieneRol(['ADMIN_SISTEMA']) && !this.sesion.soloLectura());
+  protected readonly puedeEditar = computed(() => this.sesion.tieneRol(ROLES_GESTIONAR_USUARIOS) && !this.sesion.soloLectura());
+  /** Ficha de permisos de la persona abierta: ajuste elegido por permiso. */
+  protected readonly fichaPermisos = signal<PermisoUsuario[] | null>(null);
+  protected readonly ajustes = signal<Record<string, Ajuste>>({});
+  /** Permisos agrupados por módulo para la ficha. */
+  protected readonly gruposPermisos = computed(() => {
+    const porModulo = new Map<string, PermisoUsuario[]>();
+    for (const p of this.fichaPermisos() ?? []) {
+      const m = p.modulo ?? 'OTROS';
+      porModulo.set(m, [...(porModulo.get(m) ?? []), p]);
+    }
+    return [...porModulo.entries()].map(([modulo, permisos]) => ({ modulo, titulo: MODULOS_PERMISO[modulo] ?? modulo, permisos }));
+  });
   /** Roles que el administrador asigna aquí (PROVEEDOR se asigna al habilitar un proveedor). */
   protected readonly asignables = computed(() => this.roles().filter(r => r.codigo !== 'PROVEEDOR'));
 
@@ -56,7 +81,7 @@ export class Usuarios implements OnInit {
   protected readonly form = inject(FormBuilder).nonNullable.group({
     nombreCompleto: ['', [Validators.required, Validators.maxLength(150)]],
     correo: ['', [Validators.required, Validators.email, Validators.maxLength(150)]],
-    password: ['', [Validators.pattern(PATRON_CLAVE)]],
+    password: ['', [Validators.minLength(LARGO_MINIMO), Validators.maxLength(72)]],
     roles: [[] as string[]],
     centroCostoId: [null as number | null],
   });
@@ -91,7 +116,7 @@ export class Usuarios implements OnInit {
 
   protected nuevo(): void {
     this.form.reset({ nombreCompleto: '', correo: '', password: '', roles: [], centroCostoId: null });
-    this.form.controls.password.setValidators([Validators.required, Validators.pattern(PATRON_CLAVE)]);
+    this.form.controls.password.setValidators([Validators.required, Validators.minLength(LARGO_MINIMO), Validators.maxLength(72)]);
     this.form.controls.password.updateValueAndValidity();
     this.verClave.set(false);
     this.panel.set({ tipo: 'nuevo' });
@@ -103,7 +128,7 @@ export class Usuarios implements OnInit {
       nombreCompleto: u.nombreCompleto ?? '', correo: u.correo ?? '', password: '',
       roles: [...(u.roles ?? [])], centroCostoId: u.centroCostoId ?? null,
     });
-    this.form.controls.password.setValidators([Validators.pattern(PATRON_CLAVE)]);
+    this.form.controls.password.setValidators([Validators.minLength(LARGO_MINIMO), Validators.maxLength(72)]);
     this.form.controls.password.updateValueAndValidity();
     this.panel.set({ tipo: 'editar', usuario: u });
   }
@@ -155,8 +180,8 @@ export class Usuarios implements OnInit {
     if (p.tipo !== 'clave' || !p.usuario.id) {
       return;
     }
-    if (!PATRON_CLAVE.test(this.claveNueva())) {
-      this.avisos.ok('La contraseña debe tener entre 8 y 72 caracteres, con al menos una letra y un número.');
+    if (this.claveNueva().length < LARGO_MINIMO) {
+      this.avisos.ok('Escriba un PIN de 6 dígitos o una clave (quien administra usuarios necesita una fuerte).');
       return;
     }
     this.trabajando.set(true);
@@ -164,13 +189,57 @@ export class Usuarios implements OnInit {
       next: () => {
         this.trabajando.set(false);
         this.panel.set({ tipo: 'ninguno' });
-        this.avisos.ok(`Contraseña de ${p.usuario.nombreCompleto} restablecida. Entrégasela por un canal seguro.`);
+        this.avisos.ok(`Clave de ${p.usuario.nombreCompleto} restablecida. Entrégasela por un canal seguro: no se puede volver a ver.`);
       },
       error: e => {
         this.trabajando.set(false);
         this.avisos.error(e);
       },
     });
+  }
+
+  /** @param u persona cuya ficha de permisos se abre */
+  protected abrirPermisos(u: Usuario): void {
+    if (!u.id) {
+      return;
+    }
+    this.fichaPermisos.set(null);
+    this.panel.set({ tipo: 'permisos', usuario: u });
+    this.servicio.permisosDe(u.id).subscribe({ next: l => this.mostrarFicha(l), error: e => this.avisos.error(e) });
+  }
+
+  /** @param codigo permiso; @param ajuste como su rol, sumado o quitado */
+  protected ajustar(codigo: string, ajuste: Ajuste): void {
+    this.ajustes.update(a => ({ ...a, [codigo]: ajuste }));
+  }
+
+  protected guardarPermisos(): void {
+    const p = this.panel();
+    if (p.tipo !== 'permisos' || !p.usuario.id) {
+      return;
+    }
+    const lista = Object.entries(this.ajustes()).filter(([, a]) => a !== 'ROL')
+      .map(([permiso, a]) => ({ permiso, concedido: a === 'SUMADO' }));
+    this.trabajando.set(true);
+    this.servicio.cambiarPermisos(p.usuario.id, lista).subscribe({
+      next: l => {
+        this.trabajando.set(false);
+        this.mostrarFicha(l);
+        this.avisos.ok(`Permisos de ${p.usuario.nombreCompleto} guardados.`);
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
+    });
+  }
+
+  /** @param l ficha que respondió el servidor */
+  private mostrarFicha(l: PermisoUsuario[]): void {
+    this.fichaPermisos.set(l);
+    const a: Record<string, Ajuste> = {};
+    l.forEach(x => (a[x.codigo!] = x.ajuste === 'SUMADO' ? 'SUMADO' : x.ajuste === 'QUITADO' ? 'QUITADO' : 'ROL'));
+    this.ajustes.set(a);
   }
 
   /** @param u usuario con MFA activo; el administrador reinicia su segundo factor (cierra sus sesiones) */

@@ -5,6 +5,7 @@ import { Observable, catchError, finalize, firstValueFrom, forkJoin, of, shareRe
 
 import { ConfiguracionMfa, Empresa, LoginResponse, MensajeApi, ModulosEmpresa, UsuarioSesion } from '../api/modelos';
 import { api } from '../http/api';
+import { Acceso } from './acceso';
 
 const CLAVE_REFRESH = 'sc.refresh';
 const CLAVE_EMPRESA = 'sc.empresa';
@@ -29,6 +30,8 @@ export class SesionService {
   readonly empresa = signal<Empresa | null>(null);
   /** Plan, estado de la suscripción y módulos activos de la empresa. */
   readonly modulos = signal<ModulosEmpresa | null>(null);
+  /** Permisos efectivos de la sesión (spec 022); {@code null} mientras no se han cargado. */
+  readonly permisos = signal<ReadonlySet<string> | null>(null);
 
   readonly autenticado = computed(() => this.usuario() !== null);
   readonly esProveedor = computed(() => this.usuario()?.roles?.includes('PROVEEDOR') ?? false);
@@ -145,23 +148,43 @@ export class SesionService {
     return forkJoin({
       empresa: this.http.get<Empresa>(api('/api/empresa')).pipe(catchError(() => of(null))),
       modulos: this.http.get<ModulosEmpresa>(api('/api/empresa/modulos')).pipe(catchError(() => of(null))),
+      permisos: this.http.get<string[]>(api('/api/perfil/permisos')).pipe(catchError(() => of(null))),
     }).pipe(tap(r => {
       this.empresa.set(r.empresa);
       this.modulos.set(r.modulos);
+      this.permisos.set(r.permisos ? new Set(r.permisos) : null);
     }));
   }
 
   /**
-   * Indica si el usuario tiene alguno de los roles.
+   * Indica si el usuario tiene alguno de los roles. Si la lista trae su permiso equivalente ({@link Acceso}) y la sesión
+   * ya conoce sus permisos, decide el permiso (spec 022): así funcionan los roles propios y los permisos sueltos.
    *
    * @param roles roles aceptados (vacío = cualquier usuario)
    */
-  tieneRol(roles: readonly string[] | undefined): boolean {
+  tieneRol(roles: Acceso | readonly string[] | undefined): boolean {
     if (!roles?.length) {
       return true;
     }
+    const acceso = roles as Acceso;
+    if (acceso.interno) {
+      return this.autenticado() && !this.esProveedor();
+    }
+    const efectivos = this.permisos();
+    if (acceso.permiso && efectivos) {
+      const pedidos = typeof acceso.permiso === 'string' ? [acceso.permiso] : acceso.permiso;
+      return pedidos.some(p => efectivos.has(p));
+    }
     const propios = this.usuario()?.roles ?? [];
     return roles.some(r => propios.includes(r));
+  }
+
+  /**
+   * @param permiso código del permiso (spec 022)
+   * @returns {@code true} si la sesión lo tiene; sin permisos cargados, {@code false}
+   */
+  tienePermiso(permiso: string): boolean {
+    return this.permisos()?.has(permiso) ?? false;
   }
 
   /**
@@ -208,6 +231,7 @@ export class SesionService {
     this.usuario.set(null);
     this.empresa.set(null);
     this.modulos.set(null);
+    this.permisos.set(null);
     try {
       sessionStorage.removeItem(CLAVE_REFRESH);
     } catch {

@@ -48,6 +48,12 @@
       }
     </section>
 
+    @if (perfil()?.tipoCredencial === 'PIN') {
+      <section class="tarjeta">
+        <h2>Tu PIN</h2>
+        <p class="texto-2">Entras con un PIN de 6 dígitos que te asigna el administrador. Si lo olvidas, pídele uno nuevo.</p>
+      </section>
+    } @else {
     <section class="tarjeta">
       <h2>Cambiar contraseña</h2>
       <form class="formulario" (ngSubmit)="cambiar()">
@@ -75,5 +81,6 @@
         <p class="texto-chico texto-2">El botón del ojo muestra las tres contraseñas para que revises que estén bien escritas.</p>
       </form>
     </section>
+    }
   </div>
 </div>

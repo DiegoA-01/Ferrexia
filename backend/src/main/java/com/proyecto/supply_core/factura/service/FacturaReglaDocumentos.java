@@ -9,7 +9,7 @@ import com.proyecto.supply_core.documento.enums.EntidadDocumento;
 import com.proyecto.supply_core.factura.entity.FacturaProveedor;
 import com.proyecto.supply_core.factura.enums.EstadoFactura;
 import com.proyecto.supply_core.factura.repository.FacturaProveedorRepository;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 
 /**
@@ -51,7 +51,7 @@ public class FacturaReglaDocumentos implements ReglaAccesoDocumentos {
     @Override
     public void validarSubida(Long facturaId, UsuarioAutenticado usuario) {
         FacturaProveedor f = buscar(facturaId);
-        if (usuario.esProveedor() || !usuario.tieneAlgunRol(Roles.ADMINISTRATIVO)) {
+        if (usuario.esProveedor() || !usuario.tienePermiso(Permisos.FACTURA_REGISTRAR)) {
             throw new AccesoDenegadoException("Solo el área administrativa adjunta el archivo de una factura");
         }
         if (f.getEstado() == EstadoFactura.ANULADA || f.getDocumentoId() != null) {
@@ -68,8 +68,7 @@ public class FacturaReglaDocumentos implements ReglaAccesoDocumentos {
     @Override
     public void validarLectura(Long facturaId, UsuarioAutenticado usuario) {
         FacturaProveedor f = buscar(facturaId);
-        boolean interno = !usuario.esProveedor() && usuario.tieneAlgunRol(Roles.ADMINISTRATIVO, Roles.ADMIN_COMPRAS,
-                Roles.COMPRADOR, Roles.APROBADOR, Roles.AUDITOR);
+        boolean interno = !usuario.esProveedor() && usuario.tienePermiso(Permisos.FACTURA_VER);
         boolean dueno = usuario.esProveedor() && f.getProveedor().getId().equals(usuario.proveedorId());
         if (!interno && !dueno) {
             throw new AccesoDenegadoException("No puede ver el archivo de esta factura");

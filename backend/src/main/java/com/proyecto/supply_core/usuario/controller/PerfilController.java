@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.context.SesionActual;
+import com.proyecto.supply_core.security.service.PermisosService;
 import com.proyecto.supply_core.usuario.dto.CambioPasswordRequest;
 import com.proyecto.supply_core.usuario.dto.UsuarioResponse;
 import com.proyecto.supply_core.usuario.service.UsuarioService;
@@ -20,12 +22,26 @@ import jakarta.validation.Valid;
 public class PerfilController {
 
     private final UsuarioService usuarioService;
+    private final PermisosService permisosService;
 
     /**
-     * @param usuarioService lógica de usuarios
+     * @param usuarioService  lógica de usuarios
+     * @param permisosService permisos efectivos de la sesión (spec 022)
      */
-    public PerfilController(UsuarioService usuarioService) {
+    public PerfilController(UsuarioService usuarioService, PermisosService permisosService) {
         this.usuarioService = usuarioService;
+        this.permisosService = permisosService;
+    }
+
+    /**
+     * Permisos efectivos de la sesión (sus roles, más los sumados, menos los quitados): la pantalla arma el menú con
+     * ellos. El backend igual revisa cada acción.
+     *
+     * @return códigos de permiso ordenados
+     */
+    @GetMapping("/permisos")
+    public java.util.Set<String> permisos() {
+        return new java.util.TreeSet<>(permisosService.efectivos(SesionActual.usuario()));
     }
 
     /**

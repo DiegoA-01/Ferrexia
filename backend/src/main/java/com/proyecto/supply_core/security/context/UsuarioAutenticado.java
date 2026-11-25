@@ -53,6 +53,16 @@ public record UsuarioAutenticado(
     }
 
     /**
+     * Indica si la persona tiene un permiso (spec 022): el de sus roles, más los sumados, menos los quitados.
+     *
+     * @param permiso código del permiso (constante de {@link Permisos})
+     * @return {@code true} si lo tiene
+     */
+    public boolean tienePermiso(String permiso) {
+        return com.proyecto.supply_core.security.service.PermisosService.usuarioTiene(this, permiso);
+    }
+
+    /**
      * Indica si es un usuario del portal proveedor.
      *
      * @return {@code true} si tiene proveedor asociado

@@ -65,6 +65,7 @@ describe('Ingreso con segundo factor', () => {
     peticion.flush(sesionCompleta);
     backend.match('/api/empresa').forEach(r => r.flush({}));
     backend.match('/api/empresa/modulos').forEach(r => r.flush({ modulos: [] }));
+    backend.match('/api/perfil/permisos').forEach(r => r.flush([]));
 
     expect(TestBed.inject(SesionService).autenticado()).toBe(true);
   });
@@ -98,6 +99,7 @@ describe('Ingreso con segundo factor', () => {
     backend.expectOne('/api/auth/login').flush(sesionCompleta);
     backend.match('/api/empresa').forEach(r => r.flush({}));
     backend.match('/api/empresa/modulos').forEach(r => r.flush({ modulos: [] }));
+    backend.match('/api/perfil/permisos').forEach(r => r.flush([]));
 
     expect(TestBed.inject(SesionService).autenticado()).toBe(true);
   });

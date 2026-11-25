@@ -47,8 +47,14 @@ class UsuarioControllerTest extends WebTestBase {
     @MockitoBean
     private UsuarioService usuarioService;
 
+    @MockitoBean
+    private com.proyecto.supply_core.usuario.service.UsuarioPermisoService usuarioPermisoService;
+
+    @MockitoBean
+    private com.proyecto.supply_core.usuario.service.RolService rolService;
+
     private final UsuarioResponse ana = new UsuarioResponse(5L, "Ana", "ana@x.com", true, Set.of("COMPRADOR"),
-            null, null, null, null, false);
+            null, null, null, null, false, com.proyecto.supply_core.usuario.enums.TipoCredencial.CLAVE);
 
     @BeforeEach
     void rolesExistentes() {
@@ -92,7 +98,7 @@ class UsuarioControllerTest extends WebTestBase {
 
     @Test
     void rolesSoloParaAdminYAuditor() throws Exception {
-        when(usuarioService.listarRoles()).thenReturn(List.of(new RolResponse(1L, "COMPRADOR", "Comprador", null)));
+        when(rolService.listar()).thenReturn(List.of(new RolResponse(1L, "COMPRADOR", "Comprador", null, true, Set.of())));
 
         mvc.perform(get("/api/roles").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_SISTEMA")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].codigo").value("COMPRADOR"));
@@ -141,7 +147,7 @@ class UsuarioControllerTest extends WebTestBase {
                 .andExpect(jsonPath("$.detalles", hasItems(
                         "nombreCompleto: es obligatorio",
                         "correo: no tiene un formato de correo válido",
-                        "password: debe tener entre 8 y 72 caracteres",
+                        "password: debe tener entre 6 y 72 caracteres",
                         "roles: contiene roles inexistentes: JEFE",
                         "proveedorId: es obligatorio para usuarios con rol PROVEEDOR")));
     }
@@ -194,9 +200,9 @@ class UsuarioControllerTest extends WebTestBase {
     void restablecerPasswordValidaLaClaveYResponde204() throws Exception {
         mvc.perform(put("/api/usuarios/5/password").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_SISTEMA"))
                         .contentType(MediaType.APPLICATION_JSON).content("""
-                                {"passwordNueva":"soloLetras"}"""))
+                                {"passwordNueva":"123"}"""))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detalles", hasItem("passwordNueva: debe tener al menos una letra y un número")));
+                .andExpect(jsonPath("$.detalles", hasItem("passwordNueva: debe tener entre 6 y 72 caracteres")));
 
         mvc.perform(put("/api/usuarios/5/password").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_SISTEMA"))
                         .contentType(MediaType.APPLICATION_JSON).content("""

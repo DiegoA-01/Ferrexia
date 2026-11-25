@@ -4058,6 +4058,8 @@ export interface components {
             /** Format: date-time */
             creadoEn?: string;
             mfaActivo?: boolean;
+            /** @enum {string} */
+            tipoCredencial?: "CLAVE" | "PIN";
         };
         RestablecerPasswordRequest: {
             passwordNueva: string;
@@ -6395,6 +6397,32 @@ export interface components {
             codigo?: string;
             nombre?: string;
             descripcion?: string;
+            plantilla?: boolean;
+            permisos?: string[];
+        };
+        RolRequest: {
+            nombre: string;
+            descripcion?: string;
+            permisos: string[];
+        };
+        PermisoResponse: {
+            codigo?: string;
+            nombre?: string;
+            modulo?: string;
+        };
+        PermisoUsuarioResponse: {
+            codigo?: string;
+            nombre?: string;
+            modulo?: string;
+            delRol?: boolean;
+            ajuste?: string;
+            efectivo?: boolean;
+        };
+        AjustePermisosRequest: {
+            ajustes: {
+                permiso: string;
+                concedido: boolean;
+            }[];
         };
         PageResponseRfqResumenResponse: {
             contenido?: components["schemas"]["RfqResumenResponse"][];

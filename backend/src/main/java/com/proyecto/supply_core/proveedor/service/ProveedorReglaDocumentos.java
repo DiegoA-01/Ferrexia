@@ -7,7 +7,7 @@ import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.documento.acceso.ReglaAccesoDocumentos;
 import com.proyecto.supply_core.documento.enums.EntidadDocumento;
 import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 
 /**
@@ -48,7 +48,7 @@ public class ProveedorReglaDocumentos implements ReglaAccesoDocumentos {
     @Override
     public void validarSubida(Long proveedorId, UsuarioAutenticado usuario) {
         existe(proveedorId);
-        if (!esElMismoProveedor(proveedorId, usuario) && !usuario.tieneAlgunRol(Roles.ADMIN_COMPRAS)) {
+        if (!esElMismoProveedor(proveedorId, usuario) && !usuario.tienePermiso(Permisos.PROVEEDOR_GESTIONAR)) {
             throw new AccesoDenegadoException("No puede adjuntar documentos a este proveedor");
         }
     }
@@ -65,7 +65,7 @@ public class ProveedorReglaDocumentos implements ReglaAccesoDocumentos {
     public void validarLectura(Long proveedorId, UsuarioAutenticado usuario) {
         existe(proveedorId);
         boolean interno = !usuario.esProveedor()
-                && usuario.tieneAlgunRol(Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.AUDITOR);
+                && usuario.tienePermiso(Permisos.PROVEEDOR_VER);
         if (!esElMismoProveedor(proveedorId, usuario) && !interno) {
             throw new AccesoDenegadoException("No puede ver los documentos de este proveedor");
         }

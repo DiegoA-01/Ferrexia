@@ -8,7 +8,7 @@ import com.proyecto.supply_core.documento.acceso.ReglaAccesoDocumentos;
 import com.proyecto.supply_core.documento.enums.EntidadDocumento;
 import com.proyecto.supply_core.recepcion.entity.Recepcion;
 import com.proyecto.supply_core.recepcion.repository.RecepcionRepository;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 
 /**
@@ -51,7 +51,7 @@ public class RecepcionReglaDocumentos implements ReglaAccesoDocumentos {
     @Override
     public void validarSubida(Long recepcionId, UsuarioAutenticado usuario) {
         buscar(recepcionId);
-        if (usuario.esProveedor() || !usuario.tieneAlgunRol(Roles.ALMACENISTA, Roles.ADMIN_COMPRAS)) {
+        if (usuario.esProveedor() || !usuario.tienePermiso(Permisos.RECEPCION_CERRAR)) {
             throw new AccesoDenegadoException("Solo almacén o compras adjuntan evidencia de una recepción");
         }
     }
@@ -65,8 +65,7 @@ public class RecepcionReglaDocumentos implements ReglaAccesoDocumentos {
     @Override
     public void validarLectura(Long recepcionId, UsuarioAutenticado usuario) {
         Recepcion r = buscar(recepcionId);
-        boolean interno = !usuario.esProveedor() && usuario.tieneAlgunRol(Roles.ALMACENISTA, Roles.COMPRADOR,
-                Roles.ADMIN_COMPRAS, Roles.ADMINISTRATIVO, Roles.APROBADOR, Roles.AUDITOR);
+        boolean interno = !usuario.esProveedor() && usuario.tienePermiso(Permisos.RECEPCION_VER);
         boolean dueno = usuario.esProveedor() && r.getOrden().getProveedor().getId().equals(usuario.proveedorId());
         if (!interno && !dueno) {
             throw new AccesoDenegadoException("No puede ver la evidencia de esta recepción");

@@ -24,7 +24,7 @@ import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.venta.entity.ListaPrecio;
 import com.proyecto.supply_core.venta.repository.ListaPrecioRepository;
@@ -265,8 +265,7 @@ public class ClienteService {
      * @throws AccesoDenegadoException si la sesión no es dueño ni supervisor de ventas
      */
     private static void exigirCondiciones() {
-        var roles = SesionActual.usuario().roles();
-        if (!roles.contains(Roles.ADMIN_SISTEMA) && !roles.contains(Roles.SUPERVISOR_VENTAS)) {
+        if (!SesionActual.usuario().tienePermiso(Permisos.VENTA_SUPERVISAR)) {
             throw new AccesoDenegadoException(
                     "El cupo, el plazo y la lista de precios de un cliente solo los cambian el dueño o el supervisor de ventas");
         }

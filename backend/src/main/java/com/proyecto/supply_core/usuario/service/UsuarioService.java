@@ -1,7 +1,6 @@
 package com.proyecto.supply_core.usuario.service;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
@@ -28,15 +27,16 @@ import com.proyecto.supply_core.security.service.MfaUsuarioService;
 import com.proyecto.supply_core.security.service.SesionUsuarioService;
 import com.proyecto.supply_core.usuario.dto.CambioPasswordRequest;
 import com.proyecto.supply_core.usuario.dto.RestablecerPasswordRequest;
-import com.proyecto.supply_core.usuario.dto.RolResponse;
 import com.proyecto.supply_core.usuario.dto.UsuarioRequest;
 import com.proyecto.supply_core.usuario.dto.UsuarioResponse;
 import com.proyecto.supply_core.usuario.dto.UsuarioUpdateRequest;
 import com.proyecto.supply_core.usuario.entity.Rol;
 import com.proyecto.supply_core.usuario.entity.Usuario;
 import com.proyecto.supply_core.usuario.repository.RolRepository;
+import com.proyecto.supply_core.usuario.enums.TipoCredencial;
 import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
 import com.proyecto.supply_core.usuario.validation.CodigosRol;
+import com.proyecto.supply_core.usuario.validation.ReglasCredencial;
 
 /**
  * Gestión de usuarios internos y del portal proveedor.
@@ -124,8 +124,9 @@ public class UsuarioService {
         u.setEmpresaId(buscarEntidad(SesionActual.usuario().id()).getEmpresaId());
         u.setNombreCompleto(req.nombreCompleto().trim());
         u.setCorreo(normalizarCorreo(req.correo()));
-        u.setHashPassword(passwordEncoder.encode(req.password()));
         Set<Rol> rolesNuevos = resolverRoles(req.roles());
+        u.setTipoCredencial(ReglasCredencial.validar(codigos(rolesNuevos), null, u.getEmpresaId(), req.password()));
+        u.setHashPassword(passwordEncoder.encode(req.password()));
         validarCentroDelSolicitante(rolesNuevos, req.centroCostoId());
         u.setCentroCostoId(req.centroCostoId());
         u.setProveedorId(req.proveedorId());
@@ -160,6 +161,10 @@ public class UsuarioService {
                 && roles.stream().noneMatch(r -> Roles.ADMIN_SISTEMA.equals(r.getCodigo()));
         if (pierdeAdmin && u.isActivo()) {
             validarNoEsUltimoAdmin();
+        }
+        if (u.getTipoCredencial() == TipoCredencial.PIN && ReglasCredencial.administra(codigos(roles), id, u.getEmpresaId())) {
+            throw new NegocioException("CLAVE_FUERTE_REQUERIDA", "Quien administra usuarios no puede entrar con PIN: "
+                    + "restablezca su clave con una fuerte antes de darle ese rol");
         }
 
         String antes = describir(u);
@@ -241,8 +246,8 @@ public class UsuarioService {
     }
 
     /**
-     * El administrador asigna una contraseña nueva (p. ej. si el usuario la olvidó). Las sesiones abiertas del
-     * usuario se cortan.
+     * El administrador asigna una clave o un PIN nuevo (p. ej. si el usuario lo olvidó; spec 022, D10). La regla depende
+     * de los roles de la persona. Las sesiones abiertas del usuario se cortan y nunca se devuelve ni se audita la clave.
      *
      * @param id  usuario
      * @param req contraseña nueva ya validada
@@ -251,12 +256,15 @@ public class UsuarioService {
     @Transactional
     public void restablecerPassword(Long id, RestablecerPasswordRequest req) {
         Usuario u = buscarEntidad(id);
+        u.setTipoCredencial(ReglasCredencial.validar(u.codigosRoles(), u.getId(), u.getEmpresaId(), req.passwordNueva()));
         u.setHashPassword(passwordEncoder.encode(req.passwordNueva()));
+        u.setIntentosFallidos(0);
+        u.setBloqueadoHasta(null);
         sesiones.revocarSesiones(u);
-        log.info("Contraseña del usuario {} restablecida por {}", id, SesionActual.usuario().id());
-        // nunca se audita la contraseña, solo el hecho
+        log.info("Credencial del usuario {} restablecida por {}", id, SesionActual.usuario().id());
+        // nunca se audita la contraseña, solo el hecho y el tipo
         auditoriaService.exito(AccionAuditoria.USUARIO_RESTABLECER_PASSWORD, EntidadAuditada.USUARIO, id,
-                "correo=" + u.getCorreo());
+                "correo=" + u.getCorreo() + "; tipo=" + u.getTipoCredencial());
     }
 
     /**
@@ -264,16 +272,23 @@ public class UsuarioService {
      * iniciar sesión de nuevo con la clave nueva.
      *
      * @param req contraseña actual y nueva
-     * @throws NegocioException si la actual no coincide o la nueva es igual a la actual
+     * @throws NegocioException si entra con PIN (lo asigna el jefe), la actual no coincide o la nueva es igual a la actual
      */
     @Transactional
     public void cambiarPasswordPropia(CambioPasswordRequest req) {
         Usuario u = buscarEntidad(SesionActual.usuario().id());
+        if (u.getTipoCredencial() == TipoCredencial.PIN) {
+            throw new NegocioException("PIN_ASIGNADO", "Su PIN lo asigna el administrador: pídale uno nuevo si lo olvidó");
+        }
         if (!passwordEncoder.matches(req.passwordActual(), u.getHashPassword())) {
             throw new NegocioException("PASSWORD_ACTUAL", "La contraseña actual no es correcta");
         }
         if (req.passwordActual().equals(req.passwordNueva())) {
             throw new NegocioException("PASSWORD_REPETIDA", "La nueva contraseña debe ser distinta a la actual");
+        }
+        if (ReglasCredencial.administra(u.codigosRoles(), u.getId(), u.getEmpresaId())
+                && !ReglasCredencial.esFuerte(req.passwordNueva())) {
+            throw new ParametroInvalidoException(ReglasCredencial.MENSAJE_FUERTE);
         }
         u.setHashPassword(passwordEncoder.encode(req.passwordNueva()));
         sesiones.revocarSesiones(u);
@@ -288,16 +303,6 @@ public class UsuarioService {
     @Transactional(readOnly = true)
     public UsuarioResponse perfil() {
         return obtener(SesionActual.usuario().id());
-    }
-
-    /**
-     * Catálogo de roles.
-     *
-     * @return roles ordenados por nombre
-     */
-    @Transactional(readOnly = true)
-    public List<RolResponse> listarRoles() {
-        return rolRepository.findAllByOrderByNombreAsc().stream().map(RolResponse::of).toList();
     }
 
     // ----------------------------------------------------------------- apoyo
@@ -315,7 +320,15 @@ public class UsuarioService {
     }
 
     /**
-     * Convierte códigos a entidades. {@code @RolesExistentes} ya garantizó que existen.
+     * @param roles roles
+     * @return sus códigos
+     */
+    private static Set<String> codigos(Set<Rol> roles) {
+        return roles.stream().map(Rol::getCodigo).collect(Collectors.toSet());
+    }
+
+    /**
+     * Convierte códigos a entidades. {@code @RolesExistentes} ya garantizó que existen y son visibles para la empresa.
      *
      * @param codigos códigos de rol (cualquier mayúscula/espacio)
      * @return entidades de rol

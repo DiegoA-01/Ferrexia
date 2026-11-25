@@ -152,9 +152,50 @@ class UsuarioServiceTest {
 
         verify(sesiones, never()).revocarSesiones(any()); // un cambio rechazado no corta nada
 
-        service.cambiarPasswordPropia(new CambioPasswordRequest("ClaveActual1", "NuevaClave1"));
-        assertTrue(encoder.matches("NuevaClave1", admin.getHashPassword()));
+        // spec 022: quien administra usuarios necesita clave fuerte
+        assertThrows(com.proyecto.supply_core.common.exception.ParametroInvalidoException.class,
+                () -> service.cambiarPasswordPropia(new CambioPasswordRequest("ClaveActual1", "NuevaClave1")));
+
+        service.cambiarPasswordPropia(new CambioPasswordRequest("ClaveActual1", "Ferreteria#2026"));
+        assertTrue(encoder.matches("Ferreteria#2026", admin.getHashPassword()));
         verify(sesiones).revocarSesiones(admin);
+    }
+
+    @Test
+    void elPersonalConPinNoCambiaSuClave() {
+        admin.setTipoCredencial(com.proyecto.supply_core.usuario.enums.TipoCredencial.PIN);
+        assertEquals("PIN_ASIGNADO", assertThrows(NegocioException.class,
+                () -> service.cambiarPasswordPropia(new CambioPasswordRequest("ClaveActual1", "NuevaClave1"))).getCodigo());
+    }
+
+    @Test
+    void alPersonalSeLeDaUnPinYNuncaSeAuditaElValor() {
+        when(roles.findByCodigoIn(anyCollection())).thenReturn(List.of(rol("CAJERO")));
+        var creado = service.crear(new UsuarioRequest("Caja", "caja@demo.com", "482913", Set.of("CAJERO"), null, null));
+        assertEquals(com.proyecto.supply_core.usuario.enums.TipoCredencial.PIN, creado.tipoCredencial());
+
+        Usuario otro = usuario(2L, "otro@x.com", rol("CAJERO"));
+        when(usuarios.findWithRolesById(2L)).thenReturn(Optional.of(otro));
+        service.restablecerPassword(2L, new RestablecerPasswordRequest("771204"));
+        assertTrue(encoder.matches("771204", otro.getHashPassword()));
+        assertEquals(com.proyecto.supply_core.usuario.enums.TipoCredencial.PIN, otro.getTipoCredencial());
+        verify(auditoria).exito(eq(AccionAuditoria.USUARIO_RESTABLECER_PASSWORD), eq(EntidadAuditada.USUARIO), eq(2L),
+                argThat(d -> d.contains("tipo=PIN") && !d.contains("771204")));
+    }
+
+    @Test
+    void unAdministradorNoPuedeQuedarConPin() {
+        Usuario otro = usuario(2L, "otro@x.com", rol("CAJERO"));
+        otro.setTipoCredencial(com.proyecto.supply_core.usuario.enums.TipoCredencial.PIN);
+        when(usuarios.findWithRolesById(2L)).thenReturn(Optional.of(otro));
+        when(roles.findByCodigoIn(anyCollection())).thenReturn(List.of(rol("ADMINISTRADOR")));
+        assertEquals("CLAVE_FUERTE_REQUERIDA", assertThrows(NegocioException.class, () -> service.actualizar(2L,
+                new UsuarioUpdateRequest("Otro", "otro@x.com", Set.of("ADMINISTRADOR"), null, null))).getCodigo());
+        // y si se le restablece, con PIN no: necesita clave fuerte
+        otro.getRoles().clear();
+        otro.getRoles().add(rol("ADMINISTRADOR"));
+        assertThrows(com.proyecto.supply_core.common.exception.ParametroInvalidoException.class,
+                () -> service.restablecerPassword(2L, new RestablecerPasswordRequest("123456")));
     }
 
     @Test

@@ -12,7 +12,7 @@ import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
 import com.proyecto.supply_core.compra.orden.repository.OrdenCompraRepository;
 import com.proyecto.supply_core.documento.acceso.ReglaAccesoDocumentos;
 import com.proyecto.supply_core.documento.enums.EntidadDocumento;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 
 /**
@@ -58,7 +58,7 @@ public class OrdenReglaDocumentos implements ReglaAccesoDocumentos {
     @Override
     public void validarSubida(Long ordenId, UsuarioAutenticado usuario) {
         OrdenCompra o = buscar(ordenId);
-        boolean compras = !usuario.esProveedor() && usuario.tieneAlgunRol(Roles.COMPRADOR, Roles.ADMIN_COMPRAS);
+        boolean compras = !usuario.esProveedor() && usuario.tienePermiso(Permisos.ORDEN_DOCUMENTOS);
         boolean duenoActivo = esDueno(o, usuario) && PROVEEDOR_ADJUNTA.contains(o.getEstado());
         if (!compras && !duenoActivo) {
             throw new AccesoDenegadoException("No puede adjuntar archivos a esta orden en su estado actual");
@@ -74,8 +74,7 @@ public class OrdenReglaDocumentos implements ReglaAccesoDocumentos {
     @Override
     public void validarLectura(Long ordenId, UsuarioAutenticado usuario) {
         OrdenCompra o = buscar(ordenId);
-        boolean interno = !usuario.esProveedor() && usuario.tieneAlgunRol(Roles.COMPRADOR, Roles.ADMIN_COMPRAS,
-                Roles.ALMACENISTA, Roles.ADMINISTRATIVO, Roles.APROBADOR, Roles.AUDITOR);
+        boolean interno = !usuario.esProveedor() && usuario.tienePermiso(Permisos.ORDEN_VER);
         if (!interno && !esDueno(o, usuario)) {
             throw new AccesoDenegadoException("No puede ver los archivos de esta orden");
         }

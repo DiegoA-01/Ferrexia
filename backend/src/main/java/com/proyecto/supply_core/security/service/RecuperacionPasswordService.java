@@ -93,6 +93,12 @@ public class RecuperacionPasswordService {
                     "correo=" + limpio + "; motivo=" + (usuario == null ? "correo no registrado" : "cuenta inactiva"));
             return;
         }
+        if (usuario.getTipoCredencial() == com.proyecto.supply_core.usuario.enums.TipoCredencial.PIN) {
+            // el PIN del personal lo restablece su jefe (spec 022, D10): no se manda correo
+            auditoriaService.fallo(null, AccionAuditoria.PASSWORD_RECUPERAR_PEDIR, EntidadAuditada.USUARIO, usuario.getId(),
+                    "correo=" + limpio + "; motivo=entra con PIN");
+            return;
+        }
         if (repository.existsByUsuarioIdAndCreadoEnAfter(usuario.getId(),
                 ahora.minusSeconds(ESPERA_ENTRE_PEDIDOS_SEGUNDOS))) {
             return; // acaba de pedirlo: no se manda otro correo
@@ -137,7 +143,13 @@ public class RecuperacionPasswordService {
         if (usuario == null || !usuario.isActivo()) {
             throw new NoAutenticadoException(TOKEN_INVALIDO);
         }
+        if (com.proyecto.supply_core.usuario.validation.ReglasCredencial.administra(usuario.codigosRoles(), usuario.getId(),
+                usuario.getEmpresaId()) && !com.proyecto.supply_core.usuario.validation.ReglasCredencial.esFuerte(passwordNueva)) {
+            throw new com.proyecto.supply_core.common.exception.ParametroInvalidoException(
+                    com.proyecto.supply_core.usuario.validation.ReglasCredencial.MENSAJE_FUERTE);
+        }
         usuario.setHashPassword(passwordEncoder.encode(passwordNueva));
+        usuario.setTipoCredencial(com.proyecto.supply_core.usuario.enums.TipoCredencial.CLAVE);
         usuario.setIntentosFallidos(0);
         usuario.setBloqueadoHasta(null);
         repository.cerrarPendientes(usuario.getId(), ahora);
