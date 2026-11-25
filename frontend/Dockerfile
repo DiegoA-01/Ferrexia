@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 #
-# Imagen del frontend de Supply-Core (Angular 22 servido por nginx).
+# Imagen del frontend de Ferrexia (Angular 22 servido por nginx).
 # nginx sirve la aplicación y reenvía /api al backend: el navegador solo habla con un origen (sin CORS).
-# Se construye con el contexto en esta carpeta: docker build -t supply-core-web ./frontend
+# Se construye con el contexto en esta carpeta: docker build -t ferrexia-web ./frontend
 
 # ---------- Etapa 1: compilar ----------
 FROM node:24-alpine AS build
