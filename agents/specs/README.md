@@ -32,11 +32,11 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 | [008-costo-promedio-margen](008-costo-promedio-margen/spec.md) | F8 | Costo promedio ponderado y margen real | `feature/ventas-pos` | 004 | Hecha (V36, PR #32) |
 | [009-reportes-cuadre](009-reportes-cuadre/spec.md) | F9 | Reportes de ventas y caja, tablero, cuadre diario automático | `feature/ventas-reportes` | 006, 008 | Hecha (V38) |
 | [010-endurecimiento-e2e](010-endurecimiento-e2e/spec.md) | F10 | Alertas, pruebas de punta a punta en el CI, prueba de carga | `feature/ventas-endurecimiento` | 009 | Hecha (V39; falta ver el `e2e` del CI en GitHub) |
-| [011-menu-por-categorias](011-menu-por-categorias/spec.md) | — | Menú lateral en siete grupos: Ventas, Compras, Inventario, Reportes, Gestión humana y Gestión | `feature/menu-por-categorias` | — | Hecha (sin migración, falta PR) |
-| [012-inicio-categorias](012-inicio-categorias/spec.md) | — | Tablero de categorías con icono en la página de Inicio | `feature/inicio-categorias` | 011 | Hecha (sin migración, falta PR) |
-| [013-menu-desplegable](013-menu-desplegable/spec.md) | — | Barra lateral con categorías desplegables y tarjetas de Inicio que entran directo a su categoría | `feature/menu-desplegable` | 011, 012 | Hecha (sin migración, falta PR) |
-| [014-pestanas-categoria](014-pestanas-categoria/spec.md) | — | Fila de pestañas con las pantallas de la categoría actual en cada pantalla | `feature/pestanas-categoria` | 011, 013 | Hecha (sin migración, falta PR) |
-| [015-cajas-ocupadas](015-cajas-ocupadas/spec.md) | — | "Mi turno" muestra qué cajas están ocupadas, por quién y desde cuándo | `feature/cajas-ocupadas` | 003, 005 | Hecha (sin migración, falta PR) |
+| [011-menu-por-categorias](011-menu-por-categorias/spec.md) | — | Menú lateral en siete grupos: Ventas, Compras, Inventario, Reportes, Gestión humana y Gestión | `feature/menu-por-categorias` | — | Hecha (PR #12) |
+| [012-inicio-categorias](012-inicio-categorias/spec.md) | — | Tablero de categorías con icono en la página de Inicio | `feature/inicio-categorias` | 011 | Hecha (PR #13) |
+| [013-menu-desplegable](013-menu-desplegable/spec.md) | — | Barra lateral con categorías desplegables y tarjetas de Inicio que entran directo a su categoría | `feature/menu-desplegable` | 011, 012 | Hecha (PR #14; la regla de varias categorías abiertas la reemplaza la 017) |
+| [014-pestanas-categoria](014-pestanas-categoria/spec.md) | — | Fila de pestañas con las pantallas de la categoría actual en cada pantalla | `feature/pestanas-categoria` | 011, 013 | Hecha (PR #15) |
+| [015-cajas-ocupadas](015-cajas-ocupadas/spec.md) | — | "Mi turno" muestra qué cajas están ocupadas, por quién y desde cuándo | `feature/cajas-ocupadas` | 003, 005 | Hecha (PR #16) |
 
 ### Reunión N.° 2 (2026-11-23)
 Specs que salen de los 55 puntos de la reunión N.° 2. El agrupado por tema, el reparto entre dos personas y las fases
@@ -45,11 +45,11 @@ decisiones y se aprueban antes de escribir el plan.
 
 | Spec | Fase | Qué entrega | Rama | Depende de | Responsable | Estado |
 |---|---|---|---|---|---|---|
-| [016-pos-ajustes-rapidos](016-pos-ajustes-rapidos/spec.md) | 1 | Sin últimos 4 dígitos, voucher opcional, método de pago obligatorio, pedidos eliminados visibles | `feature/pos-ajustes-rapidos` | 005, 006 | Persona 1 | Hecha (V40, falta PR) |
-| [017-interfaz-general](017-interfaz-general/spec.md) | 1 | Punto de miles, sin flechas en números, sin scroll horizontal, pestañas fijas, una categoría abierta | `feature/interfaz-general` | 013, 014 | Persona 2 | Hecha (sin migración, falta PR) |
-| [018-mi-turno-claro](018-mi-turno-claro/spec.md) | 1 | "Mi turno" sin "crear turno" con turno abierto, botón de cerrar, acciones en menú, revisión del flujo de cajas | `feature/mi-turno-claro` | 003, 015 | Persona 1 | En construcción (código y pruebas listos; falta CI, Docker y revisión del flujo) |
-| [019-reorganizar-menu](019-reorganizar-menu/spec.md) | 1 | Reportes en su categoría (con el informe de compras) e Importación de datos en Configuración | `feature/reorganizar-menu` | 011, 013 | Persona 2 | Hecha (sin migración; aprobada el 2026-11-25; falta PR) |
-| [020-empresa-sedes-simples](020-empresa-sedes-simples/spec.md) | 1 | Código de ingreso automático y sede con enlace de Google Maps | `feature/empresa-sedes-simples` | SaaS 2 | Persona 2 | Hecha (V41; aprobada el 2026-11-25; falta PR) |
+| [016-pos-ajustes-rapidos](016-pos-ajustes-rapidos/spec.md) | 1 | Sin últimos 4 dígitos, voucher opcional, método de pago obligatorio, pedidos eliminados visibles | `feature/pos-ajustes-rapidos` | 005, 006 | Persona 1 | Hecha (V40, PR #19) |
+| [017-interfaz-general](017-interfaz-general/spec.md) | 1 | Punto de miles, sin flechas en números, sin scroll horizontal, pestañas fijas, una categoría abierta | `feature/interfaz-general` | 013, 014 | Persona 2 | Hecha (PR #20; arreglo de pestañas en #22) |
+| [018-mi-turno-claro](018-mi-turno-claro/spec.md) | 1 | "Mi turno" sin "crear turno" con turno abierto, botón de cerrar, acciones en menú, revisión del flujo de cajas | `feature/mi-turno-claro` | 003, 015 | Persona 1 | Hecha (PR #22; falta revisión en Docker con el cajero) |
+| [019-reorganizar-menu](019-reorganizar-menu/spec.md) | 1 | Reportes en su categoría (con el informe de compras) e Importación de datos en Configuración | `feature/reorganizar-menu` | 011, 013 | Persona 2 | Hecha (PR #23) |
+| [020-empresa-sedes-simples](020-empresa-sedes-simples/spec.md) | 1 | Código de ingreso automático y sede con enlace de Google Maps | `feature/empresa-sedes-simples` | SaaS 2 | Persona 2 | Hecha (V41, PR #24) |
 | [021-mi-turno-movimientos](021-mi-turno-movimientos/spec.md) | 2 | Facturas del turno con paginación, ingresos y egresos con categoría, esperado antes de cerrar | `feature/mi-turno-movimientos` | 018 | Persona 1 | Propuesta (D20) |
 | [022-permisos-plantillas-rol](022-permisos-plantillas-rol/spec.md) | 2 | Permisos por acción, plantillas de rol, permisos sueltos y clave corta del personal | `feature/permisos-plantillas-rol` | SaaS 3 | Persona 2 | Propuesta (D10, D18) |
 | [023-cierre-por-denominacion](023-cierre-por-denominacion/spec.md) | 2 | Cierre contando billetes y monedas, vista de ventas por turno | `feature/cierre-por-denominacion` | 021 | Persona 1 | Propuesta |
