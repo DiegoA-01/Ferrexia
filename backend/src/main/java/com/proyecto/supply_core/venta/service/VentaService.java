@@ -54,6 +54,8 @@ import com.proyecto.supply_core.usuario.entity.Usuario;
 import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
 import com.proyecto.supply_core.empresa.entity.Empresa;
 import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
+import com.proyecto.supply_core.security.context.Permisos;
+import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.venta.dto.LineaCotizada;
 import com.proyecto.supply_core.venta.dto.CotizacionVenta;
 import com.proyecto.supply_core.venta.dto.CotizarRequest;
@@ -498,7 +500,7 @@ public class VentaService {
         Long vendedor = null;
         String exacto = consecutivo == null || consecutivo.isBlank() ? null : consecutivo.trim().toUpperCase();
         if (!veTodas(roles)) {
-            if (roles.contains(Roles.VENDEDOR)) {
+            if (SesionActual.usuario().tienePermiso(Permisos.VENTA_VER_PROPIAS)) {
                 vendedor = yo;
             } else {
                 boolean suTurno = turnoId != null && turnoRepository.abiertoDe(yo)
@@ -821,11 +823,11 @@ public class VentaService {
     }
 
     /**
-     * @param roles roles de la sesión
+     * @param roles roles de la sesión (no se usan: decide el permiso de la sesión)
      * @return {@code true} si ve todas las ventas
      */
     private static boolean veTodas(Set<String> roles) {
-        return roles.contains(Roles.SUPERVISOR_VENTAS) || roles.contains(Roles.ADMIN_SISTEMA) || roles.contains(Roles.AUDITOR);
+        return SesionActual.usuario().tienePermiso(Permisos.VENTA_VER_TODAS);
     }
 
     /**
@@ -835,8 +837,9 @@ public class VentaService {
     private static void verificarAcceso(Venta v) {
         Set<String> roles = SesionActual.usuario().roles();
         Long yo = SesionActual.usuario().id();
-        if (veTodas(roles) || roles.contains(Roles.CAJERO) || yo.equals(v.getCajeroUsuarioId())
-                || (roles.contains(Roles.VENDEDOR) && yo.equals(v.getVendedorUsuarioId()))) {
+        UsuarioAutenticado sesion = SesionActual.usuario();
+        if (veTodas(roles) || sesion.tienePermiso(Permisos.VENTA_COBRAR) || yo.equals(v.getCajeroUsuarioId())
+                || (sesion.tienePermiso(Permisos.VENTA_VER_PROPIAS) && yo.equals(v.getVendedorUsuarioId()))) {
             return;
         }
         throw new NoEncontradoException("Venta no encontrada");

@@ -18,10 +18,13 @@ import org.springframework.web.bind.annotation.RestController;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.context.Permisos;
+import com.proyecto.supply_core.usuario.dto.AjustePermisosRequest;
+import com.proyecto.supply_core.usuario.dto.PermisoUsuarioResponse;
 import com.proyecto.supply_core.usuario.dto.RestablecerPasswordRequest;
 import com.proyecto.supply_core.usuario.dto.UsuarioRequest;
 import com.proyecto.supply_core.usuario.dto.UsuarioResponse;
 import com.proyecto.supply_core.usuario.dto.UsuarioUpdateRequest;
+import com.proyecto.supply_core.usuario.service.UsuarioPermisoService;
 import com.proyecto.supply_core.usuario.service.UsuarioService;
 
 import jakarta.validation.Valid;
@@ -34,12 +37,15 @@ import jakarta.validation.constraints.Positive;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
+    private final UsuarioPermisoService permisoService;
 
     /**
      * @param usuarioService lógica de usuarios
+     * @param permisoService permisos sueltos de cada persona (spec 022)
      */
-    public UsuarioController(UsuarioService usuarioService) {
+    public UsuarioController(UsuarioService usuarioService, UsuarioPermisoService permisoService) {
         this.usuarioService = usuarioService;
+        this.permisoService = permisoService;
     }
 
     /**
@@ -133,15 +139,41 @@ public class UsuarioController {
     }
 
     /**
-     * Asigna una contraseña nueva a otro usuario.
+     * Asigna una clave o un PIN nuevo a otro usuario (nunca se devuelve; queda en la auditoría).
      *
      * @param id      id positivo
-     * @param request contraseña nueva validada
+     * @param request clave o PIN nuevo
      */
     @PutMapping("/{id}/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void restablecerPassword(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody RestablecerPasswordRequest request) {
         usuarioService.restablecerPassword(id, request);
+    }
+
+    /**
+     * Ficha de permisos de una persona (spec 022).
+     *
+     * @param id persona
+     * @return cada permiso con lo que dice su rol, su ajuste y si al final lo tiene
+     */
+    @GetMapping("/{id}/permisos")
+    @RequierePermiso(Permisos.USUARIO_VER)
+    public java.util.List<PermisoUsuarioResponse> permisos(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
+        return permisoService.ver(id);
+    }
+
+    /**
+     * Suma o quita permisos sueltos a una persona (reemplaza los ajustes anteriores).
+     *
+     * @param id      persona
+     * @param request ajustes
+     * @return la ficha de permisos actualizada
+     */
+    @PutMapping("/{id}/permisos")
+    public java.util.List<PermisoUsuarioResponse> cambiarPermisos(
+            @PathVariable @Positive(message = "debe ser un id válido") Long id,
+            @Valid @RequestBody AjustePermisosRequest request) {
+        return permisoService.cambiar(id, request);
     }
 }

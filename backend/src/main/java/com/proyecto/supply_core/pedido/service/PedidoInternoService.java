@@ -30,6 +30,7 @@ import com.proyecto.supply_core.pedido.dto.PedidoInternoResponse;
 import com.proyecto.supply_core.pedido.entity.PedidoInterno;
 import com.proyecto.supply_core.pedido.enums.EstadoPedidoInterno;
 import com.proyecto.supply_core.pedido.repository.PedidoInternoRepository;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.Roles;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
@@ -42,9 +43,6 @@ import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
 @Service
 public class PedidoInternoService {
 
-    /** Roles que ven todos los pedidos de la empresa. */
-    static final Set<String> ROLES_QUE_VEN_TODO = Set.of(Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.AUDITOR,
-            Roles.ADMIN_SISTEMA);
     /** Campos por los que se puede ordenar el listado. */
     private static final Set<String> CAMPOS_ORDENABLES = Set.of("creadoEn", "estado");
 
@@ -125,7 +123,7 @@ public class PedidoInternoService {
     @Transactional(readOnly = true)
     public PageResponse<PedidoInternoResponse> listar(boolean soloMios, EstadoPedidoInterno estado, Pageable pageable) {
         UsuarioAutenticado sesion = SesionActual.usuario();
-        boolean veTodo = sesion.roles().stream().anyMatch(ROLES_QUE_VEN_TODO::contains);
+        boolean veTodo = sesion.tienePermiso(Permisos.PEDIDO_INTERNO_VER_TODOS);
         Long usuario = soloMios || !veTodo ? sesion.id() : null;
         Page<PedidoInterno> pagina = pedidoRepository.buscar(usuario, estado,
                 Ordenamiento.validar(pageable, CAMPOS_ORDENABLES));

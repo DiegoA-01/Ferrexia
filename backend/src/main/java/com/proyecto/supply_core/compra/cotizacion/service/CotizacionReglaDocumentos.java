@@ -10,7 +10,7 @@ import com.proyecto.supply_core.compra.cotizacion.repository.CotizacionRepositor
 import com.proyecto.supply_core.compra.rfq.enums.EstadoRfq;
 import com.proyecto.supply_core.documento.acceso.ReglaAccesoDocumentos;
 import com.proyecto.supply_core.documento.enums.EntidadDocumento;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 
 /**
@@ -73,7 +73,7 @@ public class CotizacionReglaDocumentos implements ReglaAccesoDocumentos {
             return;
         }
         boolean interno = !usuario.esProveedor()
-                && usuario.tieneAlgunRol(Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.APROBADOR, Roles.AUDITOR);
+                && usuario.tienePermiso(Permisos.COTIZACION_VER);
         boolean sobreAbierto = c.getEstado() != EstadoCotizacion.BORRADOR && c.getRfq().getEstado() != EstadoRfq.ABIERTA;
         if (!interno || !sobreAbierto) {
             throw new AccesoDenegadoException("Los archivos de esta cotización aún no se pueden ver");

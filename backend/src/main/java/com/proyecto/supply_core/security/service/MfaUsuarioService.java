@@ -15,8 +15,9 @@ import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoAutenticadoException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.plataforma.service.TotpService;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.SesionActual;
+import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.security.dto.ConfiguracionMfaResponse;
 import com.proyecto.supply_core.security.dto.LoginResponse;
 import com.proyecto.supply_core.security.jwt.JwtUtil;
@@ -73,7 +74,9 @@ public class MfaUsuarioService {
      * @return {@code true} si ya lo activó o si es ADMIN_SISTEMA y la empresa lo exige
      */
     public boolean requiere(Usuario usuario) {
-        return usuario.isMfaActivo() || (obligatorioParaAdmin && usuario.codigosRoles().contains(Roles.ADMIN_SISTEMA));
+        return usuario.isMfaActivo() || (obligatorioParaAdmin && new UsuarioAutenticado(usuario.getId(), usuario.getCorreo(),
+                usuario.getNombreCompleto(), usuario.codigosRoles(), usuario.getProveedorId(), usuario.getEmpresaId())
+                .tienePermiso(Permisos.USUARIO_GESTIONAR));
     }
 
     /**

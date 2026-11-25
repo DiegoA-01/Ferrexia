@@ -47,6 +47,7 @@ import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.Roles;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.usuario.entity.Usuario;
@@ -447,12 +448,10 @@ public class TurnoService {
     }
 
     /**
-     * @return {@code true} si la sesión es supervisor de ventas, dueño o auditor
+     * @return {@code true} si la sesión ve los turnos de todas las cajas (supervisor de ventas, dueño o auditor)
      */
     private static boolean supervisa() {
-        Set<String> roles = SesionActual.usuario().roles();
-        return roles.contains(Roles.SUPERVISOR_VENTAS) || roles.contains(Roles.ADMIN_SISTEMA)
-                || roles.contains(Roles.AUDITOR);
+        return SesionActual.usuario().tienePermiso(Permisos.TURNO_BUSCAR);
     }
 
     /**

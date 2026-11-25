@@ -32,7 +32,11 @@ public class Rol {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Código estable usado en el JWT (ADMIN_SISTEMA, COMPRADOR, ...). */
+    /** Empresa dueña de un rol propio; {@code null} en las plantillas del sistema (spec 022). */
+    @Column(name = "empresa_id", updatable = false)
+    private Long empresaId;
+
+    /** Código estable usado en el JWT (ADMIN_SISTEMA, COMPRADOR, ...). Único entre todas las empresas. */
     @Column(nullable = false, unique = true, length = 50)
     private String codigo;
 
@@ -41,6 +45,10 @@ public class Rol {
 
     @Column(length = 250)
     private String descripcion;
+
+    /** Plantilla del sistema: de solo lectura para las empresas. */
+    @Column(name = "es_plantilla", nullable = false)
+    private boolean esPlantilla;
 
     @ManyToMany
     @JoinTable(name = "rol_permiso",

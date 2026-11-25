@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 
-import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO, ROLES_PRECIOS, ROLES_CATALOGOS, ROLES_CLIENTES, ROLES_CAJA, ROLES_POS, ROLES_MI_TURNO, ROLES_VENTAS, ROLES_PEDIDOS_VENTA, ROLES_CARTERA } from './core/navegacion/menu';
+import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO, ROLES_PRECIOS, ROLES_CATALOGOS, ROLES_CLIENTES, ROLES_CAJA, ROLES_POS, ROLES_MI_TURNO, ROLES_VENTAS, ROLES_PEDIDOS_VENTA, ROLES_CARTERA, ROLES_RECEPCION, ROLES_REPORTES_VENTAS, ROLES_CONFIGURACION,
+  ROLES_CATALOGOS_BASE, ROLES_USUARIOS, ROLES_AUDITORIA, ROLES_INFORMES, ROLES_NOTIFICACIONES, ROLES_EMPRESA, ROLES_IMPORTACION,
+  ROLES_SOLICITAR, ROLES_CREAR_RFQ, ROLES_EMITIR_ORDEN } from './core/navegacion/menu';
 import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard, proveedorGuard } from './core/sesion/guards';
 
 /**
@@ -38,14 +40,14 @@ export const routes: Routes = [
         path: 'solicitudes/nueva',
         title: 'Nueva solicitud · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['SOLICITANTE'], modulo: 'COMPRAS' },
+        data: { roles: ROLES_SOLICITAR, modulo: 'COMPRAS' },
         loadComponent: () => import('./features/solicitudes/solicitud-form').then(m => m.SolicitudForm),
       },
       {
         path: 'solicitudes/:id/editar',
         title: 'Editar solicitud · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['SOLICITANTE'], modulo: 'COMPRAS' },
+        data: { roles: ROLES_SOLICITAR, modulo: 'COMPRAS' },
         loadComponent: () => import('./features/solicitudes/solicitud-form').then(m => m.SolicitudForm),
       },
       {
@@ -66,7 +68,7 @@ export const routes: Routes = [
         path: 'cotizaciones/nueva',
         title: 'Nueva RFQ · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['COMPRADOR'], modulo: 'RFQ_COTIZACIONES' },
+        data: { roles: ROLES_CREAR_RFQ, modulo: 'RFQ_COTIZACIONES' },
         loadComponent: () => import('./features/cotizaciones/rfq-nueva').then(m => m.RfqNueva),
       },
       {
@@ -87,7 +89,7 @@ export const routes: Routes = [
         path: 'ordenes/directa',
         title: 'Orden directa · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['COMPRADOR'], modulo: 'ORDENES_PAGOS' },
+        data: { roles: ROLES_EMITIR_ORDEN, modulo: 'ORDENES_PAGOS' },
         loadComponent: () => import('./features/ordenes/orden-directa').then(m => m.OrdenDirecta),
       },
       {
@@ -101,14 +103,14 @@ export const routes: Routes = [
         path: 'recepcion',
         title: 'Recepción · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ROLES_ORDENES, modulo: 'RECEPCION' },
+        data: { roles: ROLES_RECEPCION, modulo: 'RECEPCION' },
         loadComponent: () => import('./features/recepcion/recepcion-lista').then(m => m.RecepcionLista),
       },
       {
         path: 'recepcion/:ordenId',
         title: 'Recibir mercancía · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ROLES_ORDENES, modulo: 'RECEPCION' },
+        data: { roles: ROLES_RECEPCION, modulo: 'RECEPCION' },
         loadComponent: () => import('./features/recepcion/recepcion').then(m => m.RecepcionOrden),
       },
       {
@@ -194,7 +196,7 @@ export const routes: Routes = [
         path: 'reportes/ventas',
         title: 'Reportes de ventas · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ROLES_VENTAS, modulo: 'VENTAS' },
+        data: { roles: ROLES_REPORTES_VENTAS, modulo: 'VENTAS' },
         loadComponent: () => import('./features/ventas/reportes-ventas').then(m => m.ReportesVentas),
       },
       {
@@ -271,14 +273,14 @@ export const routes: Routes = [
         path: 'informes',
         title: 'Informe de compras · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS'], modulo: 'COMPRAS' },
+        data: { roles: ROLES_INFORMES, modulo: 'COMPRAS' },
         loadComponent: () => import('./features/informes/informes').then(m => m.Informes),
       },
       {
         path: 'auditoria',
         title: 'Auditoría · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA' },
+        data: { roles: ROLES_AUDITORIA, modulo: 'AUDITORIA' },
         loadComponent: () => import('./features/auditoria/auditoria').then(m => m.Auditoria),
       },
       {
@@ -286,21 +288,21 @@ export const routes: Routes = [
         path: 'configuracion/importacion',
         title: 'Importación de datos · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS'] },
+        data: { roles: ROLES_IMPORTACION },
         loadComponent: () => import('./features/configuracion/importacion/importacion').then(m => m.Importacion),
       },
       {
         path: 'configuracion/empresa',
         title: 'Datos de la empresa · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['ADMIN_SISTEMA'] },
+        data: { roles: ROLES_EMPRESA },
         loadComponent: () => import('./features/configuracion/empresa').then(m => m.ConfigEmpresa),
       },
       {
         path: 'configuracion/notificaciones',
         title: 'Avisos y correos · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['ADMIN_SISTEMA'] },
+        data: { roles: ROLES_NOTIFICACIONES },
         loadComponent: () => import('./features/configuracion/notificaciones-config').then(m => m.NotificacionesConfig),
       },
       {
@@ -308,49 +310,56 @@ export const routes: Routes = [
         pathMatch: 'full',
         title: 'Configuración · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO'] },
+        data: { roles: ROLES_CONFIGURACION },
         loadComponent: () => import('./features/configuracion/configuracion').then(m => m.Configuracion),
       },
       {
         path: 'configuracion/politicas',
         title: 'Políticas de aprobación · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO'], modulo: 'COMPRAS' },
+        data: { roles: ROLES_CONFIGURACION, modulo: 'COMPRAS' },
         loadComponent: () => import('./features/configuracion/politicas').then(m => m.Politicas),
       },
       {
         path: 'configuracion/pesos',
         title: 'Pesos de evaluación · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO'], modulo: 'RFQ_COTIZACIONES' },
+        data: { roles: ROLES_CONFIGURACION, modulo: 'RFQ_COTIZACIONES' },
         loadComponent: () => import('./features/configuracion/pesos').then(m => m.PesosConfig),
       },
       {
         path: 'configuracion/presupuestos',
         title: 'Presupuestos · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO'], modulo: 'COMPRAS' },
+        data: { roles: ROLES_CONFIGURACION, modulo: 'COMPRAS' },
         loadComponent: () => import('./features/configuracion/presupuestos').then(m => m.Presupuestos),
       },
       {
         path: 'configuracion/contratos',
         title: 'Contratos · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO'], modulo: 'COMPRAS' },
+        data: { roles: ROLES_CONFIGURACION, modulo: 'COMPRAS' },
         loadComponent: () => import('./features/configuracion/contratos').then(m => m.Contratos),
       },
       {
         path: 'configuracion/:catalogo',
         title: 'Configuración · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO', 'ALMACENISTA'] },
+        data: { roles: ROLES_CATALOGOS_BASE },
         loadComponent: () => import('./features/configuracion/catalogo').then(m => m.Catalogo),
+      },
+      {
+        path: 'usuarios/roles',
+        canActivate: [permisoGuard],
+        title: 'Roles · Supply-Core',
+        data: { roles: ROLES_USUARIOS },
+        loadComponent: () => import('./features/usuarios/roles').then(m => m.Roles),
       },
       {
         path: 'usuarios',
         title: 'Usuarios y roles · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['ADMIN_SISTEMA', 'AUDITOR'] },
+        data: { roles: ROLES_USUARIOS },
         loadComponent: () => import('./features/usuarios/usuarios').then(m => m.Usuarios),
       },
       { path: 'perfil', title: 'Mi perfil · Supply-Core', loadComponent: () => import('./features/perfil/perfil').then(m => m.Perfil) },

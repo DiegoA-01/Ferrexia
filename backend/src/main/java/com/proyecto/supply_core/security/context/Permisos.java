@@ -213,6 +213,28 @@ public final class Permisos {
     /** Consultar la auditoría. */
     public static final String AUDITORIA_VER = "AUDITORIA_VER";
 
+    // ----------------------------------------------------------------- V44 (Parte B)
+    /** Crear, editar y borrar roles propios de la empresa. */
+    public static final String ROL_GESTIONAR = "ROL_GESTIONAR";
+    /** Ver las ventas y los reportes de todos los cajeros y vendedores. */
+    public static final String VENTA_VER_TODAS = "VENTA_VER_TODAS";
+    /** Ver solo las ventas en las que fue el vendedor. */
+    public static final String VENTA_VER_PROPIAS = "VENTA_VER_PROPIAS";
+    /** Cambiar pedidos de otros y las condiciones de crédito de un cliente. */
+    public static final String VENTA_SUPERVISAR = "VENTA_SUPERVISAR";
+    /** Ver los pedidos de venta de todos los vendedores. */
+    public static final String PEDIDO_VENTA_VER_TODOS = "PEDIDO_VENTA_VER_TODOS";
+    /** Adjuntar documentos a las órdenes de compra. */
+    public static final String ORDEN_DOCUMENTOS = "ORDEN_DOCUMENTOS";
+    /** Ver las solicitudes de compra de todos. */
+    public static final String SOLICITUD_VER_TODAS = "SOLICITUD_VER_TODAS";
+    /** Cancelar solicitudes de compra de otras personas. */
+    public static final String SOLICITUD_CANCELAR_AJENA = "SOLICITUD_CANCELAR_AJENA";
+    /** Revocar delegaciones de aprobación de otras personas. */
+    public static final String DELEGACION_REVOCAR_AJENA = "DELEGACION_REVOCAR_AJENA";
+    /** Ver los pedidos internos de todas las sedes. */
+    public static final String PEDIDO_INTERNO_VER_TODOS = "PEDIDO_INTERNO_VER_TODOS";
+
     /** Clase de constantes: no se instancia. */
     private Permisos() {
     }

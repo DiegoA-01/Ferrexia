@@ -12,3 +12,9 @@
 .rol-opcion { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--sc-borde); border-radius: 10px; cursor: pointer;
   input { margin-top: 3px; accent-color: var(--sc-primario); } span { display: flex; flex-direction: column; } }
 .rol-opcion:has(input:checked) { border-color: #f0b9a4; background: #fff8f5; }
+
+// Ficha de permisos (spec 022)
+.ficha-permisos .grupo { border: 1px solid var(--sc-borde); border-radius: 10px; padding: 8px 12px; margin: 0 0 10px; display: grid; gap: 6px;
+  legend { font-weight: 600; padding: 0 4px; } }
+.ficha-permisos .permiso { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  select { max-width: 150px; } }

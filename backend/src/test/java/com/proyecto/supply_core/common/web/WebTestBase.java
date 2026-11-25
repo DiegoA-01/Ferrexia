@@ -18,7 +18,7 @@ import com.proyecto.supply_core.inventario.repository.ProductoRepository;
 import com.proyecto.supply_core.plataforma.service.AccesoEmpresaService;
 import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
 import com.proyecto.supply_core.security.config.SecurityBeansConfig;
-import com.proyecto.supply_core.security.PermisosDeV43;
+import com.proyecto.supply_core.security.PermisosDeMigraciones;
 import com.proyecto.supply_core.security.service.PermisosService;
 import com.proyecto.supply_core.security.service.SesionUsuarioService;
 import com.proyecto.supply_core.security.context.PlataformaAutenticada;
@@ -78,7 +78,7 @@ public abstract class WebTestBase {
     @MockitoBean
     protected SesionUsuarioService sesionUsuarioService;
 
-    /** Simulado con los permisos que V43 da a cada rol (spec 022): el acceso es el mismo que en producción. */
+    /** Simulado con los permisos que dan V43 y V44 a cada rol (spec 022): el acceso es el mismo que en producción. */
     @MockitoBean
     protected PermisosService permisosService;
 
@@ -86,7 +86,7 @@ public abstract class WebTestBase {
     @BeforeEach
     void permisosDeLosRoles() {
         Mockito.when(permisosService.tiene(Mockito.any(), Mockito.anyString())).thenAnswer(i ->
-                PermisosDeV43.tiene(((UsuarioAutenticado) i.getArgument(0)).roles(), i.getArgument(1)));
+                PermisosDeMigraciones.tiene(((UsuarioAutenticado) i.getArgument(0)).roles(), i.getArgument(1)));
     }
 
     /**

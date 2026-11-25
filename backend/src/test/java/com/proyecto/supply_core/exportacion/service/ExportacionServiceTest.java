@@ -318,7 +318,7 @@ class ExportacionServiceTest {
 
     private static UsuarioResponse usuario(Long id, String nombre) {
         return new UsuarioResponse(id, nombre, "u" + id + "@ferreteria.com", true, Set.of("COMPRADOR"), null, null,
-                null, null, false);
+                null, null, false, com.proyecto.supply_core.usuario.enums.TipoCredencial.CLAVE);
     }
 
     private static OrdenResponse orden() {

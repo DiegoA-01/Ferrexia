@@ -20,7 +20,7 @@ import com.proyecto.supply_core.common.exception.ParametroInvalidoException;
 import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.reporte.dto.VentaReporte;
 import com.proyecto.supply_core.reporte.enums.AgrupacionVenta;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 
@@ -40,7 +40,6 @@ public class VentaReporteService {
             "TARJETA_CREDITO", "Tarjeta crédito", "TRANSFERENCIA", "Transferencia", "BILLETERA", "Billetera digital",
             "CREDITO", "Crédito", "SALDO_FAVOR", "Saldo a favor", AgregadorVentas.A_CUENTA, "Devuelto a crédito o saldo");
 
-    private static final Set<String> VEN_TODO = Set.of(Roles.ADMIN_SISTEMA, Roles.SUPERVISOR_VENTAS, Roles.AUDITOR);
 
     private static final String DIMENSIONES = """
             v.id AS venta_id, v.caja_id, c.nombre AS caja, v.cajero_usuario_id, uc.nombre_completo AS cajero,
@@ -73,7 +72,7 @@ public class VentaReporteService {
      * @return usuario al que se limita el reporte
      */
     static Long limiteDe(UsuarioAutenticado u) {
-        return u.roles().stream().anyMatch(VEN_TODO::contains) ? null : u.id();
+        return u.tienePermiso(Permisos.VENTA_VER_TODAS) ? null : u.id();
     }
 
     /**

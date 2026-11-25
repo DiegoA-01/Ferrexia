@@ -4,6 +4,28 @@ Rama `feature/permisos-plantillas-rol`, sacada de `develop` actualizado. Migraci
 Parte A) y **V44** (clave corta y roles propios, Parte B), las dos reservadas. Decisiones **D10** y **D18** tomadas tal como
 estaban. Es la spec más grande de la tanda: se construye en **dos partes**, en dos PR.
 
+## Ajustes de la Parte B (2026-11-25)
+- **V44:** 10 permisos nuevos (ROL_GESTIONAR y 9 que reemplazan reglas de los servicios, cada uno con exactamente los roles
+  que la regla aceptaba), plantilla **Administrador** (= Dueño sin `EMPRESA_GESTIONAR`) y `usuario.tipo_credencial`.
+- **Reglas de los servicios:** pasan a permiso las de "puede o no puede" (ver todas las ventas, turnos o solicitudes,
+  documentos de órdenes, facturas, pagos, recepciones y proveedores, supervisar pedidos y crédito, cancelar solicitudes o
+  revocar delegaciones ajenas, quién autoriza con PIN, MFA de quien administra). Se preguntan con
+  `UsuarioAutenticado.tienePermiso`. Quedan por rol: los avisos (`notificarRol`), los límites de descuento por rol, la
+  delegación de precios a compras, el "último dueño activo" y las políticas de aprobación (apuntan a un rol).
+- **Roles propios:** la tabla `rol` no lleva `@TenantId` (las plantillas son de todos); `RolRepository` solo devuelve
+  plantillas y roles de la empresa de la sesión, y con eso se valida al asignar roles (otra empresa no puede usar un rol
+  ajeno). Código único global `E<empresa>_<NOMBRE>` porque viaja en el JWT.
+- **Cambiar permisos no corta la sesión:** los permisos se calculan en el servidor en cada petición (no viajan en el JWT),
+  así que basta con limpiar la caché de `PermisosService`. Cambiar los roles de una persona sí exige volver a entrar (como
+  antes).
+- **Credencial (D10):** quien tiene `USUARIO_GESTIONAR` usa clave fuerte (12+ con mayúscula, minúscula, número y símbolo);
+  el personal usa PIN de 6 dígitos o la clave de siempre; el proveedor, la de siempre. Las claves que ya existían siguen
+  sirviendo. Con PIN no se cambia la propia clave ni se recupera por correo: la restablece el jefe. El alta de empresas en la
+  consola de plataforma mantiene la regla anterior para el primer administrador.
+- **Frontend:** `GET /api/perfil/permisos` da los permisos efectivos. Las listas de roles del menú y las rutas llevan su
+  permiso equivalente (`conPermiso`), así un rol propio ve sus pantallas; con roles de siempre el resultado es el mismo.
+  Los botones internos de algunas pantallas que usan listas de roles sueltas siguen por rol (pendiente menor).
+
 ## Ajustes al construir la Parte A (2026-11-25)
 - **Catálogo:** en cada controlador, los endpoints con el mismo conjunto de roles forman un permiso: 97 permisos y 259
   pares rol-permiso (detalle en `permisos.md`). Así ningún código mezcla dos conjuntos de roles y la equivalencia es exacta.

@@ -11,7 +11,6 @@ import com.proyecto.supply_core.usuario.validation.RolesExistentes;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
@@ -20,7 +19,7 @@ import jakarta.validation.constraints.Size;
  *
  * @param nombreCompleto nombre visible
  * @param correo         correo de login, único
- * @param password       contraseña inicial (8–72, con letra y número)
+ * @param password       clave o PIN inicial; la regla depende de los roles (ver {@code ReglasCredencial}, D10)
  * @param roles          códigos de rol existentes (sin distinguir mayúsculas)
  * @param centroCostoId  centro de costo (obligatorio para solicitar compras, UC-04)
  * @param proveedorId    solo para usuarios con rol PROVEEDOR
@@ -38,8 +37,7 @@ public record UsuarioRequest(
         String correo,
 
         @NotBlank(message = "es obligatoria")
-        @Size(min = ReglasPassword.MINIMO, max = ReglasPassword.MAXIMO, message = ReglasPassword.MENSAJE_LARGO)
-        @Pattern(regexp = ReglasPassword.PATRON, message = ReglasPassword.MENSAJE_PATRON)
+        @Size(min = 6, max = ReglasPassword.MAXIMO, message = "debe tener entre 6 y 72 caracteres")
         String password,
 
         @NotEmpty(message = "debe tener al menos un rol")

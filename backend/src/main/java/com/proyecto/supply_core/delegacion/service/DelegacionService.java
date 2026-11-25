@@ -27,7 +27,7 @@ import com.proyecto.supply_core.delegacion.repository.DelegacionRepository;
 import com.proyecto.supply_core.empresa.repository.PoliticaAprobacionRepository;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.usuario.entity.Usuario;
@@ -128,7 +128,7 @@ public class DelegacionService {
         UsuarioAutenticado sesion = SesionActual.usuario();
         DelegacionAprobacion d = delegacionRepository.findById(id)
                 .orElseThrow(() -> new NoEncontradoException("Delegación", id));
-        if (!d.getDeleganteId().equals(sesion.id()) && !sesion.tieneAlgunRol(Roles.ADMIN_COMPRAS)) {
+        if (!d.getDeleganteId().equals(sesion.id()) && !sesion.tienePermiso(Permisos.DELEGACION_REVOCAR_AJENA)) {
             throw new AccesoDenegadoException("Solo quien delegó o compras pueden revocar la delegación");
         }
         if (d.getEstado() != EstadoDelegacion.ACTIVA) {

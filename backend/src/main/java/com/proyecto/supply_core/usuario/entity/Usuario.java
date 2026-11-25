@@ -61,6 +61,12 @@ public class Usuario {
     @Column(name = "hash_password", nullable = false)
     private String hashPassword;
 
+    /** Clave o PIN de 6 dígitos (spec 022, D10). */
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(name = "tipo_credencial", nullable = false, length = 10)
+    private com.proyecto.supply_core.usuario.enums.TipoCredencial tipoCredencial =
+            com.proyecto.supply_core.usuario.enums.TipoCredencial.CLAVE;
+
     @Column(nullable = false)
     private boolean activo = true;
 

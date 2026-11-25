@@ -25,7 +25,10 @@ código (lo usan el JWT, las políticas de aprobación y la delegación). Siete 
 | `AUDITOR` | Contador/Auditor |
 
 Siguen con su nombre de antes `ADMIN_COMPRAS`, `SOLICITANTE`, `APROBADOR`, `ADMINISTRATIVO` y `PROVEEDOR`. La
-plantilla **Administrador** de D18 y los roles propios de cada empresa llegan en la Parte B.
+plantilla **Administrador** (`ADMINISTRADOR`, = Dueño sin `EMPRESA_GESTIONAR`) y los roles propios llegan en la Parte B
+(V44), junto con 10 permisos más: `ROL_GESTIONAR`, `VENTA_VER_TODAS`, `VENTA_VER_PROPIAS`, `VENTA_SUPERVISAR`,
+`PEDIDO_VENTA_VER_TODOS`, `ORDEN_DOCUMENTOS`, `SOLICITUD_VER_TODAS`, `SOLICITUD_CANCELAR_AJENA`,
+`DELEGACION_REVOCAR_AJENA` y `PEDIDO_INTERNO_VER_TODOS` (107 en total).
 
 ## Compras
 

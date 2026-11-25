@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
 import { PlataformaSesionService } from './plataforma-sesion.service';
+import { Acceso } from './acceso';
 import { SesionService } from './sesion.service';
 
 /** Zona de la empresa ({@code /app}): usuario interno con sesión. El proveedor va a su portal. */
@@ -20,7 +21,7 @@ export const empresaGuard: CanActivateFn = () => {
  */
 export const permisoGuard: CanActivateFn = route => {
   const sesion = inject(SesionService);
-  const roles = route.data['roles'] as string[] | undefined;
+  const roles = route.data['roles'] as Acceso | undefined;
   const modulo = route.data['modulo'] as string | undefined;
   return sesion.tieneRol(roles) && sesion.tieneModulo(modulo) ? true : inject(Router).parseUrl('/app/inicio');
 };

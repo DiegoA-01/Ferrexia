@@ -5,11 +5,13 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiPredicate;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 
 /**
@@ -19,6 +21,9 @@ import com.proyecto.supply_core.security.context.UsuarioAutenticado;
  * ({@code app.permisos.cache-segundos}) para no ir a la base en cada petición.
  * <p>Se consulta con SQL directo porque corre en el interceptor, antes del servicio; por eso la consulta de permisos
  * sueltos lleva la empresa a mano.</p>
+ * <p>Las reglas de los servicios preguntan con {@link #sesionTiene(String)} y {@link #usuarioTiene(UsuarioAutenticado,
+ * String)}, sin inyectar este bean (muchas viven en métodos estáticos). En las pruebas sin Spring se usa
+ * {@link #usarRespaldo(BiPredicate)}.</p>
  */
 @Service
 public class PermisosService {
@@ -26,6 +31,11 @@ public class PermisosService {
     /** Lo recordado y cuándo vence. */
     private record Entrada<T>(T valor, long venceEn) {
     }
+
+    /** El bean de la aplicación (lo fija {@link #registrar()}). */
+    private static volatile PermisosService activo;
+    /** Para pruebas sin Spring: decide con los roles de la persona. */
+    private static volatile BiPredicate<Set<String>, String> respaldo;
 
     private final JdbcTemplate jdbc;
     private final long vigenciaMs;
@@ -39,6 +49,47 @@ public class PermisosService {
     public PermisosService(JdbcTemplate jdbc, @Value("${app.permisos.cache-segundos:30}") long cacheSegundos) {
         this.jdbc = jdbc;
         this.vigenciaMs = cacheSegundos * 1000;
+    }
+
+    /** Spring lo llama al crear el bean: desde ahí las reglas de los servicios preguntan aquí (no al crearlo a mano). */
+    @jakarta.annotation.PostConstruct
+    void registrar() {
+        activo = this;
+    }
+
+    /**
+     * @param permiso código del permiso
+     * @return {@code true} si la persona de la sesión lo tiene
+     */
+    public static boolean sesionTiene(String permiso) {
+        return usuarioTiene(SesionActual.usuario(), permiso);
+    }
+
+    /**
+     * @param usuario persona (de la sesión o armada desde la base)
+     * @param permiso código del permiso
+     * @return {@code true} si la persona lo tiene
+     * @throws IllegalStateException si no hay bean ni respaldo (prueba sin configurar)
+     */
+    public static boolean usuarioTiene(UsuarioAutenticado usuario, String permiso) {
+        PermisosService p = activo;
+        if (p != null) {
+            return p.tiene(usuario, permiso);
+        }
+        BiPredicate<Set<String>, String> r = respaldo;
+        if (r == null) {
+            throw new IllegalStateException("PermisosService no está disponible");
+        }
+        return r.test(usuario.roles(), permiso);
+    }
+
+    /**
+     * Solo para pruebas sin Spring: decide los permisos con los roles.
+     *
+     * @param decision qué permisos da cada conjunto de roles
+     */
+    public static void usarRespaldo(BiPredicate<Set<String>, String> decision) {
+        respaldo = decision;
     }
 
     /**

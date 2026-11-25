@@ -7,6 +7,8 @@ package com.proyecto.supply_core.auditoria.enums;
 public enum EntidadAuditada {
     /** Tabla {@code usuario}. */
     USUARIO,
+    /** Tabla {@code rol} (roles propios, spec 022). */
+    ROL,
     /** Tabla {@code proveedor}. */
     PROVEEDOR,
     /** Tabla {@code empresa}. */

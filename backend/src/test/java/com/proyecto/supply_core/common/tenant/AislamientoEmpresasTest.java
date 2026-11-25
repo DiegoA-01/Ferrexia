@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -303,7 +304,8 @@ class AislamientoEmpresasTest {
                 rs -> {
                     porRol.computeIfAbsent(rs.getString(1), k -> new java.util.HashSet<>()).add(rs.getString(2));
                 });
-        assertEquals(antes.keySet(), despues.keySet(), "los endpoints son los mismos de la foto");
+        // los endpoints de la foto siguen todos; los nuevos (spec 022 Parte B en adelante) no tienen "antes"
+        assertTrue(despues.keySet().containsAll(antes.keySet()), "falta algún endpoint de la foto");
         List<String> diferencias = new java.util.ArrayList<>();
         antes.forEach((endpoint, regla) -> {
             String[] a = regla.split("\\|");
@@ -328,8 +330,8 @@ class AislamientoEmpresasTest {
             }
         });
         assertEquals(List.of(), diferencias);
-        assertEquals(97, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class));
-        assertEquals(12, jdbc.queryForObject("SELECT COUNT(*) FROM rol WHERE es_plantilla AND empresa_id IS NULL", Integer.class));
+        assertEquals(107, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class));
+        assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM rol WHERE es_plantilla AND empresa_id IS NULL", Integer.class));
     }
 
     /**
@@ -367,6 +369,141 @@ class AislamientoEmpresasTest {
                     .andExpect(status().isOk());
         } finally {
             jdbc.update("DELETE FROM usuario_permiso WHERE usuario_id = ?", usuarioA2);
+            permisosService.limpiar();
+        }
+    }
+
+    /**
+     * Parte B de la spec 022: roles propios, PIN del personal y permisos sueltos, sin cruzar empresas.
+     *
+     * @throws Exception si falla una petición
+     */
+    @Test
+    void losRolesPropiosElPinYLosPermisosSueltosNoCruzanEmpresas() throws Exception {
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        com.fasterxml.jackson.databind.ObjectMapper lector = new com.fasterxml.jackson.databind.ObjectMapper();
+        String duenoA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        String duenoB = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+        Long nuevo = null;
+        try {
+            // las plantillas se ven en las dos empresas, Administrador incluida, y no se cambian
+            String plantillas = mvc.perform(get("/api/roles").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.codigo=='ADMINISTRADOR')].plantilla").value(true))
+                    .andExpect(jsonPath("$[?(@.codigo=='ADMIN_SISTEMA')].nombre").value("Dueño"))
+                    .andReturn().getResponse().getContentAsString();
+            long dueno = 0;
+            for (var r : lector.readTree(plantillas)) {
+                if (r.get("codigo").asText().equals("ADMIN_SISTEMA")) {
+                    dueno = r.get("id").asLong();
+                }
+            }
+            mvc.perform(put("/api/roles/" + dueno).header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"nombre\":\"Dueño\",\"permisos\":[\"CAJA_VER\"]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PLANTILLA_SOLO_LECTURA"));
+
+            // A crea un rol propio copiando parte de una plantilla
+            String rol = "{\"nombre\":\"Cajero de noche\",\"permisos\":[\"TURNO_OPERAR\",\"CAJA_VER\",\"TURNO_VER\"]}";
+            var creado = lector.readTree(mvc.perform(post("/api/roles").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content(rol))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.plantilla").value(false))
+                    .andReturn().getResponse().getContentAsString());
+            long rolId = creado.get("id").asLong();
+            String codigo = creado.get("codigo").asText();
+            assertTrue(codigo.startsWith("E" + empresaA + "_"), codigo);
+            mvc.perform(post("/api/roles").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json).content(rol))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("ROL_DUPLICADO"));
+            mvc.perform(post("/api/roles").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"nombre\":\"Portal\",\"permisos\":[\"PORTAL_PROVEEDOR\"]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PERMISO_NO_PERMITIDO"));
+            mvc.perform(post("/api/roles").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "AUDITOR"))
+                            .contentType(json).content("{\"nombre\":\"Otro\",\"permisos\":[\"CAJA_VER\"]}"))
+                    .andExpect(status().isForbidden());
+
+            // B no ve el rol de A, no lo cambia, no lo borra y no se lo puede dar a nadie
+            mvc.perform(get("/api/roles").header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(jsonPath("$[?(@.id==" + rolId + ")]").isEmpty());
+            mvc.perform(put("/api/roles/" + rolId).header(HttpHeaders.AUTHORIZATION, duenoB).contentType(json).content(rol))
+                    .andExpect(status().isNotFound());
+            mvc.perform(delete("/api/roles/" + rolId).header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/usuarios").header(HttpHeaders.AUTHORIZATION, duenoB).contentType(json)
+                            .content("{\"nombreCompleto\":\"Intruso\",\"correo\":\"intruso@b.com\",\"password\":\"482913\","
+                                    + "\"roles\":[\"" + codigo + "\"]}"))
+                    .andExpect(status().isBadRequest());
+
+            // A le da el rol a una cajera con PIN de 6 dígitos: entra con el PIN y nada devuelve la clave
+            String alta = mvc.perform(post("/api/usuarios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"nombreCompleto\":\"Cajera Noche\",\"correo\":\"noche@a.com\",\"password\":\"482913\","
+                                    + "\"roles\":[\"" + codigo + "\"]}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.tipoCredencial").value("PIN"))
+                    .andReturn().getResponse().getContentAsString();
+            assertFalse(alta.contains("482913") || alta.toLowerCase().contains("hash"), "la API no devuelve la clave");
+            nuevo = lector.readTree(alta).get("id").asLong();
+            String login = mvc.perform(post("/api/auth/login").contentType(json)
+                            .content("{\"empresa\":\"demo\",\"correo\":\"noche@a.com\",\"password\":\"482913\"}"))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            String cajera = "Bearer " + lector.readTree(login).get("token").asText();
+            // el permiso del rol propio sirve; lo que el rol no da, no
+            mvc.perform(get("/api/cajas").header(HttpHeaders.AUTHORIZATION, cajera)).andExpect(status().isOk());
+            mvc.perform(get("/api/usuarios").header(HttpHeaders.AUTHORIZATION, cajera)).andExpect(status().isForbidden());
+            // el PIN no lo cambia ella
+            mvc.perform(put("/api/perfil/password").header(HttpHeaders.AUTHORIZATION, cajera).contentType(json)
+                            .content("{\"passwordActual\":\"482913\",\"passwordNueva\":\"OtraClave99\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PIN_ASIGNADO"));
+            // el dueño se lo restablece y queda en la auditoría sin el valor
+            mvc.perform(put("/api/usuarios/" + nuevo + "/password").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"passwordNueva\":\"771204\"}"))
+                    .andExpect(status().isNoContent());
+            String detalle = jdbc.queryForObject("SELECT detalle FROM auditoria WHERE empresa_id = ? AND accion = "
+                    + "'USUARIO_RESTABLECER_PASSWORD' AND entidad_id = ? ORDER BY id DESC LIMIT 1", String.class, empresaA, nuevo);
+            assertTrue(detalle.contains("tipo=PIN") && !detalle.contains("771204"), detalle);
+            // a un administrador no se le acepta una clave débil ni un PIN
+            mvc.perform(post("/api/usuarios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"nombreCompleto\":\"Admin débil\",\"correo\":\"debil@a.com\",\"password\":\"Clave1234\","
+                                    + "\"roles\":[\"ADMINISTRADOR\"]}"))
+                    .andExpect(status().isBadRequest());
+
+            // un rol que alguien tiene no se borra
+            mvc.perform(delete("/api/roles/" + rolId).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("ROL_EN_USO"));
+
+            // permisos sueltos: se le quita ver cajas y se le suma la auditoría (entra con el PIN nuevo: el
+            // restablecimiento cortó sus sesiones)
+            String tokenNuevo = "Bearer " + lector.readTree(mvc.perform(post("/api/auth/login").contentType(json)
+                            .content("{\"empresa\":\"demo\",\"correo\":\"noche@a.com\",\"password\":\"771204\"}"))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("token").asText();
+            mvc.perform(get("/api/usuarios/" + nuevo + "/permisos").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$[?(@.codigo=='CAJA_VER')].delRol").value(true))
+                    .andExpect(jsonPath("$[?(@.codigo=='AUDITORIA_VER')].efectivo").value(false));
+            mvc.perform(put("/api/usuarios/" + nuevo + "/permisos").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"ajustes\":[{\"permiso\":\"CAJA_VER\",\"concedido\":false},"
+                                    + "{\"permiso\":\"AUDITORIA_VER\",\"concedido\":true}]}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.codigo=='CAJA_VER')].ajuste").value("QUITADO"))
+                    .andExpect(jsonPath("$[?(@.codigo=='AUDITORIA_VER')].efectivo").value(true));
+            mvc.perform(get("/api/cajas").header(HttpHeaders.AUTHORIZATION, tokenNuevo)).andExpect(status().isForbidden());
+            mvc.perform(get("/api/auditoria").header(HttpHeaders.AUTHORIZATION, tokenNuevo)).andExpect(status().isOk());
+            // nadie cambia sus propios permisos, y B no ve ni toca los de una persona de A
+            mvc.perform(put("/api/usuarios/" + usuarioA + "/permisos").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"ajustes\":[]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("AUTO_PERMISOS"));
+            mvc.perform(get("/api/usuarios/" + nuevo + "/permisos").header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(status().isNotFound());
+            mvc.perform(put("/api/usuarios/" + nuevo + "/permisos").header(HttpHeaders.AUTHORIZATION, duenoB).contentType(json)
+                            .content("{\"ajustes\":[{\"permiso\":\"USUARIO_GESTIONAR\",\"concedido\":true}]}"))
+                    .andExpect(status().isNotFound());
+        } finally {
+            if (nuevo != null) {
+                jdbc.update("DELETE FROM refresh_token WHERE usuario_id = ?", nuevo);
+                jdbc.update("DELETE FROM auditoria WHERE usuario_id = ?", nuevo);
+                jdbc.update("DELETE FROM usuario_permiso WHERE usuario_id = ?", nuevo);
+                jdbc.update("DELETE FROM usuario_rol WHERE usuario_id = ?", nuevo);
+                jdbc.update("DELETE FROM usuario WHERE id = ?", nuevo);
+            }
+            jdbc.update("DELETE FROM rol_permiso WHERE rol_id IN (SELECT id FROM rol WHERE empresa_id IN (?, ?))", empresaA, empresaB);
+            jdbc.update("DELETE FROM rol WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             permisosService.limpiar();
         }
     }

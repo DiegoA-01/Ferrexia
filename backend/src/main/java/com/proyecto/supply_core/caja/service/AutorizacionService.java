@@ -27,9 +27,9 @@ import com.proyecto.supply_core.caja.repository.AutorizacionSupervisorRepository
 import com.proyecto.supply_core.caja.repository.TurnoCajaRepository;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.SesionActual;
-import com.proyecto.supply_core.usuario.entity.Rol;
+import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.usuario.entity.Usuario;
 import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
 
@@ -205,11 +205,11 @@ public class AutorizacionService {
 
     /**
      * @param u usuario con sus roles
-     * @return {@code true} si es supervisor de ventas o dueño
+     * @return {@code true} si tiene el permiso de PIN de supervisor (supervisor de ventas o dueño)
      */
     private static boolean puedeAutorizar(Usuario u) {
-        return u.getRoles().stream().map(Rol::getCodigo)
-                .anyMatch(c -> c.equals(Roles.SUPERVISOR_VENTAS) || c.equals(Roles.ADMIN_SISTEMA));
+        return new UsuarioAutenticado(u.getId(), u.getCorreo(), u.getNombreCompleto(), u.codigosRoles(), u.getProveedorId(),
+                u.getEmpresaId()).tienePermiso(Permisos.AUTORIZACION_PIN);
     }
 
     /**

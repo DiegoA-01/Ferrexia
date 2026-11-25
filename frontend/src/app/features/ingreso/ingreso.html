@@ -67,7 +67,7 @@
         @if (invalido('correo')) { <span class="error">Escribe un correo válido.</span> }
       </div>
       <div class="campo">
-        <label for="password">Contraseña</label>
+        <label for="password">Contraseña o PIN</label>
         <div class="con-ojo">
           <input id="password" class="entrada" [type]="verClave() ? 'text' : 'password'" formControlName="password" autocomplete="current-password">
           <button type="button" class="ojo" (click)="verClave.set(!verClave())"
@@ -75,7 +75,7 @@
             <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span>
           </button>
         </div>
-        @if (invalido('password')) { <span class="error">Escribe tu contraseña.</span> }
+        @if (invalido('password')) { <span class="error">Escribe tu contraseña o tu PIN.</span> }
       </div>
 
       <p class="texto-chico texto-2 sin-margen">Tu sesión se renueva sola mientras trabajas.</p>

@@ -8,6 +8,7 @@
       </div>
       @if (puedeEditar()) {
         <div class="acciones">
+          <a class="boton" routerLink="/app/usuarios/roles"><span class="material-symbols-outlined">badge</span> Roles</a>
           <button type="button" class="boton primario" (click)="nuevo()"><span class="material-symbols-outlined">person_add</span> Nuevo usuario</button>
         </div>
       }
@@ -50,11 +51,13 @@
                 <td class="oculto-movil">{{ centro(u.centroCostoId) }}</td>
                 <td class="oculto-movil">{{ u.ultimoAcceso ? (u.ultimoAcceso | fecha: 'hora') : 'Nunca' }}</td>
                 <td><span class="chip" [class.verde]="u.activo">{{ u.activo ? 'Activo' : 'Inactivo' }}</span>
+                  @if (u.tipoCredencial === 'PIN') { <span class="chip chico" title="Entra con PIN de 6 dígitos">PIN</span> }
                   @if (u.mfaActivo) { <span class="chip chico" title="Tiene segundo factor activo">MFA</span> }</td>
                 @if (puedeEditar()) {
                   <td class="num">
                     <div class="fila fin">
-                      @if (!u.proveedorId) { <button type="button" class="boton chico" (click)="editar(u)">Editar</button> }
+                      @if (!u.proveedorId) { <button type="button" class="boton chico" (click)="editar(u)">Editar</button>
+                        <button type="button" class="boton chico" (click)="abrirPermisos(u)">Permisos</button> }
                       <button type="button" class="boton chico" (click)="abrirClave(u)" title="Restablecer contraseña" aria-label="Restablecer contraseña">
                         <span class="material-symbols-outlined">key</span></button>
                       @if (u.mfaActivo && u.id !== sesion.usuario()?.id) {
@@ -79,20 +82,49 @@
     @switch (panel().tipo) {
       @case ('clave') {
         <section class="tarjeta">
-          <h2>Restablecer contraseña</h2>
-          <p class="texto-2">Para {{ $any(panel()).usuario.nombreCompleto }}. Entrégale la contraseña por un canal seguro; luego puede cambiarla en su perfil.</p>
+          <h2>Restablecer clave o PIN</h2>
+          <p class="texto-2">Para {{ $any(panel()).usuario.nombreCompleto }}. Entrégasela por un canal seguro: después nadie la puede ver.</p>
           <div class="campo">
-            <label for="clave">Contraseña nueva</label>
+            <label for="clave">Clave o PIN nuevo</label>
             <div class="con-ojo">
               <input id="clave" class="entrada" [type]="verClave() ? 'text' : 'password'" autocomplete="new-password" [ngModel]="claveNueva()" (ngModelChange)="claveNueva.set($event)">
               <button type="button" class="ojo" (click)="verClave.set(!verClave())" [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="verClave()">
                 <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span></button>
             </div>
-            <span class="ayuda">Entre 8 y 72 caracteres, con al menos una letra y un número.</span>
+            <span class="ayuda">Personal: PIN de 6 dígitos. Quien administra usuarios: 12 a 72 caracteres con mayúscula, minúscula, número y símbolo.</span>
           </div>
           <div class="fila margen">
-            <button type="button" class="boton primario" [disabled]="trabajando()" (click)="guardarClave()">Guardar contraseña</button>
+            <button type="button" class="boton primario" [disabled]="trabajando()" (click)="guardarClave()">Guardar</button>
             <button type="button" class="boton" (click)="panel.set({ tipo: 'ninguno' })">Cancelar</button>
+          </div>
+        </section>
+      }
+      @case ('permisos') {
+        <section class="tarjeta ficha-permisos">
+          <h2>Permisos de {{ $any(panel()).usuario.nombreCompleto }}</h2>
+          <p class="texto-2">Lo que le da su rol, y lo que se le suma o quita a mano. Nadie cambia sus propios permisos.</p>
+          @if (fichaPermisos(); as ficha) {
+            @for (g of gruposPermisos(); track g.modulo) {
+              <fieldset class="grupo">
+                <legend>{{ g.titulo }}</legend>
+                @for (p of g.permisos; track p.codigo) {
+                  <div class="permiso">
+                    <span><strong [class.texto-2]="!p.efectivo">{{ p.nombre }}</strong>
+                      <span class="sub">{{ p.delRol ? 'Lo da su rol' : 'Su rol no lo da' }}</span></span>
+                    <select class="entrada" [attr.aria-label]="'Ajuste de ' + p.nombre" [disabled]="!puedeEditar()"
+                      [ngModel]="ajustes()[p.codigo!]" (ngModelChange)="ajustar(p.codigo!, $event)">
+                      <option ngValue="ROL">Como su rol</option>
+                      @if (!p.delRol) { <option ngValue="SUMADO">Sumar</option> }
+                      @if (p.delRol) { <option ngValue="QUITADO">Quitar</option> }
+                    </select>
+                  </div>
+                }
+              </fieldset>
+            }
+          } @else { <p class="cargando">Cargando permisos…</p> }
+          <div class="fila margen">
+            @if (puedeEditar()) { <button type="button" class="boton primario" [disabled]="trabajando() || !fichaPermisos()" (click)="guardarPermisos()">Guardar permisos</button> }
+            <button type="button" class="boton" (click)="panel.set({ tipo: 'ninguno' })">Cerrar</button>
           </div>
         </section>
       }
@@ -106,13 +138,13 @@
               @if (form.controls.correo.invalid && form.controls.correo.touched) { <span class="error">Escribe un correo válido.</span> }</div>
             @if (!editando()) {
               <div class="campo">
-                <label for="pw">Contraseña inicial</label>
+                <label for="pw">PIN o clave inicial</label>
                 <div class="con-ojo">
                   <input id="pw" class="entrada" [type]="verClave() ? 'text' : 'password'" formControlName="password" autocomplete="new-password">
                   <button type="button" class="ojo" (click)="verClave.set(!verClave())" [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="verClave()">
                     <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span></button>
                 </div>
-                <span class="ayuda" [class.error]="form.controls.password.invalid && form.controls.password.touched">Entre 8 y 72 caracteres, con al menos una letra y un número.</span>
+                <span class="ayuda" [class.error]="form.controls.password.invalid && form.controls.password.touched">Personal: PIN de 6 dígitos (no lo puede cambiar). Quien administra usuarios: 12 a 72 caracteres con mayúscula, minúscula, número y símbolo.</span>
               </div>
             }
             <fieldset class="campo grupo-roles">

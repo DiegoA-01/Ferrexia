@@ -23,6 +23,14 @@ public enum AccionAuditoria {
     USUARIO_DESACTIVAR,
     /** El administrador asignó una contraseña nueva. */
     USUARIO_RESTABLECER_PASSWORD,
+    /** Se creó un rol propio de la empresa (spec 022). */
+    ROL_CREAR,
+    /** Se cambió el nombre o los permisos de un rol propio. */
+    ROL_EDITAR,
+    /** Se borró un rol propio sin usuarios. */
+    ROL_ELIMINAR,
+    /** Se sumaron o quitaron permisos sueltos a una persona (spec 022). */
+    USUARIO_PERMISOS_CAMBIAR,
     /** El usuario cambió su propia contraseña. */
     PASSWORD_CAMBIAR,
     /** Un proveedor se registró desde el portal (queda PENDIENTE). */

@@ -1,6 +1,6 @@
 # 022 - Permisos por acción, plantillas de rol y contraseñas del personal
 
-**Estado:** Aprobada (Parte A hecha; Parte B por hacer) · **Rama:** `feature/permisos-plantillas-rol` · **Depende de:** SaaS 3 · **Responsable:** Persona 2
+**Estado:** Aprobada (Partes A y B hechas) · **Rama:** `feature/permisos-plantillas-rol` · **Depende de:** SaaS 3 · **Responsable:** Persona 2
 · **Puntos de la reunión 2:** 3, 5, 12, 34 · **Migración:** V43 (Parte A) y V44 (Parte B) · **Decisiones:** D10, D18 (tomadas, tal como están)
 
 ## Objetivo
@@ -31,13 +31,15 @@ más grande de esta tanda y la base de las specs 025 y 029.
 - El bloqueo por intentos fallidos y el límite de peticiones siguen igual para todos.
 
 ## Criterios de aceptación
-- [ ] El acceso a cada acción depende del permiso y no del rol.
-- [ ] Las plantillas por defecto existen en cada empresa, nueva o existente.
-- [ ] Al migrar, cada usuario conserva exactamente lo que podía hacer.
-- [ ] Se pueden sumar y quitar permisos a un trabajador y crear roles propios.
-- [ ] El personal entra con su clave corta; dueño y administradores con clave fuerte y MFA.
-- [ ] Ninguna pantalla ni API devuelve una contraseña; el restablecimiento queda auditado.
-- [ ] Prueba de fuga entre empresas para roles y permisos.
+- [x] El acceso a cada acción depende del permiso y no del rol (endpoints, reglas de los servicios, menú y rutas;
+  quedan por rol los avisos por notificación y algunos botones internos de pantallas, ver `plan.md`).
+- [x] Las plantillas por defecto existen en cada empresa, nueva o existente (son del sistema y las ven todas).
+- [x] Al migrar, cada usuario conserva exactamente lo que podía hacer (prueba de equivalencia de los 310 endpoints).
+- [x] Se pueden sumar y quitar permisos a un trabajador y crear roles propios.
+- [x] El personal entra con su clave corta; dueño y administradores con clave fuerte y MFA (las claves que ya
+  existían siguen sirviendo; la regla aplica al crear, restablecer o cambiar).
+- [x] Ninguna pantalla ni API devuelve una contraseña; el restablecimiento queda auditado.
+- [x] Prueba de fuga entre empresas para roles y permisos.
 
 ## Fuera de alcance
 - Permisos por caja (spec 025).

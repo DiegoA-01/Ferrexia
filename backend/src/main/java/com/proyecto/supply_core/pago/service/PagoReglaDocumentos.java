@@ -9,7 +9,7 @@ import com.proyecto.supply_core.documento.enums.EntidadDocumento;
 import com.proyecto.supply_core.pago.entity.Pago;
 import com.proyecto.supply_core.pago.enums.EstadoPago;
 import com.proyecto.supply_core.pago.repository.PagoRepository;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 
 /**
@@ -51,7 +51,7 @@ public class PagoReglaDocumentos implements ReglaAccesoDocumentos {
     @Override
     public void validarSubida(Long pagoId, UsuarioAutenticado usuario) {
         Pago p = buscar(pagoId);
-        if (usuario.esProveedor() || !usuario.tieneAlgunRol(Roles.ADMINISTRATIVO)) {
+        if (usuario.esProveedor() || !usuario.tienePermiso(Permisos.PAGO_REGISTRAR)) {
             throw new AccesoDenegadoException("Solo el área administrativa adjunta comprobantes de pago");
         }
         if (p.getEstado() != EstadoPago.REGISTRADO || p.getComprobanteDocumentoId() != null) {
@@ -68,8 +68,7 @@ public class PagoReglaDocumentos implements ReglaAccesoDocumentos {
     @Override
     public void validarLectura(Long pagoId, UsuarioAutenticado usuario) {
         Pago p = buscar(pagoId);
-        boolean interno = !usuario.esProveedor() && usuario.tieneAlgunRol(Roles.ADMINISTRATIVO, Roles.COMPRADOR,
-                Roles.ADMIN_COMPRAS, Roles.APROBADOR, Roles.AUDITOR);
+        boolean interno = !usuario.esProveedor() && usuario.tienePermiso(Permisos.PAGO_VER);
         boolean dueno = usuario.esProveedor() && p.getOrden().getProveedor().getId().equals(usuario.proveedorId());
         if (!interno && !dueno) {
             throw new AccesoDenegadoException("No puede ver el comprobante de este pago");

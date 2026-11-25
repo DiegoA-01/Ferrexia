@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { Pagina, Rol, Usuario, UsuarioCambios, UsuarioNuevo } from '../api/modelos';
+import { Pagina, Permiso, PermisoUsuario, Rol, RolNuevo, Usuario, UsuarioCambios, UsuarioNuevo } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
 /** Usuarios de la empresa (los maneja su administrador) y el perfil propio. */
@@ -17,9 +17,39 @@ export class UsuariosService {
     });
   }
 
-  /** Catálogo de roles que el administrador puede asignar. */
+  /** Plantillas del sistema y roles propios de la empresa, con sus permisos (spec 022). */
   roles(): Observable<Rol[]> {
     return this.http.get<Rol[]>(api('/api/roles'));
+  }
+
+  /** Catálogo de permisos por módulo. */
+  catalogoPermisos(): Observable<Permiso[]> {
+    return this.http.get<Permiso[]>(api('/api/roles/permisos'));
+  }
+
+  /** @param rol nombre, descripción y permisos del rol propio */
+  crearRol(rol: RolNuevo): Observable<Rol> {
+    return this.http.post<Rol>(api('/api/roles'), rol);
+  }
+
+  /** @param id rol propio; @param rol datos nuevos */
+  editarRol(id: number, rol: RolNuevo): Observable<Rol> {
+    return this.http.put<Rol>(api(`/api/roles/${id}`), rol);
+  }
+
+  /** @param id rol propio sin personas */
+  eliminarRol(id: number): Observable<void> {
+    return this.http.delete<void>(api(`/api/roles/${id}`));
+  }
+
+  /** @param id persona; su ficha de permisos */
+  permisosDe(id: number): Observable<PermisoUsuario[]> {
+    return this.http.get<PermisoUsuario[]>(api(`/api/usuarios/${id}/permisos`));
+  }
+
+  /** @param id persona; @param ajustes permisos sumados (true) o quitados (false); reemplaza los anteriores */
+  cambiarPermisos(id: number, ajustes: { permiso: string; concedido: boolean }[]): Observable<PermisoUsuario[]> {
+    return this.http.put<PermisoUsuario[]>(api(`/api/usuarios/${id}/permisos`), { ajustes });
   }
 
   /** @param usuario datos del usuario nuevo con su contraseña inicial */
@@ -42,7 +72,7 @@ export class UsuariosService {
     return this.http.patch<void>(api(`/api/usuarios/${id}/mfa/reiniciar`), {});
   }
 
-  /** @param id usuario; @param passwordNueva contraseña que el administrador le entrega */
+  /** @param id usuario; @param passwordNueva clave o PIN que el administrador le entrega (nunca vuelve del servidor) */
   restablecerPassword(id: number, passwordNueva: string): Observable<void> {
     return this.http.put<void>(api(`/api/usuarios/${id}/password`), { passwordNueva });
   }

@@ -18,6 +18,7 @@ import com.proyecto.supply_core.usuario.entity.Usuario;
  * @param ultimoAcceso   último login exitoso
  * @param creadoEn       fecha de creación
  * @param mfaActivo      si ya vinculó su app de autenticación (el login le pide el código)
+ * @param tipoCredencial entra con CLAVE o con PIN de 6 dígitos (spec 022); la clave nunca se devuelve
  */
 public record UsuarioResponse(
         Long id,
@@ -29,7 +30,8 @@ public record UsuarioResponse(
         Long proveedorId,
         LocalDateTime ultimoAcceso,
         LocalDateTime creadoEn,
-        boolean mfaActivo) {
+        boolean mfaActivo,
+        com.proyecto.supply_core.usuario.enums.TipoCredencial tipoCredencial) {
 
     /**
      * Convierte la entidad en DTO.
@@ -40,6 +42,6 @@ public record UsuarioResponse(
     public static UsuarioResponse of(Usuario u) {
         return new UsuarioResponse(u.getId(), u.getNombreCompleto(), u.getCorreo(), u.isActivo(),
                 u.codigosRoles(), u.getCentroCostoId(), u.getProveedorId(), u.getUltimoAcceso(),
-                u.getCreadoEn(), u.isMfaActivo());
+                u.getCreadoEn(), u.isMfaActivo(), u.getTipoCredencial());
     }
 }

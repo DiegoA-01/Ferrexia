@@ -98,10 +98,10 @@ class UsuarioRequestValidationTest {
 
     @Test
     void camposObligatoriosYFormato() {
-        Set<String> e = errores(new UsuarioRequest("", "no-es-correo", "corta", Set.of(), -1L, null));
+        Set<String> e = errores(new UsuarioRequest("", "no-es-correo", "corto", Set.of(), -1L, null));
         assertTrue(e.contains("nombreCompleto: es obligatorio"));
         assertTrue(e.contains("correo: no tiene un formato de correo válido"));
-        assertTrue(e.contains("password: debe tener entre 8 y 72 caracteres"));
+        assertTrue(e.contains("password: debe tener entre 6 y 72 caracteres"));
         assertTrue(e.contains("roles: debe tener al menos un rol"));
         assertTrue(e.contains("centroCostoId: debe ser un id válido"));
     }
@@ -115,10 +115,10 @@ class UsuarioRequestValidationTest {
                 errores(new UsuarioRequest("Ana", "a@demo.com", "Secreta123", Set.of("COMPRADOR"), 8L, null)));
     }
 
+    /** Spec 022: el formato de la clave depende de los roles y lo revisa el servicio; aquí solo el largo (un PIN tiene 6). */
     @Test
-    void passwordExigeLetraYNumero() {
-        assertEquals(Set.of("password: debe tener al menos una letra y un número"),
-                errores(new UsuarioRequest("Ana", "a@demo.com", "soloLetras", Set.of("COMPRADOR"), null, null)));
+    void elPinDeSeisDigitosPasaLaValidacionDelRequest() {
+        assertTrue(errores(new UsuarioRequest("Ana", "a@demo.com", "123456", Set.of("COMPRADOR"), null, null)).isEmpty());
     }
 
     private static UsuarioRequest valido(String correo, Set<String> roles, Long proveedorId) {
