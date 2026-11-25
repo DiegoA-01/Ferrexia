@@ -10,12 +10,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.compra.analisis.dto.PesosRequest;
 import com.proyecto.supply_core.compra.analisis.dto.PesosResponse;
 import com.proyecto.supply_core.compra.analisis.service.PesosService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
 
 import jakarta.validation.Valid;
 
@@ -53,7 +53,7 @@ public class PesosController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.PESOS_EVALUACION_GESTIONAR)
     public PesosResponse cambiar(@Valid @RequestBody PesosRequest request) {
         return pesosService.cambiar(request.pesos());
     }

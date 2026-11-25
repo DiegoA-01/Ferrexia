@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.inventario.dto.MovimientoFiltro;
 import com.proyecto.supply_core.inventario.dto.MovimientoRequest;
@@ -24,9 +25,8 @@ import com.proyecto.supply_core.inventario.dto.MovimientoResponse;
 import com.proyecto.supply_core.inventario.dto.RegistroMovimientoResponse;
 import com.proyecto.supply_core.inventario.dto.StockResponse;
 import com.proyecto.supply_core.inventario.service.MovimientoInventarioService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -85,7 +85,7 @@ public class InventarioController {
      */
     @PostMapping("/movimientos")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ALMACENISTA)
+    @RequierePermiso(Permisos.INVENTARIO_MOVER)
     public RegistroMovimientoResponse registrar(@Valid @RequestBody MovimientoRequest request) {
         return movimientoService.registrar(request);
     }

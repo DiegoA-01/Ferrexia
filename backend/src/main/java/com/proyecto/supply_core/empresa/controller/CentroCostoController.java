@@ -18,9 +18,9 @@ import com.proyecto.supply_core.empresa.dto.CentroCostoRequest;
 import com.proyecto.supply_core.empresa.dto.CentroCostoResponse;
 import com.proyecto.supply_core.empresa.dto.CentroCostoUpdateRequest;
 import com.proyecto.supply_core.empresa.service.CentroCostoService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -70,7 +70,7 @@ public class CentroCostoController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.CENTRO_COSTO_GESTIONAR)
     public CentroCostoResponse crear(@Valid @RequestBody CentroCostoRequest request) {
         return centroCostoService.crear(request);
     }
@@ -83,7 +83,7 @@ public class CentroCostoController {
      * @return centro actualizado
      */
     @PutMapping("/{id}")
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.CENTRO_COSTO_GESTIONAR)
     public CentroCostoResponse actualizar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody CentroCostoUpdateRequest request) {
         return centroCostoService.actualizar(id, request);
@@ -96,7 +96,7 @@ public class CentroCostoController {
      * @return centro activo
      */
     @PatchMapping("/{id}/activar")
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.CENTRO_COSTO_GESTIONAR)
     public CentroCostoResponse activar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return centroCostoService.cambiarEstado(id, true);
     }
@@ -108,7 +108,7 @@ public class CentroCostoController {
      * @return centro inactivo
      */
     @PatchMapping("/{id}/desactivar")
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.CENTRO_COSTO_GESTIONAR)
     public CentroCostoResponse desactivar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return centroCostoService.cambiarEstado(id, false);
     }

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.compra.rfq.dto.RfqCrearRequest;
 import com.proyecto.supply_core.compra.rfq.dto.RfqDatosRequest;
@@ -23,8 +24,7 @@ import com.proyecto.supply_core.compra.rfq.dto.RfqResponse;
 import com.proyecto.supply_core.compra.rfq.dto.RfqResumenResponse;
 import com.proyecto.supply_core.compra.rfq.enums.EstadoRfq;
 import com.proyecto.supply_core.compra.rfq.service.RfqService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -35,7 +35,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.RFQ_COTIZACIONES)
 @RestController
 @RequestMapping("/api/rfqs")
-@RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.APROBADOR, Roles.AUDITOR })
+@RequierePermiso(Permisos.RFQ_VER)
 public class RfqController {
 
     private final RfqService rfqService;
@@ -55,7 +55,7 @@ public class RfqController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.RFQ_GESTIONAR)
     public RfqResponse crear(@Valid @RequestBody RfqCrearRequest request) {
         return rfqService.crear(request);
     }
@@ -68,7 +68,7 @@ public class RfqController {
      * @return RFQ con alertas
      */
     @PutMapping("/{id}")
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.RFQ_GESTIONAR)
     public RfqResponse actualizar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody RfqDatosRequest request) {
         return rfqService.actualizar(id, request);
@@ -81,7 +81,7 @@ public class RfqController {
      * @return RFQ abierta
      */
     @PostMapping("/{id}/abrir")
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.RFQ_GESTIONAR)
     public RfqResponse abrir(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return rfqService.abrir(id);
     }
@@ -93,7 +93,7 @@ public class RfqController {
      * @return RFQ cerrada
      */
     @PostMapping("/{id}/cerrar")
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.RFQ_GESTIONAR)
     public RfqResponse cerrar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return rfqService.cerrar(id);
     }
@@ -105,7 +105,7 @@ public class RfqController {
      * @return RFQ cancelada
      */
     @PostMapping("/{id}/cancelar")
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.RFQ_GESTIONAR)
     public RfqResponse cancelar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return rfqService.cancelar(id);
     }

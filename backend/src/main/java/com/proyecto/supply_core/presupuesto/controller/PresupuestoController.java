@@ -15,13 +15,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.presupuesto.dto.PresupuestoRequest;
 import com.proyecto.supply_core.presupuesto.dto.PresupuestoResponse;
 import com.proyecto.supply_core.presupuesto.dto.PresupuestoUpdateRequest;
 import com.proyecto.supply_core.presupuesto.service.PresupuestoService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -55,7 +55,7 @@ public class PresupuestoController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.PRESUPUESTO_GESTIONAR)
     public PresupuestoResponse crear(@Valid @RequestBody PresupuestoRequest request) {
         return presupuestoService.crear(request);
     }
@@ -68,7 +68,7 @@ public class PresupuestoController {
      * @return presupuesto actualizado
      */
     @PutMapping("/{id}")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.PRESUPUESTO_GESTIONAR)
     public PresupuestoResponse actualizar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody PresupuestoUpdateRequest request) {
         return presupuestoService.actualizar(id, request);
@@ -82,7 +82,7 @@ public class PresupuestoController {
      * @return presupuestos, del mes más reciente al más antiguo
      */
     @GetMapping
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.APROBADOR, Roles.ADMINISTRATIVO, Roles.AUDITOR })
+    @RequierePermiso(Permisos.PRESUPUESTO_VER)
     public List<PresupuestoResponse> listar(
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long centroCostoId,
             @RequestParam(required = false) @Min(value = 2000, message = "debe ser 2000 o posterior")
@@ -97,7 +97,7 @@ public class PresupuestoController {
      * @return presupuesto con lo comprometido
      */
     @GetMapping("/{id}")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.APROBADOR, Roles.ADMINISTRATIVO, Roles.AUDITOR })
+    @RequierePermiso(Permisos.PRESUPUESTO_VER)
     public PresupuestoResponse obtener(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return presupuestoService.obtener(id);
     }

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.proveedor.dto.ActualizarProveedorRequest;
 import com.proyecto.supply_core.proveedor.dto.EvaluacionResponse;
@@ -22,8 +23,7 @@ import com.proyecto.supply_core.proveedor.dto.ProveedorResponse;
 import com.proyecto.supply_core.proveedor.enums.EstadoProveedor;
 import com.proyecto.supply_core.proveedor.service.EvaluacionProveedorService;
 import com.proyecto.supply_core.proveedor.service.ProveedorService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -35,7 +35,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.PROVEEDORES)
 @RestController
 @RequestMapping("/api/proveedores")
-@RequiereRol(Roles.ADMIN_COMPRAS)
+@RequierePermiso(Permisos.PROVEEDOR_GESTIONAR)
 public class ProveedorController {
 
     private final ProveedorService proveedorService;
@@ -61,7 +61,7 @@ public class ProveedorController {
      * @return página de proveedores
      */
     @GetMapping
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.AUDITOR })
+    @RequierePermiso(Permisos.PROVEEDOR_VER)
     public PageResponse<ProveedorResponse> buscar(
             @RequestParam(required = false) String texto,
             @RequestParam(required = false) EstadoProveedor estado,
@@ -91,7 +91,7 @@ public class ProveedorController {
      * @return página de evaluaciones
      */
     @GetMapping("/{id}/evaluaciones")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.AUDITOR })
+    @RequierePermiso(Permisos.PROVEEDOR_VER)
     public PageResponse<EvaluacionResponse> evaluaciones(
             @PathVariable @Positive(message = "debe ser un id válido") Long id,
             @PageableDefault(size = 20, sort = "creadoEn", direction = Sort.Direction.DESC) Pageable pageable) {
@@ -105,7 +105,7 @@ public class ProveedorController {
      * @return proveedor
      */
     @GetMapping("/{id}")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.AUDITOR })
+    @RequierePermiso(Permisos.PROVEEDOR_VER)
     public ProveedorResponse obtener(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return proveedorService.obtener(id);
     }

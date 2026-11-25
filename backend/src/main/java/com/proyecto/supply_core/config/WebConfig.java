@@ -8,7 +8,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import com.proyecto.supply_core.security.interceptor.RolInterceptor;
 
-/** Configuración MVC: CORS para el frontend Angular y control de roles ({@code @RequiereRol}). */
+/** Configuración MVC: CORS para el frontend Angular y control de permisos ({@code @RequierePermiso}). */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
@@ -17,7 +17,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     /**
      * @param origenesPermitidos orígenes del frontend ({@code app.cors.allowed-origins}, separados por coma)
-     * @param rolInterceptor     interceptor que aplica {@code @RequiereRol}
+     * @param rolInterceptor     interceptor que aplica {@code @RequierePermiso}
      */
     public WebConfig(@Value("${app.cors.allowed-origins}") String[] origenesPermitidos,
             RolInterceptor rolInterceptor) {

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.despacho.dto.AnulacionRequest;
 import com.proyecto.supply_core.despacho.dto.DespachoRequest;
@@ -23,8 +24,7 @@ import com.proyecto.supply_core.despacho.dto.DespachoResponse;
 import com.proyecto.supply_core.despacho.dto.DespachoResumenResponse;
 import com.proyecto.supply_core.despacho.enums.EstadoDespacho;
 import com.proyecto.supply_core.despacho.service.DespachoService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -36,7 +36,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.DESPACHOS)
 @RestController
 @RequestMapping("/api/despachos")
-@RequiereRol({ Roles.ALMACENISTA, Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.AUDITOR })
+@RequierePermiso(Permisos.DESPACHO_VER)
 public class DespachoController {
 
     private final DespachoService despachoService;
@@ -56,7 +56,7 @@ public class DespachoController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ALMACENISTA)
+    @RequierePermiso(Permisos.DESPACHO_GESTIONAR)
     public DespachoResponse crear(@Valid @RequestBody DespachoRequest request) {
         return despachoService.crear(request);
     }
@@ -69,7 +69,7 @@ public class DespachoController {
      * @return despacho actualizado
      */
     @PutMapping("/{id}")
-    @RequiereRol(Roles.ALMACENISTA)
+    @RequierePermiso(Permisos.DESPACHO_GESTIONAR)
     public DespachoResponse actualizar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody DespachoRequest request) {
         return despachoService.actualizar(id, request);
@@ -82,7 +82,7 @@ public class DespachoController {
      * @return despacho confirmado
      */
     @PostMapping("/{id}/confirmar")
-    @RequiereRol(Roles.ALMACENISTA)
+    @RequierePermiso(Permisos.DESPACHO_GESTIONAR)
     public DespachoResponse confirmar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return despachoService.confirmar(id);
     }
@@ -95,7 +95,7 @@ public class DespachoController {
      * @return despacho anulado
      */
     @PostMapping("/{id}/anular")
-    @RequiereRol({ Roles.ALMACENISTA, Roles.ADMIN_COMPRAS })
+    @RequierePermiso(Permisos.DESPACHO_ANULAR)
     public DespachoResponse anular(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody AnulacionRequest request) {
         return despachoService.anular(id, request.motivo());

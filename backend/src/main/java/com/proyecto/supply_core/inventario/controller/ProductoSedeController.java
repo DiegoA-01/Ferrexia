@@ -13,10 +13,10 @@ import com.proyecto.supply_core.inventario.dto.ProductoSedeRequest;
 import com.proyecto.supply_core.inventario.dto.ProductoSedeResponse;
 import com.proyecto.supply_core.inventario.service.ProductoSedeService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -61,7 +61,7 @@ public class ProductoSedeController {
      * @return el producto en esa sede
      */
     @PutMapping("/{sedeId}")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.PRODUCTO_GESTIONAR)
     public ProductoSedeResponse guardar(@PathVariable @Positive(message = "debe ser un id válido") Long productoId,
             @PathVariable @Positive(message = "debe ser un id válido") Long sedeId,
             @Valid @RequestBody ProductoSedeRequest request) {

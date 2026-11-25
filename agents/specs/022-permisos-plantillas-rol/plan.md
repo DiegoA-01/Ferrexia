@@ -1,8 +1,21 @@
 # Plan 022
 
-Rama `feature/permisos-plantillas-rol`, sacada de `develop` actualizado. Migraciones propuestas **V43** (permisos y
-plantillas) y, si hace falta separarla, **V44** (clave corta del personal). Decisiones **D10** y **D18** deben estar
-tomadas antes de empezar. Es la spec más grande de la tanda: se construye en **dos partes** que pueden ir en dos PR.
+Rama `feature/permisos-plantillas-rol`, sacada de `develop` actualizado. Migraciones **V43** (permisos y plantillas,
+Parte A) y **V44** (clave corta y roles propios, Parte B), las dos reservadas. Decisiones **D10** y **D18** tomadas tal como
+estaban. Es la spec más grande de la tanda: se construye en **dos partes**, en dos PR.
+
+## Ajustes al construir la Parte A (2026-11-25)
+- **Catálogo:** en cada controlador, los endpoints con el mismo conjunto de roles forman un permiso: 97 permisos y 259
+  pares rol-permiso (detalle en `permisos.md`). Así ningún código mezcla dos conjuntos de roles y la equivalencia es exacta.
+- **Plantillas:** los 12 roles de siempre quedan como plantillas del sistema con el mismo código; siete toman el nombre de
+  D18 (Dueño, Cajero, Vendedor, Supervisor de ventas, Bodega, Compras, Contador/Auditor). La plantilla **Administrador** se
+  crea en la Parte B, con los roles propios.
+- **Reglas dentro de los servicios (antes T8):** pasan a la Parte B. Mientras no existan roles propios, cada persona tiene
+  solo roles de siempre y esas reglas deciden igual que hoy; cuando lleguen los roles propios, las reglas de "puede o no
+  puede" deben mirar el permiso. Las de segregación (nadie aprueba lo suyo) no cambian.
+- **Caché y versión de sesión:** `PermisosService` recuerda los permisos 30 segundos (`app.permisos.cache-segundos`). Subir
+  la `version_sesion` al cambiar permisos queda para la Parte B, que es la que trae la API para cambiarlos.
+- **Error:** sin el permiso, 403 con código `PERMISO_REQUERIDO` (antes `ACCESO_DENEGADO`; el frontend no lo distingue).
 
 ## Lo que hay hoy (revisado en el código)
 - **Roles fijos:** 12 roles globales (`Roles.java`: ADMIN_SISTEMA, ADMIN_COMPRAS, SOLICITANTE, COMPRADOR, APROBADOR,

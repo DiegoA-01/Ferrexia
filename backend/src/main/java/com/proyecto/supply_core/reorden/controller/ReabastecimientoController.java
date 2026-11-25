@@ -17,10 +17,10 @@ import com.proyecto.supply_core.reorden.dto.ReabastecimientoResponse;
 import com.proyecto.supply_core.reorden.dto.ResumenSede;
 import com.proyecto.supply_core.reorden.service.ReabastecimientoService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -52,8 +52,7 @@ public class ReabastecimientoController {
      * @return plan con resumen
      */
     @GetMapping
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.ALMACENISTA, Roles.SOLICITANTE, Roles.AUDITOR,
-            Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.REABASTECIMIENTO_VER)
     public ReabastecimientoResponse plan(
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long sedeId) {
         return reabastecimientoService.plan(sedeId);
@@ -65,8 +64,7 @@ public class ReabastecimientoController {
      * @return una fila por sede activa
      */
     @GetMapping("/sedes")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.ALMACENISTA, Roles.SOLICITANTE, Roles.AUDITOR,
-            Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.REABASTECIMIENTO_VER)
     public List<ResumenSede> sedes() {
         return reabastecimientoService.resumenSedes();
     }
@@ -79,7 +77,7 @@ public class ReabastecimientoController {
      */
     @PostMapping("/borrador")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.SOLICITANTE)
+    @RequierePermiso(Permisos.REABASTECIMIENTO_SOLICITAR)
     public SolicitudResponse crearBorrador(@Valid @RequestBody ReabastecimientoBorradorRequest request) {
         return reabastecimientoService.crearBorrador(request);
     }

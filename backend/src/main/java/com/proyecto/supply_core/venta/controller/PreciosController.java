@@ -20,10 +20,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.venta.dto.CargaPreciosResponse;
 import com.proyecto.supply_core.venta.dto.HistorialPrecio;
 import com.proyecto.supply_core.venta.dto.ListaPrecioRequest;
@@ -52,7 +52,7 @@ import jakarta.validation.constraints.Size;
 @RestController
 @RequestMapping("/api/ventas")
 @UsuarioInterno
-@RequiereRol({ Roles.ADMIN_SISTEMA, Roles.ADMIN_COMPRAS, Roles.AUDITOR })
+@RequierePermiso(Permisos.PRECIO_GESTIONAR)
 public class PreciosController {
 
     /** Tipo MIME de un libro de Excel .xlsx. */
@@ -111,8 +111,7 @@ public class PreciosController {
      * @return listas de precios
      */
     @GetMapping("/listas")
-    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.ADMIN_COMPRAS, Roles.AUDITOR, Roles.SUPERVISOR_VENTAS, Roles.CAJERO,
-            Roles.VENDEDOR })
+    @RequierePermiso(Permisos.PRECIO_LISTAS_VER)
     public List<ListaPrecioResponse> listas() {
         return preciosService.listas();
     }
@@ -205,7 +204,7 @@ public class PreciosController {
      * @return hasta 20 productos
      */
     @GetMapping("/productos")
-    @RequiereRol({ Roles.CAJERO, Roles.VENDEDOR, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.VENTA_BUSCAR_PRODUCTO)
     public List<ProductoParaVender> buscarParaVender(
             @RequestParam @Size(min = 1, max = 100, message = "de 1 a 100 caracteres") String q,
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long listaId,

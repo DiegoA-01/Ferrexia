@@ -11,12 +11,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.ia.dto.ConfirmarCampoRequest;
 import com.proyecto.supply_core.ia.dto.DigitacionRequest;
 import com.proyecto.supply_core.ia.dto.ProcesamientoResponse;
 import com.proyecto.supply_core.ia.service.ExtraccionService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -28,7 +28,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.IA)
 @RestController
 @RequestMapping("/api/cotizaciones/{cotizacionId}/extraccion")
-@RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS })
+@RequierePermiso(Permisos.COTIZACION_LECTURA_CONFIRMAR)
 public class ExtraccionController {
 
     private final ExtraccionService extraccionService;
@@ -47,7 +47,7 @@ public class ExtraccionController {
      * @return procesamiento
      */
     @GetMapping
-    @RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.AUDITOR })
+    @RequierePermiso(Permisos.COTIZACION_LECTURA_VER)
     public ProcesamientoResponse obtener(@PathVariable @Positive(message = "debe ser un id válido") Long cotizacionId) {
         return extraccionService.obtener(cotizacionId);
     }

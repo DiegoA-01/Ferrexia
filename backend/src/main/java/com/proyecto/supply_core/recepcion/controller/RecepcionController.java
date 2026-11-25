@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.recepcion.dto.CerrarRecepcionRequest;
 import com.proyecto.supply_core.recepcion.dto.LineaRecepcionResponse;
 import com.proyecto.supply_core.recepcion.dto.RecepcionResponse;
@@ -18,8 +19,7 @@ import com.proyecto.supply_core.recepcion.dto.RegistrarRecepcionRequest;
 import com.proyecto.supply_core.recepcion.dto.ResolverExcesoRequest;
 import com.proyecto.supply_core.recepcion.dto.ResumenRecepcionResponse;
 import com.proyecto.supply_core.recepcion.service.RecepcionService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -31,8 +31,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.RECEPCION)
 @RestController
 @RequestMapping("/api")
-@RequiereRol({ Roles.ALMACENISTA, Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.ADMINISTRATIVO, Roles.APROBADOR,
-        Roles.AUDITOR })
+@RequierePermiso(Permisos.RECEPCION_VER)
 public class RecepcionController {
 
     private final RecepcionService recepcionService;
@@ -53,7 +52,7 @@ public class RecepcionController {
      */
     @PostMapping("/ordenes/{ordenId}/recepciones")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ALMACENISTA)
+    @RequierePermiso(Permisos.RECEPCION_REGISTRAR)
     public RecepcionResponse registrar(@PathVariable @Positive(message = "debe ser un id válido") Long ordenId,
             @Valid @RequestBody RegistrarRecepcionRequest request) {
         return recepcionService.registrar(ordenId, request);
@@ -78,7 +77,7 @@ public class RecepcionController {
      * @return estado final de la recepción
      */
     @PostMapping("/ordenes/{ordenId}/recepciones/cerrar")
-    @RequiereRol({ Roles.ALMACENISTA, Roles.ADMIN_COMPRAS })
+    @RequierePermiso(Permisos.RECEPCION_CERRAR)
     public ResumenRecepcionResponse cerrar(@PathVariable @Positive(message = "debe ser un id válido") Long ordenId,
             @Valid @RequestBody CerrarRecepcionRequest request) {
         return recepcionService.cerrar(ordenId, request.motivo());
@@ -103,7 +102,7 @@ public class RecepcionController {
      * @return línea resuelta
      */
     @PostMapping("/recepciones/lineas/{id}/resolver-exceso")
-    @RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS })
+    @RequierePermiso(Permisos.RECEPCION_RESOLVER_EXCESO)
     public LineaRecepcionResponse resolverExceso(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody ResolverExcesoRequest request) {
         return recepcionService.resolverExceso(id, request.decision(), request.motivo());

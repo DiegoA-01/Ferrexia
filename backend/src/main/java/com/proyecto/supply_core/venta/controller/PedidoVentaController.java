@@ -17,10 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.venta.dto.DescartarPedidoRequest;
 import com.proyecto.supply_core.venta.dto.PedidoVentaRequest;
 import com.proyecto.supply_core.venta.dto.PedidoVentaResponse;
@@ -35,7 +35,7 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("/api/pedidos-venta")
 @UsuarioInterno
-@RequiereRol({ Roles.VENDEDOR, Roles.CAJERO, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA })
+@RequierePermiso(Permisos.PEDIDO_VENTA_GESTIONAR)
 @Validated
 public class PedidoVentaController {
 

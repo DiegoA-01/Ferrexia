@@ -11,9 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.proyecto.supply_core.reporte.dto.RotacionResponse;
 import com.proyecto.supply_core.reporte.service.RotacionService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.constraints.Positive;
 
@@ -24,8 +24,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.REPORTES)
 @RestController
 @RequestMapping("/api/reportes/rotacion")
-@RequiereRol({ Roles.ADMIN_SISTEMA, Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.APROBADOR, Roles.ADMINISTRATIVO,
-        Roles.AUDITOR, Roles.ALMACENISTA })
+@RequierePermiso(Permisos.REPORTE_ROTACION)
 public class RotacionController {
 
     private final RotacionService rotacionService;

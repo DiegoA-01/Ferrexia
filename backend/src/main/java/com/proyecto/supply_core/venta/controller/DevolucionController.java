@@ -16,10 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.venta.dto.DevolucionRequest;
 import com.proyecto.supply_core.venta.dto.DevolucionResponse;
 import com.proyecto.supply_core.venta.service.DevolucionService;
@@ -50,7 +50,7 @@ public class DevolucionController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol({ Roles.CAJERO, Roles.SUPERVISOR_VENTAS })
+    @RequierePermiso(Permisos.DEVOLUCION_REGISTRAR)
     public DevolucionResponse devolver(@Valid @RequestBody DevolucionRequest request) {
         return devolucionService.devolver(request);
     }
@@ -61,7 +61,7 @@ public class DevolucionController {
      * @return devoluciones
      */
     @GetMapping
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR, Roles.CAJERO })
+    @RequierePermiso(Permisos.DEVOLUCION_VER)
     public PageResponse<DevolucionResponse> buscar(@RequestParam(required = false) Long ventaId,
             @PageableDefault(size = 20, sort = "creadoEn", direction = Sort.Direction.DESC) Pageable pageable) {
         return devolucionService.buscar(ventaId, pageable);
@@ -72,7 +72,7 @@ public class DevolucionController {
      * @return devolución con sus líneas
      */
     @GetMapping("/{id}")
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR, Roles.CAJERO })
+    @RequierePermiso(Permisos.DEVOLUCION_VER)
     public DevolucionResponse obtener(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return devolucionService.obtener(id);
     }

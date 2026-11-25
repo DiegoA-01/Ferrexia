@@ -22,10 +22,10 @@ import com.proyecto.supply_core.caja.enums.EstadoTurno;
 import com.proyecto.supply_core.caja.service.TurnoService;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -38,7 +38,7 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("/api/turnos")
 @UsuarioInterno
-@RequiereRol({ Roles.CAJERO, Roles.SUPERVISOR_VENTAS })
+@RequierePermiso(Permisos.TURNO_OPERAR)
 public class TurnoController {
 
     private final TurnoService turnoService;
@@ -96,7 +96,7 @@ public class TurnoController {
      * @return turno aprobado
      */
     @PostMapping("/{id}/aprobar")
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.TURNO_SUPERVISAR)
     public TurnoResponse aprobar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody AprobarTurnoRequest request) {
         return turnoService.aprobar(id, request);
@@ -110,7 +110,7 @@ public class TurnoController {
      * @return turnos, los más recientes primero
      */
     @GetMapping
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.TURNO_BUSCAR)
     public PageResponse<TurnoResponse> buscar(@RequestParam(required = false) EstadoTurno estado,
             @RequestParam(defaultValue = "false") boolean pendientes,
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long cajaId,
@@ -126,7 +126,7 @@ public class TurnoController {
      * @return esperado por medio de pago y total
      */
     @GetMapping("/{id}/esperado")
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.TURNO_SUPERVISAR)
     public EsperadoTurnoResponse esperado(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return turnoService.esperado(id);
     }
@@ -138,7 +138,7 @@ public class TurnoController {
      * @return turno con su libro de caja
      */
     @GetMapping("/{id}")
-    @RequiereRol({ Roles.CAJERO, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.TURNO_VER)
     public TurnoResponse obtener(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return turnoService.obtener(id);
     }

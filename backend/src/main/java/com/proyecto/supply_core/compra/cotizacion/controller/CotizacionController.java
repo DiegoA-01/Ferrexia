@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.compra.cotizacion.dto.CotizacionResponse;
 import com.proyecto.supply_core.compra.cotizacion.service.CotizacionService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.constraints.Positive;
 
@@ -22,7 +22,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.RFQ_COTIZACIONES)
 @RestController
 @RequestMapping("/api/rfqs/{rfqId}/cotizaciones")
-@RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.APROBADOR, Roles.AUDITOR })
+@RequierePermiso(Permisos.COTIZACION_VER)
 public class CotizacionController {
 
     private final CotizacionService cotizacionService;

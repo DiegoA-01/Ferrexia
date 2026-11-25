@@ -24,10 +24,10 @@ import com.proyecto.supply_core.exportacion.service.ExportacionService;
 import com.proyecto.supply_core.inventario.dto.MovimientoFiltro;
 import com.proyecto.supply_core.reporte.enums.AgrupacionVenta;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.SesionActual;
 
 import jakarta.validation.Valid;
@@ -64,7 +64,7 @@ public class ExportacionController {
      */
     @GetMapping("/reportes/ventas")
     @RequiereModulo(Modulos.VENTAS)
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR, Roles.CAJERO, Roles.VENDEDOR })
+    @RequierePermiso(Permisos.REPORTE_VENTAS)
     public ResponseEntity<byte[]> reporteVentas(@RequestParam(required = false) String formato,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
@@ -82,7 +82,7 @@ public class ExportacionController {
      */
     @GetMapping("/reportes/caja")
     @RequiereModulo(Modulos.VENTAS)
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.REPORTE_CAJA)
     public ResponseEntity<byte[]> reporteCaja(@RequestParam(required = false) String formato,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
@@ -98,7 +98,7 @@ public class ExportacionController {
      */
     @GetMapping("/clientes")
     @RequiereModulo(Modulos.VENTAS)
-    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.EXPORTAR_CLIENTES)
     public ResponseEntity<byte[]> clientes(@RequestParam(required = false) String formato,
             @RequestParam(required = false) Boolean activo) {
         return descarga(exportacionService.clientes(formato, activo, DestinoExportacion.DESCARGA));
@@ -215,8 +215,7 @@ public class ExportacionController {
      */
     @GetMapping("/ordenes/{id}")
     @RequiereModulo(Modulos.ORDENES_PAGOS)
-    @RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.ALMACENISTA, Roles.ADMINISTRATIVO, Roles.APROBADOR,
-            Roles.AUDITOR })
+    @RequierePermiso(Permisos.EXPORTAR_ORDEN)
     public ResponseEntity<byte[]> orden(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @RequestParam(required = false) String formato) {
         return descarga(exportacionService.orden(formato, id, DestinoExportacion.DESCARGA));
@@ -231,8 +230,7 @@ public class ExportacionController {
      */
     @PostMapping("/ordenes/{id}/correo")
     @RequiereModulo(Modulos.ORDENES_PAGOS)
-    @RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.ALMACENISTA, Roles.ADMINISTRATIVO, Roles.APROBADOR,
-            Roles.AUDITOR })
+    @RequierePermiso(Permisos.EXPORTAR_ORDEN)
     public CorreoExportacionResponse ordenPorCorreo(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @RequestParam(required = false) String formato) {
         return correo(exportacionService.orden(formato, id, DestinoExportacion.CORREO));

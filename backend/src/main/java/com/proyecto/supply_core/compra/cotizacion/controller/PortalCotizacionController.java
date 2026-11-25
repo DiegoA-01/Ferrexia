@@ -13,11 +13,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.compra.cotizacion.dto.CotizacionRequest;
 import com.proyecto.supply_core.compra.cotizacion.dto.CotizacionResponse;
 import com.proyecto.supply_core.compra.cotizacion.service.CotizacionService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -28,7 +28,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.RFQ_COTIZACIONES)
 @RestController
 @RequestMapping("/api/portal/rfqs/{rfqId}/cotizacion")
-@RequiereRol(Roles.PROVEEDOR)
+@RequierePermiso(Permisos.PORTAL_PROVEEDOR)
 public class PortalCotizacionController {
 
     private final CotizacionService cotizacionService;

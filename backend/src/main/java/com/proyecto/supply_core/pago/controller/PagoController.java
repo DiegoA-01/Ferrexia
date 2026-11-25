@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.pago.dto.AnularPagoRequest;
 import com.proyecto.supply_core.pago.dto.PagoResponse;
@@ -28,8 +29,7 @@ import com.proyecto.supply_core.pago.dto.PagosOrdenResponse;
 import com.proyecto.supply_core.pago.dto.RegistrarPagoRequest;
 import com.proyecto.supply_core.pago.enums.EstadoPago;
 import com.proyecto.supply_core.pago.service.PagoService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -41,7 +41,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.ORDENES_PAGOS)
 @RestController
 @RequestMapping("/api")
-@RequiereRol({ Roles.ADMINISTRATIVO, Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.APROBADOR, Roles.AUDITOR })
+@RequierePermiso(Permisos.PAGO_VER)
 public class PagoController {
 
     private final PagoService pagoService;
@@ -62,7 +62,7 @@ public class PagoController {
      */
     @PostMapping("/ordenes/{ordenId}/pagos")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ADMINISTRATIVO)
+    @RequierePermiso(Permisos.PAGO_REGISTRAR)
     public PagoResponse registrar(@PathVariable @Positive(message = "debe ser un id válido") Long ordenId,
             @Valid @RequestBody RegistrarPagoRequest request) {
         return pagoService.registrar(ordenId, request);
@@ -91,7 +91,7 @@ public class PagoController {
      * @return página de pagos
      */
     @GetMapping("/pagos")
-    @RequiereRol({ Roles.ADMINISTRATIVO, Roles.ADMIN_COMPRAS, Roles.AUDITOR })
+    @RequierePermiso(Permisos.PAGO_BUSCAR)
     public PageResponse<PagoResponse> buscar(@RequestParam(required = false) EstadoPago estado,
             @RequestParam(required = false) Boolean evidenciaPendiente,
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long proveedorId,
@@ -120,7 +120,7 @@ public class PagoController {
      * @return pago sin evidencia pendiente
      */
     @PostMapping(path = "/pagos/{id}/comprobante", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @RequiereRol(Roles.ADMINISTRATIVO)
+    @RequierePermiso(Permisos.PAGO_REGISTRAR)
     public PagoResponse adjuntarComprobante(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @RequestPart("archivo") MultipartFile archivo) {
         return pagoService.adjuntarComprobante(id, archivo);
@@ -134,7 +134,7 @@ public class PagoController {
      * @return pago ANULADO
      */
     @PostMapping("/pagos/{id}/anular")
-    @RequiereRol(Roles.ADMINISTRATIVO)
+    @RequierePermiso(Permisos.PAGO_REGISTRAR)
     public PagoResponse anular(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody AnularPagoRequest request) {
         return pagoService.anular(id, request.motivo());

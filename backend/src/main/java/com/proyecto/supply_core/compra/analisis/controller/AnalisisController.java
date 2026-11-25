@@ -8,10 +8,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.compra.analisis.dto.AnalisisResponse;
 import com.proyecto.supply_core.compra.analisis.service.AnalisisService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.constraints.Positive;
 
@@ -22,7 +22,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.RFQ_COTIZACIONES)
 @RestController
 @RequestMapping("/api/rfqs/{rfqId}/analisis")
-@RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.APROBADOR, Roles.AUDITOR })
+@RequierePermiso(Permisos.ANALISIS_VER)
 public class AnalisisController {
 
     private final AnalisisService analisisService;
@@ -52,7 +52,7 @@ public class AnalisisController {
      * @return análisis
      */
     @PostMapping
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.ANALISIS_GENERAR)
     public AnalisisResponse generar(@PathVariable @Positive(message = "debe ser un id válido") Long rfqId) {
         return analisisService.generar(rfqId);
     }
@@ -64,7 +64,7 @@ public class AnalisisController {
      * @return análisis publicado
      */
     @PostMapping("/publicar")
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.ANALISIS_GENERAR)
     public AnalisisResponse publicar(@PathVariable @Positive(message = "debe ser un id válido") Long rfqId) {
         return analisisService.publicar(rfqId);
     }
@@ -77,7 +77,7 @@ public class AnalisisController {
      */
     @RequiereModulo(Modulos.IA)
     @PostMapping("/explicar")
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.ANALISIS_GENERAR)
     public AnalisisResponse explicar(@PathVariable @Positive(message = "debe ser un id válido") Long rfqId) {
         return analisisService.explicar(rfqId);
     }

@@ -14,14 +14,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.compra.adjudicacion.dto.AdjudicacionResponse;
 import com.proyecto.supply_core.compra.adjudicacion.dto.AdjudicarRequest;
 import com.proyecto.supply_core.compra.adjudicacion.dto.DecisionAdjudicacionRequest;
 import com.proyecto.supply_core.compra.adjudicacion.service.AdjudicacionService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -53,7 +53,7 @@ public class AdjudicacionController {
      */
     @PostMapping("/rfqs/{rfqId}/adjudicacion")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.ADJUDICACION_CREAR)
     public AdjudicacionResponse adjudicar(@PathVariable @Positive(message = "debe ser un id válido") Long rfqId,
             @Valid @RequestBody AdjudicarRequest request) {
         return adjudicacionService.adjudicar(rfqId, request);
@@ -66,7 +66,7 @@ public class AdjudicacionController {
      * @return adjudicación
      */
     @GetMapping("/rfqs/{rfqId}/adjudicacion")
-    @RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.APROBADOR, Roles.AUDITOR })
+    @RequierePermiso(Permisos.ADJUDICACION_VER)
     public AdjudicacionResponse deRfq(@PathVariable @Positive(message = "debe ser un id válido") Long rfqId) {
         return adjudicacionService.deRfq(rfqId);
     }
@@ -90,7 +90,7 @@ public class AdjudicacionController {
      * @return adjudicación
      */
     @GetMapping("/adjudicaciones/{id}")
-    @RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.APROBADOR, Roles.AUDITOR })
+    @RequierePermiso(Permisos.ADJUDICACION_VER)
     public AdjudicacionResponse obtener(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return adjudicacionService.obtener(id);
     }

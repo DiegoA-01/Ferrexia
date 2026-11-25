@@ -20,9 +20,9 @@ import com.proyecto.supply_core.empresa.dto.PoliticaAprobacionRequest;
 import com.proyecto.supply_core.empresa.dto.PoliticaAprobacionResponse;
 import com.proyecto.supply_core.empresa.enums.TipoPolitica;
 import com.proyecto.supply_core.empresa.service.PoliticaAprobacionService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Digits;
@@ -89,7 +89,7 @@ public class PoliticaAprobacionController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.POLITICA_APROBACION_GESTIONAR)
     public PoliticaAprobacionResponse crear(@Valid @RequestBody PoliticaAprobacionRequest request) {
         return politicaService.crear(request);
     }
@@ -102,7 +102,7 @@ public class PoliticaAprobacionController {
      * @return política actualizada
      */
     @PutMapping("/{id}")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.POLITICA_APROBACION_GESTIONAR)
     public PoliticaAprobacionResponse actualizar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody PoliticaAprobacionRequest request) {
         return politicaService.actualizar(id, request);
@@ -115,7 +115,7 @@ public class PoliticaAprobacionController {
      * @return política activa
      */
     @PatchMapping("/{id}/activar")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.POLITICA_APROBACION_GESTIONAR)
     public PoliticaAprobacionResponse activar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return politicaService.cambiarEstado(id, true);
     }
@@ -127,7 +127,7 @@ public class PoliticaAprobacionController {
      * @return política inactiva
      */
     @PatchMapping("/{id}/desactivar")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.POLITICA_APROBACION_GESTIONAR)
     public PoliticaAprobacionResponse desactivar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return politicaService.cambiarEstado(id, false);
     }

@@ -16,8 +16,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.common.dto.PageResponse;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.usuario.dto.RestablecerPasswordRequest;
 import com.proyecto.supply_core.usuario.dto.UsuarioRequest;
 import com.proyecto.supply_core.usuario.dto.UsuarioResponse;
@@ -30,7 +30,7 @@ import jakarta.validation.constraints.Positive;
 /** Administración de usuarios: solo ADMIN_SISTEMA (el AUDITOR puede consultar). */
 @RestController
 @RequestMapping("/api/usuarios")
-@RequiereRol(Roles.ADMIN_SISTEMA)
+@RequierePermiso(Permisos.USUARIO_GESTIONAR)
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
@@ -52,7 +52,7 @@ public class UsuarioController {
      * @return página de usuarios
      */
     @GetMapping
-    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.USUARIO_VER)
     public PageResponse<UsuarioResponse> buscar(
             @RequestParam(required = false) String texto,
             @RequestParam(required = false) Boolean activo,
@@ -68,7 +68,7 @@ public class UsuarioController {
      * @return usuario
      */
     @GetMapping("/{id}")
-    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.USUARIO_VER)
     public UsuarioResponse obtener(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return usuarioService.obtener(id);
     }

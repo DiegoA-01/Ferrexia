@@ -14,8 +14,8 @@ import com.proyecto.supply_core.notificacion.dto.ConfigNotificacionCambioRequest
 import com.proyecto.supply_core.notificacion.dto.ConfigNotificacionRequest;
 import com.proyecto.supply_core.notificacion.dto.ConfigNotificacionResponse;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -26,7 +26,7 @@ import jakarta.validation.constraints.Positive;
  */
 @RestController
 @RequestMapping("/api/config-notificaciones")
-@RequiereRol(Roles.ADMIN_SISTEMA)
+@RequierePermiso(Permisos.NOTIFICACIONES_CONFIGURAR)
 public class ConfigNotificacionController {
 
     private final NotificacionService notificacionService;

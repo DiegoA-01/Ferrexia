@@ -21,10 +21,10 @@ import com.proyecto.supply_core.cartera.dto.ResumenCartera;
 import com.proyecto.supply_core.cartera.service.AbonoService;
 import com.proyecto.supply_core.cartera.service.CarteraService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -53,7 +53,7 @@ public class CarteraController {
      * @return saldos por cliente y edades
      */
     @GetMapping("/cartera")
-    @RequiereRol({ Roles.CAJERO, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.CARTERA_VER)
     public ResumenCartera resumen() {
         return carteraService.resumen();
     }
@@ -63,7 +63,7 @@ public class CarteraController {
      * @return sus cuentas y abonos
      */
     @GetMapping("/cartera/clientes/{id}")
-    @RequiereRol({ Roles.CAJERO, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.CARTERA_VER)
     public DetalleCartera detalle(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return carteraService.detalle(id);
     }
@@ -74,7 +74,7 @@ public class CarteraController {
      * @return cartera del cliente
      */
     @PutMapping("/cartera/clientes/{id}/excepcion")
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.CARTERA_EXCEPCION)
     public ClienteCartera fijarExcepcion(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody ExcepcionCreditoRequest request) {
         return carteraService.fijarExcepcion(id, request);
@@ -85,7 +85,7 @@ public class CarteraController {
      * @return cartera del cliente
      */
     @DeleteMapping("/cartera/clientes/{id}/excepcion")
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.CARTERA_EXCEPCION)
     public ClienteCartera quitarExcepcion(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return carteraService.quitarExcepcion(id);
     }
@@ -96,7 +96,7 @@ public class CarteraController {
      */
     @PostMapping("/abonos")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol({ Roles.CAJERO, Roles.SUPERVISOR_VENTAS })
+    @RequierePermiso(Permisos.CARTERA_ABONAR)
     public AbonoResponse abonar(@Valid @RequestBody AbonoRequest request) {
         return abonoService.registrar(request);
     }
@@ -106,7 +106,7 @@ public class CarteraController {
      * @return el recibo del abono
      */
     @GetMapping("/abonos/{id}/recibo")
-    @RequiereRol({ Roles.CAJERO, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.CARTERA_VER)
     public AbonoResponse recibo(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return abonoService.obtener(id);
     }

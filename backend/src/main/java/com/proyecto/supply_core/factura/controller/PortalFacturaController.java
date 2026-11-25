@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.factura.dto.FacturaResponse;
 import com.proyecto.supply_core.factura.service.FacturaService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.constraints.Positive;
 
@@ -20,7 +20,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.ORDENES_PAGOS)
 @RestController
 @RequestMapping("/api/portal/ordenes")
-@RequiereRol(Roles.PROVEEDOR)
+@RequierePermiso(Permisos.PORTAL_PROVEEDOR)
 public class PortalFacturaController {
 
     private final FacturaService facturaService;

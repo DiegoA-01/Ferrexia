@@ -18,10 +18,10 @@ import com.proyecto.supply_core.caja.dto.CajaResponse;
 import com.proyecto.supply_core.caja.dto.ConfiguracionCaja;
 import com.proyecto.supply_core.caja.service.CajaService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -34,7 +34,7 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("/api/cajas")
 @UsuarioInterno
-@RequiereRol(Roles.ADMIN_SISTEMA)
+@RequierePermiso(Permisos.CAJA_GESTIONAR)
 public class CajaController {
 
     private final CajaService cajaService;
@@ -51,7 +51,7 @@ public class CajaController {
      * @return cajas
      */
     @GetMapping
-    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.SUPERVISOR_VENTAS, Roles.CAJERO, Roles.AUDITOR })
+    @RequierePermiso(Permisos.CAJA_VER)
     public List<CajaResponse> listar(@RequestParam(required = false) Boolean activa) {
         return cajaService.listar(activa);
     }
@@ -81,7 +81,7 @@ public class CajaController {
      * @return la tolerancia de diferencia de caja
      */
     @GetMapping("/configuracion")
-    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.SUPERVISOR_VENTAS, Roles.AUDITOR })
+    @RequierePermiso(Permisos.CAJA_CONFIGURACION_VER)
     public ConfiguracionCaja configuracion() {
         return cajaService.configuracion();
     }

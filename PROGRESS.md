@@ -1,10 +1,11 @@
 # Ferrexia (antes Supply-Core) — Progreso
 
 > **Última actualización: 2026-11-25 (tarde).** El proyecto sigue en el repositorio `DiegoA-01/Ferrexia` (Supply-Core quedó
-> como histórico). Estado: **specs 000 a 020 hechas y mezcladas en `develop`** (`22933e9`, PR #24): Ventas y Caja completo,
-> menú por categorías, ajustes del POS, interfaz general, "Mi turno" más claro, menú reorganizado y empresa y sedes
-> simples. **La 021 está hecha en la rama `feature/mi-turno-movimientos` (V42, PR pendiente)**. **Faltan las specs 022 a 035** (todas en Propuesta, con plan y tasks; ver la **sección 8**, que manda sobre las
-> anteriores). Migraciones: 42 (V1 a V42), **próxima V43**.
+> como histórico). Estado: **specs 000 a 021 hechas y mezcladas en `develop`** (`8f3f4b6`, PR #26): Ventas y Caja completo,
+> menú por categorías, ajustes del POS, interfaz general, "Mi turno" con facturas y categorías, menú reorganizado y
+> empresa y sedes simples. **La 022 Parte A (permisos por acción) está hecha en la rama `feature/permisos-plantillas-rol`
+> (V43, PR pendiente)**; falta su Parte B. **Faltan las specs 023 a 035** (ver la **sección 8**, que manda sobre las
+> anteriores). Migraciones: 43 (V1 a V43), **próxima V44** (reservada para la Parte B de la 022; la siguiente libre es V45).
 > Pruebas: backend 838 en verde (1 omitida, Gemini en vivo); frontend 267; e2e de Playwright con 4 pruebas en el CI.
 > Las secciones 0 a 7 se dejan como historia.
 
@@ -652,7 +653,7 @@ de aceptación verificados → rama propia desde `develop` → PR que crea y mez
 | Planes | `plan.md` y `tasks.md` de las specs 018 a 035 | — | #21 |
 | 019 | Menú reorganizado: reportes de ventas en Reportes, Precios y margen en Ventas, Importación de datos en Configuración | — | #23 |
 | 020 | Empresa y sedes simples: código de ingreso automático al crear la empresa, sede con enlace de Google Maps ("Ver en el mapa") | V41 | #24 |
-| 021 | Mi turno: facturas del turno paginadas (reimprimir, detalle), gasto e ingreso con categoría, categorías en Cajas y turnos, lo esperado solo para el supervisor (D20 opción A: cierre ciego) | V42 | pendiente |
+| 021 | Mi turno: facturas del turno paginadas (reimprimir, detalle), gasto e ingreso con categoría, categorías en Cajas y turnos, lo esperado solo para el supervisor (D20 opción A: cierre ciego) | V42 | #26 |
 | Docker | El proyecto de Compose y las imágenes pasan a llamarse `ferrexia` (ver "Docker" más abajo) | — | #23 |
 
 Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agents/specs/018-mi-turno-claro/revision-flujo-cajas.md`.
@@ -674,7 +675,7 @@ Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agen
 
 | Spec | Qué entrega | Responsable | Decisión que la bloquea | Migración propuesta |
 |---|---|---|---|---|
-| 022 Permisos y plantillas de rol | Permisos por acción, plantillas de rol, permisos sueltos, clave corta del personal (en dos partes) | Persona 2 | D10, D18 | V43, V44 |
+| 022 Permisos y plantillas de rol | **Parte A hecha** (rama `feature/permisos-plantillas-rol`, V43). Falta la Parte B: roles propios, plantilla Administrador, reglas de los servicios por permiso, pantallas y PIN del personal | Persona 2 | D10 y D18 tomadas | V44 |
 | 023 Cierre por denominación | Contar el efectivo por billetes y monedas al cerrar | Persona 1 | — | V45 |
 | 024 Planes simbólicos | Todos los módulos para todos los planes; el plan queda como etiqueta | Persona 2 | D11 | — |
 | 025 Caja con permisos | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | Persona 1 | D15 (y la 022) | V46 |
@@ -696,7 +697,10 @@ la spec que bloquean. Las migraciones de la tabla son la numeración propuesta e
 ### Qué sigue, en orden
 1. **Reunión de decisiones** D10 a D21 (D12 primero: hay que aclararla).
 2. **Revisar la 018 en Docker con el cajero** y leer `agents/specs/018-mi-turno-claro/revision-flujo-cajas.md`.
-3. **Fase 2:** 021 hecha (falta el PR y la revisión en Docker); 023 (Persona 1); 022 permisos, en dos partes, y 024 (Persona 2). La 022 desbloquea 025, 029 y 030.
+3. **Fase 2:** 021 mezclada (#26; falta la revisión en Docker); 023 (Persona 1); 022 Parte A hecha (PR pendiente) y
+   Parte B por hacer, y 024 (Persona 2). La 022 desbloquea 025, 029 y 030.
+   **Ojo:** la Parte A cambia `@RequiereRol` por `@RequierePermiso` en 58 controladores; una rama de backend abierta antes
+   de mezclarla debe pasar sus endpoints nuevos a permisos (ver `agents/specs/022-permisos-plantillas-rol/permisos.md`).
 4. **Fases 3 y 4:** 025 a 035 según `agents/plan-reunion-2.md`.
 5. Siguen abiertos de antes: paso 19 del backend (SMTP real, archivos por empresa, `permisos.sql`, OWASP), IA con
    cotizaciones reales, SaaS 4 y mezclar `develop` en `main`.

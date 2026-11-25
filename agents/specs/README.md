@@ -50,8 +50,8 @@ decisiones y se aprueban antes de escribir el plan.
 | [018-mi-turno-claro](018-mi-turno-claro/spec.md) | 1 | "Mi turno" sin "crear turno" con turno abierto, botón de cerrar, acciones en menú, revisión del flujo de cajas | `feature/mi-turno-claro` | 003, 015 | Persona 1 | Hecha (PR #22; falta revisión en Docker con el cajero) |
 | [019-reorganizar-menu](019-reorganizar-menu/spec.md) | 1 | Reportes en su categoría (con el informe de compras) e Importación de datos en Configuración | `feature/reorganizar-menu` | 011, 013 | Persona 2 | Hecha (PR #23) |
 | [020-empresa-sedes-simples](020-empresa-sedes-simples/spec.md) | 1 | Código de ingreso automático y sede con enlace de Google Maps | `feature/empresa-sedes-simples` | SaaS 2 | Persona 2 | Hecha (V41, PR #24) |
-| [021-mi-turno-movimientos](021-mi-turno-movimientos/spec.md) | 2 | Facturas del turno con paginación, ingresos y egresos con categoría, esperado antes de cerrar | `feature/mi-turno-movimientos` | 018 | Persona 1 | Hecha (V42; PR pendiente) |
-| [022-permisos-plantillas-rol](022-permisos-plantillas-rol/spec.md) | 2 | Permisos por acción, plantillas de rol, permisos sueltos y clave corta del personal | `feature/permisos-plantillas-rol` | SaaS 3 | Persona 2 | Propuesta (D10, D18) |
+| [021-mi-turno-movimientos](021-mi-turno-movimientos/spec.md) | 2 | Facturas del turno con paginación, ingresos y egresos con categoría, esperado antes de cerrar | `feature/mi-turno-movimientos` | 018 | Persona 1 | Hecha (V42, PR #26) |
+| [022-permisos-plantillas-rol](022-permisos-plantillas-rol/spec.md) | 2 | Permisos por acción, plantillas de rol, permisos sueltos y clave corta del personal | `feature/permisos-plantillas-rol` | SaaS 3 | Persona 2 | Parte A hecha (V43, PR pendiente); Parte B por hacer |
 | [023-cierre-por-denominacion](023-cierre-por-denominacion/spec.md) | 2 | Cierre contando billetes y monedas, vista de ventas por turno | `feature/cierre-por-denominacion` | 021 | Persona 1 | Propuesta |
 | [024-planes-simbolicos](024-planes-simbolicos/spec.md) | 2 | Todos los módulos para todos los planes; planes solo como etiqueta | `feature/planes-simbolicos` | SaaS 2 | Persona 2 | Propuesta (D11) |
 | [025-caja-con-permisos](025-caja-con-permisos/spec.md) | 3 | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | `feature/caja-con-permisos` | 022 | Persona 1 | Propuesta (D15) |
@@ -85,7 +85,7 @@ referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real
 | D7 | ¿Una caja puede descontar de varias bodegas? | **No**: una caja, una bodega. Los traslados ya existen. | **Tomada** (2026-11-19) | 003 |
 | D8 | ¿Quién fija precios: solo el dueño o también el jefe de compras? | El dueño, con opción de delegarlo a `ADMIN_COMPRAS`. | **Tomada** (construida en V29) | 001 |
 | D9 | ¿Precio distinto por caja y por unidad del mismo producto? | **Sí**, como pedía la spec original; hoy el precio se guarda solo en la unidad del producto. | **Tomada** (2026-11-19) | 001 |
-| D10 | ¿Cómo son las contraseñas del personal y quién las ve? | Dueño y administradores: clave fuerte (12+, mayúscula, número, símbolo) y MFA. Personal: clave corta o PIN de 6 dígitos que asigna el jefe. Nadie **ve** una clave (se guardan cifradas): se **restablece** y queda auditado. | Recomendada | 022 |
+| D10 | ¿Cómo son las contraseñas del personal y quién las ve? | Dueño y administradores: clave fuerte (12+, mayúscula, número, símbolo) y MFA. Personal: clave corta o PIN de 6 dígitos que asigna el jefe. Nadie **ve** una clave (se guardan cifradas): se **restablece** y queda auditado. | Tomada (2026-11-25, tal como está; se construye en la Parte B de la 022) | 022 |
 | D11 | ¿Qué pasa con los planes? | Solo etiqueta: todas las empresas con todos los módulos (incluido Ventas); se quitan crear y eliminar planes; se conservan las tablas para SaaS 4. Falta decidir si quedan las excepciones de módulo por empresa. | Recomendada | 024 |
 | D12 | ¿Las sedes pasan a ser empresas separadas con un super administrador? | Grupo de empresas aisladas con un super administrador que cambia de empresa sin volver a ingresar. Faltan las tres preguntas de la spec 035. | **Pendiente: aclarar** | 035 |
 | D13 | ¿Se permite vender sin existencia? (revisa D1) | Sí, solo con permiso y motivo, con aviso y reporte. Falta elegir: stock negativo marcado o faltante pendiente sin bajar de cero. | Recomendada | 030 |
@@ -93,7 +93,7 @@ referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real
 | D15 | ¿Retiros y gastos sin PIN? | Con el permiso, sin PIN; sin el permiso, PIN del supervisor como hoy. | Recomendada | 025 |
 | D16 | ¿Se puede cambiar el método de pago de una factura? | Sí en facturas POS, con permiso y motivo, ajustando la caja; nunca en facturas electrónicas DIAN. | Recomendada | 029 |
 | D17 | ¿Se puede superar el stock máximo? | Sí, con alerta; no bloquea. | Recomendada | 026 |
-| D18 | ¿Qué roles quedan? | Permisos por acción con plantillas: Dueño, Administrador, Cajero, Vendedor, Supervisor de ventas, Bodega, Compras y Contador/Auditor; cada usuario migra sin ganar ni perder acceso. | Recomendada | 022 |
+| D18 | ¿Qué roles quedan? | Permisos por acción con plantillas: Dueño, Administrador, Cajero, Vendedor, Supervisor de ventas, Bodega, Compras y Contador/Auditor; cada usuario migra sin ganar ni perder acceso. | Tomada (2026-11-25, tal como está) | 022 |
 | D19 | ¿Qué alcance tiene domicilios? | Venta tipo domicilio con dirección y envío, domiciliario, estados y pago contraentrega en la caja; sin mapa en vivo ni app. | Recomendada | 032 |
 | D20 | ¿El cajero ve lo esperado antes de cerrar? (revisa el cierre ciego de la 003) | Cuenta primero y después ve lo esperado y la diferencia; quien tenga el permiso "ver esperado" lo ve siempre. | Tomada (2026-11-25, opción A: cierre ciego; mientras llega la 022 ven lo esperado SUPERVISOR_VENTAS y ADMIN_SISTEMA) | 021 |
 | D21 | ¿Las alertas de presupuesto excedido y solicitud duplicada se pueden saltar con justificación? (revisa la 18-a) | Solo quien tenga el permiso `SOLICITUD_EXCEPCION` (por defecto el Dueño); los demás quedan bloqueados. | Recomendada | 033 |
@@ -119,7 +119,9 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V40 | `feature/pos-ajustes-rapidos` | Quién, cuándo y por qué se descartó un pedido de venta (spec 016) |
 | V41 | `feature/empresa-sedes-simples` | Enlace de Google Maps de la sede, `sede.enlace_mapa` (spec 020) |
 | V42 | `feature/mi-turno-movimientos` | Categorías de ingresos y egresos de caja y `movimiento_caja.categoria_id` (spec 021) |
-| V43 en adelante | libre | Se reserva al empezar cada spec |
+| V43 | `feature/permisos-plantillas-rol` | Catálogo de permisos, roles como plantillas, `rol_permiso` de los 12 roles y `usuario_permiso` (spec 022, Parte A) |
+| V44 | `feature/permisos-plantillas-rol` (Parte B) | Clave corta del personal y roles propios por empresa (spec 022, Parte B) |
+| V45 en adelante | libre | Se reserva al empezar cada spec |
 
 **Numeración propuesta en los planes 018 a 035 (no es reserva):** V41 (020), V42 (021), V43 y V44 (022), V45 (023),
 V46 (025), V47 (026), V48 (028), V49 (029), V50 (030), V51 (031), V52 (032), V53 (033), V54 (035). Las specs 018, 019,

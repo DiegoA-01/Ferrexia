@@ -13,14 +13,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.compra.orden.dto.MotivoOrdenRequest;
 import com.proyecto.supply_core.compra.orden.dto.OrdenResponse;
 import com.proyecto.supply_core.compra.orden.dto.OrdenResumenResponse;
 import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
 import com.proyecto.supply_core.compra.orden.service.OrdenProveedorService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -29,7 +29,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.ORDENES_PAGOS)
 @RestController
 @RequestMapping("/api/portal/ordenes")
-@RequiereRol(Roles.PROVEEDOR)
+@RequierePermiso(Permisos.PORTAL_PROVEEDOR)
 public class PortalOrdenController {
 
     private final OrdenProveedorService proveedorService;

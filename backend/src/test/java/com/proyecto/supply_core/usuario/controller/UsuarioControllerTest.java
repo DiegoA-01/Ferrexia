@@ -73,7 +73,7 @@ class UsuarioControllerTest extends WebTestBase {
     void compradorNoPuedeAdministrarUsuarios() throws Exception {
         mvc.perform(get("/api/usuarios").header(HttpHeaders.AUTHORIZATION, bearer("COMPRADOR")))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.codigo").value("ACCESO_DENEGADO"));
+                .andExpect(jsonPath("$.codigo").value("PERMISO_REQUERIDO"));
         verifyNoInteractions(usuarioService);
     }
 

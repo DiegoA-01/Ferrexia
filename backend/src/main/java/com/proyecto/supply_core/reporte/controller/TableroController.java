@@ -8,10 +8,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.proyecto.supply_core.reporte.dto.TableroResponse;
 import com.proyecto.supply_core.reporte.service.TableroService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.constraints.Positive;
 
@@ -41,7 +41,7 @@ public class TableroController {
      * @return cifras ya calculadas
      */
     @GetMapping
-    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.ADMIN_COMPRAS, Roles.AUDITOR })
+    @RequierePermiso(Permisos.TABLERO_VER)
     public TableroResponse tablero(
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long sedeId) {
         return tableroService.tablero(sedeId);

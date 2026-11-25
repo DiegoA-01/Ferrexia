@@ -24,10 +24,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.plataforma.service.AccesoEmpresaService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.venta.dto.AnularVentaRequest;
 import com.proyecto.supply_core.venta.dto.CotizacionVenta;
@@ -85,7 +85,7 @@ public class VentaController {
      * @return la venta
      */
     @PostMapping
-    @RequiereRol({ Roles.CAJERO, Roles.SUPERVISOR_VENTAS })
+    @RequierePermiso(Permisos.VENTA_COBRAR)
     public ResponseEntity<VentaResponse> confirmar(@RequestHeader(name = "Idempotency-Key", required = false) String clave,
             @Valid @RequestBody VentaRequest request) {
         accesoEmpresa.exigirModulo(SesionActual.usuario().empresaId(), Modulos.CAJA);
@@ -110,7 +110,7 @@ public class VentaController {
      * @return historial según quién mira
      */
     @GetMapping
-    @RequiereRol({ Roles.CAJERO, Roles.VENDEDOR, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.VENTA_VER)
     public PageResponse<VentaResumen> buscar(@RequestParam(required = false) Long cajaId,
             @RequestParam(required = false) Long turnoId, @RequestParam(required = false) Long clienteId,
             @RequestParam(required = false) EstadoVenta estado, @RequestParam(required = false) String consecutivo,
@@ -127,7 +127,7 @@ public class VentaController {
      * @return detalle con líneas y pagos
      */
     @GetMapping("/{id:\\d+}")
-    @RequiereRol({ Roles.CAJERO, Roles.VENDEDOR, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.VENTA_VER)
     public VentaResponse obtener(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return ventaService.obtener(id);
     }
@@ -139,7 +139,7 @@ public class VentaController {
      * @return totales, redondeo, cambio y autorizaciones que hacen falta
      */
     @PostMapping("/cotizar")
-    @RequiereRol({ Roles.CAJERO, Roles.VENDEDOR, Roles.SUPERVISOR_VENTAS })
+    @RequierePermiso(Permisos.VENTA_COTIZAR)
     public CotizacionVenta cotizar(@Valid @RequestBody CotizarRequest request) {
         return ventaService.cotizar(request);
     }
@@ -149,7 +149,7 @@ public class VentaController {
      * @return datos del tiquete (desde la segunda vez, COPIA)
      */
     @GetMapping("/{id:\\d+}/tiquete")
-    @RequiereRol({ Roles.CAJERO, Roles.VENDEDOR, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.VENTA_VER)
     public TiqueteResponse tiquete(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return ventaService.tiquete(id);
     }
@@ -162,7 +162,7 @@ public class VentaController {
      * @return la venta anulada
      */
     @PostMapping("/{id:\\d+}/anular")
-    @RequiereRol({ Roles.CAJERO, Roles.SUPERVISOR_VENTAS })
+    @RequierePermiso(Permisos.VENTA_COBRAR)
     public VentaResponse anular(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody AnularVentaRequest request) {
         accesoEmpresa.exigirModulo(SesionActual.usuario().empresaId(), Modulos.CAJA);
@@ -173,7 +173,7 @@ public class VentaController {
      * @return descuento máximo sin autorización de cada rol de venta
      */
     @GetMapping("/limites-descuento")
-    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.SUPERVISOR_VENTAS, Roles.AUDITOR })
+    @RequierePermiso(Permisos.VENTA_LIMITES_VER)
     public List<LimiteDescuento> limites() {
         return limiteService.listar();
     }
@@ -183,7 +183,7 @@ public class VentaController {
      * @return límites vigentes
      */
     @PutMapping("/limites-descuento")
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.VENTA_LIMITES_GESTIONAR)
     public List<LimiteDescuento> guardarLimites(
             @RequestBody @NotEmpty(message = "envíe al menos un límite") @Size(max = 10, message = "admite hasta 10 límites")
             List<@Valid LimiteDescuento> limites) {
