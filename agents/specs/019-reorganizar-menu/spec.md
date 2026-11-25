@@ -1,6 +1,6 @@
 # 019 - Reorganizar el menú: Reportes e Importación de datos
 
-**Estado:** Propuesta · **Rama:** `feature/reorganizar-menu` · **Depende de:** 011, 013 · **Responsable:** Persona 2 ·
+**Estado:** Hecha (aprobada en la revisión del 2026-11-25; sin migración; falta PR) · **Rama:** `feature/reorganizar-menu` · **Depende de:** 011, 013 · **Responsable:** Persona 2 ·
 **Puntos de la reunión 2:** 10, 11, 28
 
 ## Objetivo
@@ -23,10 +23,22 @@ dentro de Configuración, en un apartado de importación de datos.
 - Nadie gana ni pierde acceso a ninguna pantalla.
 
 ## Criterios de aceptación
-- [ ] Ventas ya no muestra reportes; Reportes los muestra todos, incluido el informe de compras.
-- [ ] Configuración tiene Importación de datos con la carga de productos y de precios.
-- [ ] Las rutas anteriores siguen abriendo la misma pantalla.
-- [ ] Cada rol ve las mismas pantallas que antes, solo en otra categoría.
+- [x] Ventas ya no muestra reportes; Reportes los muestra todos, incluido el informe de compras.
+- [x] Configuración tiene Importación de datos con la carga de productos y de precios.
+- [x] Las rutas anteriores siguen abriendo la misma pantalla.
+- [x] Cada rol ve las mismas pantallas que antes, solo en otra categoría.
+
+> Verificado el 2026-11-25 con pruebas y con el e2e en Docker (5 de 5 en verde con el stack `ferrexia`; falta el CI):
+> - Lo que se vio "dentro de Ventas" en la reunión: el menú ya tenía Reportes como categoría (spec 011), pero la ruta de
+>   los reportes de ventas colgaba de `/app/ventas/reportes` y "Precios y margen" (que no es un reporte) estaba en
+>   Reportes. Ahora los reportes de ventas están en `/app/reportes/ventas` (la ruta vieja redirige) y "Precios y margen"
+>   pasó a Ventas.
+> - `menu.spec.ts`: la tabla de permisos por opción sigue igual (nadie gana ni pierde acceso); Ventas trae Precios y
+>   margen y Reportes trae tablero, compras, ventas, rotación e informe. `shell.spec.ts`: al abrir los reportes de ventas
+>   se marca solo su pestaña. `importacion.spec.ts`: cada carga se ve solo para quien la puede usar (dueño: precios; jefe
+>   de compras: productos, y precios si el dueño se los delegó; nadie en solo lectura), las cargas usan los mismos
+>   endpoints de antes, la ruta vieja redirige y la de Importación va antes de la de catálogos. Frontend: 278 pruebas en
+>   verde y `tsc` sin errores.
 
 ## Fuera de alcance
 - Reportes nuevos (spec 034).

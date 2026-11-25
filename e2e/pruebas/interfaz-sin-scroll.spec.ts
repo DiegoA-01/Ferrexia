@@ -19,13 +19,18 @@ const RECORRIDOS: { correo: string; rutas: string[] }[] = [
     correo: 'auditor@ferreteriademo.local',
     rutas: ['/app/inicio', '/app/solicitudes', '/app/cotizaciones', '/app/adjudicaciones', '/app/pedidos', '/app/ordenes',
       '/app/recepcion', '/app/pagos', '/app/proveedores', '/app/catalogos', '/app/inventario', '/app/inventario/movimientos',
-      '/app/despachos', '/app/inventario/reabastecimiento', '/app/tablero', '/app/reportes', '/app/ventas/reportes',
+      '/app/despachos', '/app/inventario/reabastecimiento', '/app/tablero', '/app/reportes', '/app/reportes/ventas',
       '/app/inventario/rotacion', '/app/precios', '/app/ventas', '/app/clientes', '/app/cartera', '/app/caja',
       '/app/usuarios', '/app/delegaciones', '/app/configuracion', '/app/auditoria', '/app/perfil'],
   },
   {
     correo: 'cajero@ferreteriademo.local',
     rutas: ['/app/inicio', '/app/caja/mi-turno', '/app/pedidos-venta', '/app/ventas', '/app/clientes', '/app/cartera'],
+  },
+  {
+    // Spec 019: la pantalla de Importación de datos solo la abre quien puede cargar (el jefe de compras de la demo)
+    correo: 'jefe.compras@ferreteriademo.local',
+    rutas: ['/app/configuracion', '/app/configuracion/importacion', '/app/inventario'],
   },
 ];
 

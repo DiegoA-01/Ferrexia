@@ -3,12 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import {
-  CargaPrecios, HistorialPrecio, ListaPrecio, PrecioFila, Precios, TarifaImpuesto, UnidadMedida,
+  HistorialPrecio, ListaPrecio, PrecioFila, Precios, TarifaImpuesto, UnidadMedida,
 } from '../../core/api/modelos';
 import { FechaPipe, NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { VentasService } from '../../core/servicios/ventas.service';
-import { Avisos, descargar } from '../../core/ui/avisos';
+import { Avisos } from '../../core/ui/avisos';
 
 import { Cifra } from '../../core/ui/cifra';
 /** Texto de cada alerta de un producto. */
@@ -58,10 +58,6 @@ export class PreciosMargen implements OnInit {
   protected readonly edicion = signal<Edicion | null>(null);
   protected readonly historial = signal<{ productoId: number; unidad: string; filas: HistorialPrecio[] } | null>(null);
   protected readonly unidades = signal<UnidadMedida[]>([]);
-  /** Archivo de precios elegido y lo que dijo la revisión (todo o nada). */
-  protected readonly archivo = signal<File | null>(null);
-  protected readonly carga = signal<CargaPrecios | null>(null);
-  protected readonly cargando = signal(false);
   protected readonly nuevaLista = signal('');
   protected readonly guardando = signal(false);
 
@@ -203,49 +199,6 @@ export class PreciosMargen implements OnInit {
     this.edicion.set(null);
     this.ventas.historial(lista, p.productoId!, unidadId).subscribe({
       next: filas => this.historial.set({ productoId: p.productoId!, unidad, filas }),
-      error: e => this.avisos.error(e),
-    });
-  }
-
-  /** @param evento cambio del campo de archivo; guarda el Excel elegido y lo revisa sin guardar */
-  protected elegirArchivo(evento: Event): void {
-    const entrada = evento.target as HTMLInputElement;
-    const f = entrada.files?.[0] ?? null;
-    entrada.value = '';
-    this.archivo.set(f);
-    this.carga.set(null);
-    if (f) {
-      this.subir(true);
-    }
-  }
-
-  /** @param soloValidar true para revisar; false para fijar los precios (todo o nada) */
-  protected subir(soloValidar: boolean): void {
-    const f = this.archivo();
-    if (!f) {
-      return;
-    }
-    this.cargando.set(true);
-    this.ventas.cargarPrecios(f, soloValidar).subscribe({
-      next: r => {
-        this.cargando.set(false);
-        this.carga.set(r);
-        if (r.aplicado) {
-          this.avisos.ok(`${r.precios} precios fijados. El anterior de cada uno quedó en el historial.`);
-          this.archivo.set(null);
-          this.cargar();
-        }
-      },
-      error: e => {
-        this.cargando.set(false);
-        this.avisos.error(e);
-      },
-    });
-  }
-
-  protected bajarPlantilla(): void {
-    this.ventas.plantillaPrecios().subscribe({
-      next: b => descargar(b, 'plantilla-precios.xlsx'),
       error: e => this.avisos.error(e),
     });
   }

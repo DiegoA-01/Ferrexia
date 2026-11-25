@@ -1,6 +1,13 @@
-# Supply-Core con Docker
+# Ferrexia con Docker
 
 Esta guía levanta todo el sistema (base de datos, backend y frontend) con un solo comando y explica las decisiones de seguridad.
+
+> **Nombres (desde 2026-11-25):** el proyecto de Compose se llama `ferrexia`, así que los contenedores, redes y volúmenes
+> salen como `ferrexia-*` (`ferrexia-api-1`, `ferrexia_db-data`, `ferrexia_storage`), y las imágenes son `ferrexia-api` y
+> `ferrexia-web`. Antes se llamaban `supply-core-*`, igual que el proyecto Supply-Core, y si los dos se levantaban en el
+> mismo equipo se pisaban. Si ya tenías Ferrexia levantado con los nombres viejos, sus datos quedaron en los volúmenes
+> `supply-core_*`: el stack nuevo arranca con volúmenes vacíos (hay que volver a sembrar la demo). Si en el mismo equipo
+> corre Supply-Core en el 8088, levanta Ferrexia con otro `WEB_PORT` (por ejemplo 8098) en su `.env`.
 
 ## Requisitos
 - Docker 24 o superior con Docker Compose v2 (`docker compose version`).
@@ -76,7 +83,7 @@ docker compose exec -T db sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --sin
 # restaurar (sobre una base vacía)
 docker compose exec -T db sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" supply_core' < respaldo-2026-11-17.sql
 ```
-Los archivos subidos están en el volumen `storage` (`docker volume inspect supply-core_storage`); respáldalos junto con la base.
+Los archivos subidos están en el volumen `storage` (`docker volume inspect ferrexia_storage`); respáldalos junto con la base.
 
 ### Lectura de cotizaciones con IA
 En `.env`: `IA_PROVEEDOR=gemini` y `GEMINI_API_KEY=...`, y `docker compose up -d api`. Con un proveedor de IA los documentos salen del servidor hacia ese proveedor. Para Ollama en el mismo equipo, `OLLAMA_URL=http://host.docker.internal:11434`.
@@ -104,7 +111,7 @@ Cada PR hacia `develop` o `main` (y cada push a esas ramas) corre `.github/workf
 
 - `backend`: Java 21, MySQL 8.4 levantado en el job, `./mvnw verify` (incluidas las pruebas de fuga entre empresas), Javadoc con `doclint=all` y el reporte de cobertura de JaCoCo como artefacto (`cobertura-backend`).
 - `frontend`: Node 24, `npm ci`, pruebas con Vitest y build de producción.
-- `docker`: construye las imágenes `api` y `web` sin publicarlas y las escanea con Trivy; falla si hay vulnerabilidades CRÍTICAS con arreglo disponible.
+- `docker`: construye las imágenes `ferrexia-api` y `ferrexia-web` sin publicarlas y las escanea con Trivy; falla si hay vulnerabilidades CRÍTICAS con arreglo disponible.
 
 Además, `dependency-review.yml` revisa las dependencias de cada PR y `codeql.yml` analiza el código cada lunes. El CI no usa secretos: las claves de MySQL y del JWT se generan dentro del job y se enmascaran en el registro.
 

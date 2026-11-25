@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { CargaMasiva, Categoria, InventarioItem, InventarioResumen, Producto, SugerenciaReorden, UnidadMedida } from '../../core/api/modelos';
+import { Categoria, InventarioItem, InventarioResumen, Producto, SugerenciaReorden, UnidadMedida } from '../../core/api/modelos';
 import { NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { iso } from '../../core/servicios/reportes.service';
@@ -35,9 +35,7 @@ export class Inventario implements OnInit {
   protected readonly sugerencias = signal<SugerenciaReorden[]>([]);
   protected readonly categoriaId = signal<number | null>(null);
   protected readonly soloBajo = signal(false);
-  protected readonly panel = signal<'ninguno' | 'carga' | 'nuevo' | 'reorden' | 'inactivos'>('ninguno');
-  protected readonly archivo = signal<File | null>(null);
-  protected readonly carga = signal<CargaMasiva | null>(null);
+  protected readonly panel = signal<'ninguno' | 'nuevo' | 'reorden' | 'inactivos'>('ninguno');
   protected readonly trabajando = signal(false);
   /** Producto que se está editando ({@code null} = el formulario crea uno nuevo). */
   protected readonly editandoId = signal<number | null>(null);
@@ -94,7 +92,7 @@ export class Inventario implements OnInit {
   }
 
   /** @param p panel que se abre (o se cierra si ya estaba abierto) */
-  protected abrir(p: 'carga' | 'nuevo' | 'reorden' | 'inactivos'): void {
+  protected abrir(p: 'nuevo' | 'reorden' | 'inactivos'): void {
     this.panel.set(this.panel() === p ? 'ninguno' : p);
     if (p === 'nuevo') {
       this.editandoId.set(null);
@@ -177,39 +175,6 @@ export class Inventario implements OnInit {
 
   protected exportar(): void {
     this.servicio.exportarStock().subscribe({ next: b => descargar(b, 'inventario-stock.xlsx'), error: e => this.avisos.error(e) });
-  }
-
-  protected bajarPlantilla(): void {
-    this.servicio.plantilla().subscribe({ next: b => descargar(b, 'plantilla-productos.xlsx'), error: e => this.avisos.error(e) });
-  }
-
-  /** @param evento cambio del selector de archivos */
-  protected elegirArchivo(evento: Event): void {
-    this.archivo.set((evento.target as HTMLInputElement).files?.[0] ?? null);
-    this.carga.set(null);
-  }
-
-  /** @param soloValidar primero se revisa; luego se aplica todo o nada */
-  protected cargarExcel(soloValidar: boolean): void {
-    const a = this.archivo();
-    if (!a) {
-      return;
-    }
-    this.trabajando.set(true);
-    this.servicio.cargaMasiva(a, soloValidar).subscribe({
-      next: r => {
-        this.trabajando.set(false);
-        this.carga.set(r);
-        if (r.aplicado) {
-          this.avisos.ok(`Carga aplicada: ${r.creados} creados, ${r.actualizados} actualizados.`);
-          this.cargar();
-        }
-      },
-      error: e => {
-        this.trabajando.set(false);
-        this.avisos.error(e);
-      },
-    });
   }
 
   protected crearProducto(): void {

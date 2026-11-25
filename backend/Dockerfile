@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 #
-# Imagen del backend de Supply-Core (Spring Boot 4, Java 21).
+# Imagen del backend de Ferrexia (Spring Boot 4, Java 21).
 # Dos etapas: compila con Maven y deja solo un JRE con la aplicación, sin código fuente ni herramientas de build.
-# Se construye con el contexto en esta carpeta: docker build -t supply-core-api ./backend
+# Se construye con el contexto en esta carpeta: docker build -t ferrexia-api ./backend
 
 # ---------- Etapa 1: compilar ----------
 FROM maven:3.9-eclipse-temurin-21 AS build

@@ -188,8 +188,10 @@ export const routes: Routes = [
         data: { roles: ROLES_MI_TURNO, modulo: 'CAJA' },
         loadComponent: () => import('./features/caja/mi-turno').then(m => m.MiTurno),
       },
+      // Spec 019: los reportes de ventas cuelgan de Reportes; la ruta vieja redirige para no romper enlaces guardados
+      { path: 'ventas/reportes', redirectTo: 'reportes/ventas', pathMatch: 'full' },
       {
-        path: 'ventas/reportes',
+        path: 'reportes/ventas',
         title: 'Reportes de ventas · Supply-Core',
         canActivate: [permisoGuard],
         data: { roles: ROLES_VENTAS, modulo: 'VENTAS' },
@@ -278,6 +280,14 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA' },
         loadComponent: () => import('./features/auditoria/auditoria').then(m => m.Auditoria),
+      },
+      {
+        // Spec 019: cargas por Excel de productos y precios en un solo lugar
+        path: 'configuracion/importacion',
+        title: 'Importación de datos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS'] },
+        loadComponent: () => import('./features/configuracion/importacion/importacion').then(m => m.Importacion),
       },
       {
         path: 'configuracion/empresa',

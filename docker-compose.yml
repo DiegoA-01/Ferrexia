@@ -1,4 +1,4 @@
-# Supply-Core completo: base de datos, backend y frontend.
+# Ferrexia completo: base de datos, backend y frontend.
 #
 #   cp .env.example .env      # y completar las claves (ver DOCKER.md)
 #   docker compose up -d --build
@@ -7,7 +7,8 @@
 # Solo el frontend (nginx) publica un puerto. La base de datos y el backend viven en redes internas de Docker:
 # nadie desde afuera puede hablarles directamente.
 
-name: supply-core
+# Nombre del proyecto: contenedores, redes y volúmenes salen como ferrexia-*, así no se mezclan con otros proyectos.
+name: ferrexia
 
 services:
   # ---------------------------------------------------------------- Base de datos
@@ -41,7 +42,7 @@ services:
   api:
     build:
       context: ./backend
-    image: supply-core-api:${VERSION:-local}
+    image: ferrexia-api:${VERSION:-local}
     restart: unless-stopped
     depends_on:
       db:
@@ -82,7 +83,7 @@ services:
   web:
     build:
       context: ./frontend
-    image: supply-core-web:${VERSION:-local}
+    image: ferrexia-web:${VERSION:-local}
     restart: unless-stopped
     depends_on:
       api:

@@ -208,10 +208,10 @@ export class Shell implements OnInit {
       case 'CATALOGO_ACTUALIZADO': return '/app/catalogos';
       case 'PRECIO_BAJO_COSTO': return '/app/ventas';
       case 'CREDITO_BLOQUEADO': return '/app/cartera';
-      case 'ALERTA_CAJERO': return '/app/ventas/reportes';
+      case 'ALERTA_CAJERO': return '/app/reportes/ventas';
       case 'INFORME_PEDIDO': case 'INFORME_RECIBIDO': return '/app/informes';
       case 'TURNO_DIFERENCIA': return '/app/caja';
-      case 'CUADRE_DESCUADRE': return '/app/ventas/reportes';
+      case 'CUADRE_DESCUADRE': return '/app/reportes/ventas';
       default: return undefined;
     }
   }

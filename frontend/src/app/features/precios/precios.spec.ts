@@ -80,30 +80,10 @@ describe('Precios y margen', () => {
     backend.expectOne(r => r.url === '/api/ventas/precios' && r.method === 'GET').flush(datos);
   });
 
-  it('el Excel se revisa primero y solo se aplica si no tiene errores', () => {
-    const archivo = new File(['x'], 'precios.xlsx');
-    c()['elegirArchivo']({ target: { files: [archivo], value: 'precios.xlsx' } });
-    const revision = backend.expectOne(r => r.url === '/api/ventas/precios/carga');
-    expect(revision.request.params.get('soloValidar')).toBe('true');
-    revision.flush({ soloValidar: true, aplicado: false, filas: 2, precios: 2, errores: [] });
-    fixture.detectChanges();
-    expect(texto()).toContain('se fijarán 2 precios');
-
-    c()['subir'](false);
-    const aplicar = backend.expectOne(r => r.url === '/api/ventas/precios/carga');
-    expect(aplicar.request.params.get('soloValidar')).toBe('false');
-    aplicar.flush({ soloValidar: false, aplicado: true, filas: 2, precios: 2, errores: [] });
-    backend.expectOne(r => r.url === '/api/ventas/precios' && r.method === 'GET').flush(datos);
-  });
-
-  it('con errores en el Excel muestra las filas y no ofrece aplicar', () => {
-    c()['elegirArchivo']({ target: { files: [new File(['x'], 'precios.xlsx')], value: '' } });
-    backend.expectOne(r => r.url === '/api/ventas/precios/carga')
-      .flush({ soloValidar: true, aplicado: false, filas: 2, precios: 1, errores: [{ fila: 3, mensaje: 'el producto NO-EXISTE no existe' }] });
-    fixture.detectChanges();
-    expect(texto()).toContain('No se cambió ningún precio');
-    expect(texto()).toContain('Fila 3: el producto NO-EXISTE no existe');
-    expect(texto()).not.toContain('Fijar los precios');
+  it('la carga de precios por Excel ahora es un enlace a Importación de datos (spec 019)', () => {
+    const enlace = [...(fixture.nativeElement as HTMLElement).querySelectorAll('a')].find(a => a.textContent?.includes('Importar desde Excel'));
+    expect(enlace?.getAttribute('href')).toBe('/app/configuracion/importacion');
+    expect((fixture.nativeElement as HTMLElement).querySelector('input[type=file]')).toBeNull();
   });
 
   it('no deja un mínimo mayor que el precio', () => {
