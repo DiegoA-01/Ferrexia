@@ -36,6 +36,11 @@ public class Sede {
     @Column(length = 250)
     private String direccion;
 
+    /** Enlace de Google Maps de la ubicación (spec 020); {@code null} si no se dio. */
+    @Column(name = "enlace_mapa", length = 500)
+    private String enlaceMapa;
+
+    /** Coordenadas de antes de la spec 020: se conservan en la base, pero la API ya no las recibe ni las muestra. */
     @Column(precision = 10, scale = 7)
     private BigDecimal latitud;
 

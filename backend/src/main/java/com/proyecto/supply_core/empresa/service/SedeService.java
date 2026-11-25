@@ -136,8 +136,8 @@ public class SedeService {
     private static void aplicar(Sede s, SedeRequest req) {
         s.setNombre(req.nombre().trim());
         s.setDireccion(req.direccion() == null || req.direccion().isBlank() ? null : req.direccion().trim());
-        s.setLatitud(req.latitud());
-        s.setLongitud(req.longitud());
+        // Spec 020: latitud y longitud ya no llegan; las que tuviera la sede se conservan tal cual en la base.
+        s.setEnlaceMapa(req.enlaceMapa() == null || req.enlaceMapa().isBlank() ? null : req.enlaceMapa().trim());
     }
 
     /**

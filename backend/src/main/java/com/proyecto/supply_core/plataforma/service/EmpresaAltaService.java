@@ -61,14 +61,6 @@ public class EmpresaAltaService {
     }
 
     /**
-     * Paso 1: crea la empresa y su suscripción. Se ejecuta sin empresa en el contexto.
-     *
-     * @param req    datos del alta
-     * @param plan   plan asignado
-     * @param estado estado inicial de la suscripción
-     * @return empresa creada, con su id
-     */
-    /**
      * Deja el código tal como lo escribió la persona, sin espacios de más: se quitan los de los extremos y varios
      * seguidos pasan a uno solo, para que {@code "Don  Martín"} y {@code "Don Martín"} no sean dos empresas.
      * No se cambian mayúsculas ni acentos: así se muestra y así se escribe al ingresar (la búsqueda no las distingue).
@@ -80,12 +72,21 @@ public class EmpresaAltaService {
         return codigo.trim().replaceAll("\\s+", " ");
     }
 
+    /**
+     * Paso 1: crea la empresa y su suscripción. Se ejecuta sin empresa en el contexto.
+     *
+     * @param req    datos del alta
+     * @param codigo código de ingreso ya resuelto (el escrito, normalizado, o el generado; spec 020)
+     * @param plan   plan asignado
+     * @param estado estado inicial de la suscripción
+     * @return empresa creada, con su id
+     */
     @Transactional
-    public Empresa crearEmpresa(EmpresaCrearRequest req, Plan plan, EstadoSuscripcion estado) {
+    public Empresa crearEmpresa(EmpresaCrearRequest req, String codigo, Plan plan, EstadoSuscripcion estado) {
         Empresa e = new Empresa();
         e.setRazonSocial(req.razonSocial().trim());
         e.setNit(req.nit().trim());
-        e.setCodigoPublico(normalizarCodigo(req.codigoPublico()));
+        e.setCodigoPublico(codigo);
         e.setMonedaBase("COP");
         Empresa guardada = empresaRepository.saveAndFlush(e);
         Suscripcion s = new Suscripcion();

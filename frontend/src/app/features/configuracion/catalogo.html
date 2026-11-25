@@ -34,6 +34,9 @@
                     @for (s of sedes(); track s.id) { <option [value]="s.id">{{ s['nombre'] }}</option> }
                   </select>
                 }
+                @case ('enlace') {
+                  <input [id]="'campo-' + k.clave" [name]="k.clave" type="url" inputmode="url" class="entrada" placeholder="https://maps.app.goo.gl/…" [attr.maxlength]="k.max ?? null" [disabled]="!editable(k)" [ngModel]="valores()[k.clave] ?? ''" (ngModelChange)="escribir(k, $event)">
+                }
                 @case ('numero') {
                   <input scCifra [id]="'campo-' + k.clave" [name]="k.clave" class="entrada num" [disabled]="!editable(k)" [ngModel]="valores()[k.clave] ?? ''" (ngModelChange)="escribir(k, $event)">
                 }
@@ -73,7 +76,15 @@
           <tbody>
             @for (f of visibles(); track f.id) {
               <tr [class.inactivo]="f.activo === false">
-                @for (k of c.campos; track k.clave) { <td [class.num]="k.tipo === 'numero'">{{ celda(f, k) }}</td> }
+                @for (k of c.campos; track k.clave) {
+                  @if (k.tipo === 'enlace') {
+                    <td>@if (enlaceSeguro(f[k.clave]); as url) {
+                      <a class="boton chico" [href]="url" target="_blank" rel="noopener noreferrer"><span class="material-symbols-outlined">map</span> Ver en el mapa</a>
+                    } @else { — }</td>
+                  } @else {
+                    <td [class.num]="k.tipo === 'numero'">{{ celda(f, k) }}</td>
+                  }
+                }
                 <td><span class="chip" [class.verde]="f.activo !== false">{{ f.activo === false ? 'Inactivo' : 'Activo' }}</span></td>
                 @if (puedeEditar()) {
                   <td class="num"><div class="fila fin">

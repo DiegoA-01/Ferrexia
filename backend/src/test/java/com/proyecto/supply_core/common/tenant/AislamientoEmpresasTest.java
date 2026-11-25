@@ -765,6 +765,35 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void laSedeConEnlaceDeMapaEsDeSuEmpresa() throws Exception {
+        // Spec 020: la ubicación de la sede es un enlace de Google Maps (columna enlace_mapa de la V41)
+        String adminA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        String adminB = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/sedes")
+                        .header(HttpHeaders.AUTHORIZATION, adminA).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\":\"Sede con mapa\",\"enlaceMapa\":\"https://maps.app.goo.gl/AbC123\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.enlaceMapa").value("https://maps.app.goo.gl/AbC123"));
+        Long id = jdbc.queryForObject("SELECT id FROM sede WHERE nombre = 'Sede con mapa'", Long.class);
+        assertEquals(empresaA, jdbc.queryForObject("SELECT empresa_id FROM sede WHERE id = ?", Long.class, id));
+        assertEquals("https://maps.app.goo.gl/AbC123",
+                jdbc.queryForObject("SELECT enlace_mapa FROM sede WHERE id = ?", String.class, id));
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/sedes")
+                        .header(HttpHeaders.AUTHORIZATION, adminB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.nombre == 'Sede con mapa')]").isEmpty());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/sedes/" + id)
+                        .header(HttpHeaders.AUTHORIZATION, adminB))
+                .andExpect(status().isNotFound());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/sedes/" + id)
+                        .header(HttpHeaders.AUTHORIZATION, adminB).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\":\"Robada\",\"enlaceMapa\":\"https://maps.app.goo.gl/Otro\"}"))
+                .andExpect(status().isNotFound());
+        assertEquals("Sede con mapa", jdbc.queryForObject("SELECT nombre FROM sede WHERE id = ?", String.class, id));
+    }
+
+    @Test
     void laConfiguracionDeAnticipoYToleranciaEsDeCadaEmpresa() throws Exception {
         String adminA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
         String nitA = jdbc.queryForObject("SELECT nit FROM empresa WHERE id = ?", String.class, empresaA);

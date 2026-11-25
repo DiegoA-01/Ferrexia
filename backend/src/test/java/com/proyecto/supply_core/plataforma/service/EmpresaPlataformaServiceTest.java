@@ -168,7 +168,7 @@ class EmpresaPlataformaServiceTest {
         s.setEmpresaId(9L);
         s.setPlan(pro);
         s.setEstado(EstadoSuscripcion.PRUEBA);
-        when(alta.crearEmpresa(any(), eq(pro), eq(EstadoSuscripcion.PRUEBA))).thenReturn(nueva);
+        when(alta.crearEmpresa(any(), eq("ferrecentro"), eq(pro), eq(EstadoSuscripcion.PRUEBA))).thenReturn(nueva);
         when(empresas.findById(9L)).thenReturn(Optional.of(nueva));
         when(suscripciones.findByEmpresaId(9L)).thenReturn(Optional.of(s));
         when(excepciones.findByEmpresaId(9L)).thenReturn(List.of());
@@ -194,14 +194,91 @@ class EmpresaPlataformaServiceTest {
         when(empresas.existsByNitIgnoreCase("901000111")).thenReturn(false);
         when(empresas.idPorCodigoPublico("nueva")).thenReturn(Optional.of(5L));
         assertEquals("CODIGO_DUPLICADO", codigo(() -> service.crear(solicitud("901000111", "nueva", "BASICO", null))));
-        verify(alta, never()).crearEmpresa(any(), any(), any());
+        verify(alta, never()).crearEmpresa(any(), any(), any(), any());
+    }
+
+    /** @return empresa recién creada con su suscripción en BASICO, lista para el detalle */
+    private Empresa nuevaEmpresa() {
+        Empresa nueva = new Empresa();
+        nueva.setId(9L);
+        nueva.setRazonSocial("Ferrecentro S.A.S.");
+        nueva.setNit("901223114-5");
+        Suscripcion s = new Suscripcion();
+        s.setEmpresaId(9L);
+        s.setPlan(basico);
+        s.setEstado(EstadoSuscripcion.PRUEBA);
+        when(empresas.findById(9L)).thenReturn(Optional.of(nueva));
+        when(suscripciones.findByEmpresaId(9L)).thenReturn(Optional.of(s));
+        when(excepciones.findByEmpresaId(9L)).thenReturn(List.of());
+        return nueva;
+    }
+
+    @Test
+    void sinCodigoSeGeneraDesdeLaRazonSocial() {
+        Empresa nueva = nuevaEmpresa();
+        when(empresas.idPorCodigoPublico(anyString())).thenReturn(Optional.empty());
+        when(alta.crearEmpresa(any(), eq("ferrecentro"), eq(basico), any())).thenReturn(nueva);
+
+        service.crear(solicitud("901223114-5", null, "BASICO", null));
+
+        verify(alta).crearEmpresa(any(), eq("ferrecentro"), eq(basico), any());
+    }
+
+    @Test
+    void unCodigoEnBlancoTambienSeGenera() {
+        Empresa nueva = nuevaEmpresa();
+        when(empresas.idPorCodigoPublico(anyString())).thenReturn(Optional.empty());
+        when(alta.crearEmpresa(any(), eq("ferrecentro"), eq(basico), any())).thenReturn(nueva);
+
+        service.crear(solicitud("901223114-5", "   ", "BASICO", null));
+
+        verify(alta).crearEmpresa(any(), eq("ferrecentro"), eq(basico), any());
+    }
+
+    @Test
+    void siElCodigoGeneradoExisteSeLeAgregaUnNumero() {
+        Empresa nueva = nuevaEmpresa();
+        when(empresas.idPorCodigoPublico("ferrecentro")).thenReturn(Optional.of(1L));
+        when(empresas.idPorCodigoPublico("ferrecentro-2")).thenReturn(Optional.of(2L));
+        when(empresas.idPorCodigoPublico("ferrecentro-3")).thenReturn(Optional.empty());
+        when(alta.crearEmpresa(any(), eq("ferrecentro-3"), eq(basico), any())).thenReturn(nueva);
+
+        service.crear(solicitud("901223114-5", null, "BASICO", null));
+
+        verify(alta).crearEmpresa(any(), eq("ferrecentro-3"), eq(basico), any());
+    }
+
+    @Test
+    void siDosAltasChocanConElMismoCodigoSeIntentaConElSiguiente() {
+        Empresa nueva = nuevaEmpresa();
+        // la primera consulta lo ve libre; al guardar, otra alta lo tomó; la segunda ya lo ve ocupado
+        when(empresas.idPorCodigoPublico("ferrecentro")).thenReturn(Optional.empty(), Optional.of(7L));
+        when(empresas.idPorCodigoPublico("ferrecentro-2")).thenReturn(Optional.empty());
+        when(alta.crearEmpresa(any(), eq("ferrecentro"), eq(basico), any()))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("Duplicate entry"));
+        when(alta.crearEmpresa(any(), eq("ferrecentro-2"), eq(basico), any())).thenReturn(nueva);
+
+        service.crear(solicitud("901223114-5", null, "BASICO", null));
+
+        verify(alta).crearEmpresa(any(), eq("ferrecentro-2"), eq(basico), any());
+    }
+
+    @Test
+    void unCodigoEscritoSeRespetaTalCual() {
+        Empresa nueva = nuevaEmpresa();
+        when(empresas.idPorCodigoPublico("Ferrecentro Norte")).thenReturn(Optional.empty());
+        when(alta.crearEmpresa(any(), eq("Ferrecentro Norte"), eq(basico), any())).thenReturn(nueva);
+
+        service.crear(solicitud("901223114-5", "  Ferrecentro   Norte ", "BASICO", null));
+
+        verify(alta).crearEmpresa(any(), eq("Ferrecentro Norte"), eq(basico), any());
     }
 
     @Test
     void siFallaElAdministradorSeDeshaceLaEmpresaYQuedaElFalloAuditado() {
         Empresa nueva = new Empresa();
         nueva.setId(9L);
-        when(alta.crearEmpresa(any(), eq(basico), any())).thenReturn(nueva);
+        when(alta.crearEmpresa(any(), any(), eq(basico), any())).thenReturn(nueva);
         doThrow(new IllegalStateException("falta el rol")).when(alta).sembrarAdministrador(anyString(), anyString(), anyString());
 
         assertThrows(IllegalStateException.class, () -> service.crear(solicitud("901000111", "nueva", "BASICO", null)));

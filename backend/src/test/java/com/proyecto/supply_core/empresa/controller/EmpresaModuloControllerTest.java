@@ -63,7 +63,7 @@ class EmpresaModuloControllerTest extends WebTestBase {
     @Test
     void cualquierInternoConsultaPeroElProveedorNo() throws Exception {
         when(empresaService.obtener()).thenReturn(new EmpresaResponse(1L, "Demo", "900000000-1", null, "COP", null, null, null, 24, null, "demo", 5, 2, 30, false));
-        when(sedeService.listar(any())).thenReturn(List.of(new SedeResponse(1L, "Principal", null, null, null, true)));
+        when(sedeService.listar(any())).thenReturn(List.of(new SedeResponse(1L, "Principal", null, null, true)));
 
         mvc.perform(get("/api/empresa").header(HttpHeaders.AUTHORIZATION, bearer("SOLICITANTE")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.monedaBase").value("COP"));
@@ -113,13 +113,13 @@ class EmpresaModuloControllerTest extends WebTestBase {
     }
 
     @Test
-    void sedeExigeCoordenadasJuntasYEnRango() throws Exception {
+    void sedeSoloAceptaUnEnlaceDeGoogleMaps() throws Exception {
+        // Spec 020: la ubicación es el enlace de Google Maps (ya no latitud y longitud)
         mvc.perform(post("/api/sedes").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_SISTEMA"))
                         .contentType(MediaType.APPLICATION_JSON).content("""
-                                {"nombre":"Norte","latitud":95.5}"""))
+                                {"nombre":"Norte","enlaceMapa":"https://evil.com/maps"}"""))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detalles", hasItems("latitud: debe estar entre -90 y 90",
-                        "coordenadasCompletas: latitud y longitud deben enviarse juntas")));
+                .andExpect(jsonPath("$.detalles", hasItems("enlaceMapa: debe ser un enlace de Google Maps (https)")));
     }
 
     @Test

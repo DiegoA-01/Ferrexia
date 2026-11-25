@@ -1,5 +1,5 @@
 /** Tipo de entrada de cada campo del formulario de un catálogo. */
-export type TipoCampo = 'texto' | 'numero' | 'seleccion' | 'sede';
+export type TipoCampo = 'texto' | 'numero' | 'seleccion' | 'sede' | 'enlace';
 
 /** Un campo del formulario de un catálogo (y, si va en `columnas`, también una columna de la tabla). */
 export interface CampoCatalogo {
@@ -43,8 +43,9 @@ export const CATALOGOS: ConfigCatalogo[] = [
     campos: [
       { clave: 'nombre', etiqueta: 'Nombre', tipo: 'texto', requerido: true, max: 150 },
       { clave: 'direccion', etiqueta: 'Dirección', tipo: 'texto', max: 250 },
-      { clave: 'latitud', etiqueta: 'Latitud', tipo: 'numero', ayuda: 'Opcional. Va junto con la longitud.' },
-      { clave: 'longitud', etiqueta: 'Longitud', tipo: 'numero', ayuda: 'Opcional. Va junto con la latitud.' },
+      // Spec 020: la ubicación es el enlace de Google Maps (antes latitud y longitud)
+      { clave: 'enlaceMapa', etiqueta: 'Enlace de Google Maps', tipo: 'enlace', max: 500,
+        ayuda: 'Abre la ubicación en Google Maps, toca Compartir y copia el enlace.' },
     ],
   },
   {
