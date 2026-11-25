@@ -1,7 +1,7 @@
 # 022 - Permisos por acción, plantillas de rol y contraseñas del personal
 
-**Estado:** Propuesta · **Rama:** `feature/permisos-plantillas-rol` · **Depende de:** SaaS 3 · **Responsable:** Persona 2
-· **Puntos de la reunión 2:** 3, 5, 12, 34 · **Migración:** sí (se reserva al empezar) · **Decisiones:** D10, D18
+**Estado:** Aprobada (Parte A hecha; Parte B por hacer) · **Rama:** `feature/permisos-plantillas-rol` · **Depende de:** SaaS 3 · **Responsable:** Persona 2
+· **Puntos de la reunión 2:** 3, 5, 12, 34 · **Migración:** V43 (Parte A) y V44 (Parte B) · **Decisiones:** D10, D18 (tomadas, tal como están)
 
 ## Objetivo
 Hoy cada pantalla y acción se permite según 12 roles fijos. El negocio necesita dar a cualquier trabajador justo los

@@ -2,6 +2,8 @@ package com.proyecto.supply_core.common.web;
 
 import java.util.Set;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -16,6 +18,8 @@ import com.proyecto.supply_core.inventario.repository.ProductoRepository;
 import com.proyecto.supply_core.plataforma.service.AccesoEmpresaService;
 import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
 import com.proyecto.supply_core.security.config.SecurityBeansConfig;
+import com.proyecto.supply_core.security.PermisosDeV43;
+import com.proyecto.supply_core.security.service.PermisosService;
 import com.proyecto.supply_core.security.service.SesionUsuarioService;
 import com.proyecto.supply_core.security.context.PlataformaAutenticada;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
@@ -73,6 +77,17 @@ public abstract class WebTestBase {
     /** Simulado: no lanza nada, así que todo token vigente sigue valiendo. */
     @MockitoBean
     protected SesionUsuarioService sesionUsuarioService;
+
+    /** Simulado con los permisos que V43 da a cada rol (spec 022): el acceso es el mismo que en producción. */
+    @MockitoBean
+    protected PermisosService permisosService;
+
+    /** Cada rol tiene los permisos de V43. */
+    @BeforeEach
+    void permisosDeLosRoles() {
+        Mockito.when(permisosService.tiene(Mockito.any(), Mockito.anyString())).thenAnswer(i ->
+                PermisosDeV43.tiene(((UsuarioAutenticado) i.getArgument(0)).roles(), i.getArgument(1)));
+    }
 
     /**
      * Header {@code Authorization} con un JWT real de un usuario interno.

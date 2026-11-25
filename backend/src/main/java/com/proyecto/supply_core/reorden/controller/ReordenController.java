@@ -12,13 +12,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudResponse;
 import com.proyecto.supply_core.reorden.dto.BorradorReordenRequest;
 import com.proyecto.supply_core.reorden.dto.SugerenciaReorden;
 import com.proyecto.supply_core.reorden.service.ReordenService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
 
 import jakarta.validation.Valid;
 
@@ -47,7 +47,7 @@ public class ReordenController {
      * @return sugerencias por código de producto
      */
     @GetMapping("/sugerencias")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.ALMACENISTA, Roles.SOLICITANTE, Roles.AUDITOR })
+    @RequierePermiso(Permisos.REORDEN_VER)
     public List<SugerenciaReorden> sugerencias() {
         return reordenService.sugerencias();
     }
@@ -60,7 +60,7 @@ public class ReordenController {
      */
     @PostMapping("/borrador")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.SOLICITANTE)
+    @RequierePermiso(Permisos.REORDEN_SOLICITAR)
     public SolicitudResponse crearBorrador(@Valid @RequestBody BorradorReordenRequest request) {
         return reordenService.crearBorrador(request);
     }

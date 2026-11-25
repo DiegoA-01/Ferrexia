@@ -7,10 +7,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.recepcion.dto.ResumenRecepcionResponse;
 import com.proyecto.supply_core.recepcion.service.RecepcionService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.constraints.Positive;
 
@@ -18,7 +18,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.RECEPCION)
 @RestController
 @RequestMapping("/api/portal/ordenes")
-@RequiereRol(Roles.PROVEEDOR)
+@RequierePermiso(Permisos.PORTAL_PROVEEDOR)
 public class PortalRecepcionController {
 
     private final RecepcionService recepcionService;

@@ -12,6 +12,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.util.Set;
@@ -29,18 +30,19 @@ import org.springframework.web.method.HandlerMethod;
 import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.plataforma.service.AccesoEmpresaService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
+import com.proyecto.supply_core.security.service.PermisosService;
 
 class RolInterceptorTest {
 
     /** Controller de prueba: un módulo a nivel de clase y otro distinto en un método. */
     @RequiereModulo(Modulos.COMPRAS)
     static class Demo {
-        @RequiereRol(Roles.COMPRADOR)
+        @RequierePermiso(Permisos.RFQ_GESTIONAR)
         public void soloComprador() {
         }
 
@@ -53,7 +55,8 @@ class RolInterceptorTest {
     }
 
     private final AccesoEmpresaService acceso = mock(AccesoEmpresaService.class);
-    private final RolInterceptor interceptor = new RolInterceptor(acceso);
+    private final PermisosService permisos = mock(PermisosService.class);
+    private final RolInterceptor interceptor = new RolInterceptor(acceso, permisos);
     private MockHttpServletRequest request;
 
     @BeforeEach
@@ -62,6 +65,9 @@ class RolInterceptorTest {
         request.setMethod("POST");
         request.setRequestURI("/api/solicitudes");
         sesion("COMPRADOR");
+        // en la prueba, solo el comprador tiene el permiso de gestionar RFQ
+        when(permisos.tiene(any(), any())).thenAnswer(i -> ((UsuarioAutenticado) i.getArgument(0)).roles().contains("COMPRADOR")
+                && Permisos.RFQ_GESTIONAR.equals(i.getArgument(1)));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
     }
 
@@ -71,12 +77,13 @@ class RolInterceptorTest {
     }
 
     @Test
-    void revisaPrimeroLaSuscripcionLuegoElModuloYAlFinalElRol() throws Exception {
+    void revisaPrimeroLaSuscripcionLuegoElModuloYAlFinalElPermiso() throws Exception {
         assertTrue(interceptor.preHandle(request, new MockHttpServletResponse(), metodo("soloComprador")));
 
-        InOrder orden = inOrder(acceso);
+        InOrder orden = inOrder(acceso, permisos);
         orden.verify(acceso).exigirSuscripcion(1L, "POST");
         orden.verify(acceso).exigirModulo(1L, Modulos.COMPRAS);
+        orden.verify(permisos).tiene(any(), org.mockito.ArgumentMatchers.eq(Permisos.RFQ_GESTIONAR));
     }
 
     @Test
@@ -100,13 +107,13 @@ class RolInterceptorTest {
     }
 
     @Test
-    void conElModuloActivoSigueExigiendoElRol() throws Exception {
+    void conElModuloActivoSigueExigiendoElPermiso() throws Exception {
         sesion("ALMACENISTA");
 
         var error = assertThrows(AccesoDenegadoException.class,
                 () -> interceptor.preHandle(request, new MockHttpServletResponse(), metodo("soloComprador")));
 
-        assertEquals("ACCESO_DENEGADO", error.getCodigo());
+        assertEquals("PERMISO_REQUERIDO", error.getCodigo());
     }
 
     @Test

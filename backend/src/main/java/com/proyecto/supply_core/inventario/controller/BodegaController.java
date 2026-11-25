@@ -16,12 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.inventario.dto.BodegaRequest;
 import com.proyecto.supply_core.inventario.dto.BodegaResponse;
 import com.proyecto.supply_core.inventario.service.BodegaService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -72,7 +72,7 @@ public class BodegaController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.BODEGA_GESTIONAR)
     public BodegaResponse crear(@Valid @RequestBody BodegaRequest request) {
         return bodegaService.crear(request);
     }
@@ -85,7 +85,7 @@ public class BodegaController {
      * @return bodega actualizada
      */
     @PutMapping("/{id}")
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.BODEGA_GESTIONAR)
     public BodegaResponse actualizar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody BodegaRequest request) {
         return bodegaService.actualizar(id, request);
@@ -98,7 +98,7 @@ public class BodegaController {
      * @return bodega activa
      */
     @PatchMapping("/{id}/activar")
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.BODEGA_GESTIONAR)
     public BodegaResponse activar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return bodegaService.cambiarEstado(id, true);
     }
@@ -110,7 +110,7 @@ public class BodegaController {
      * @return bodega inactiva
      */
     @PatchMapping("/{id}/desactivar")
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.BODEGA_GESTIONAR)
     public BodegaResponse desactivar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return bodegaService.cambiarEstado(id, false);
     }

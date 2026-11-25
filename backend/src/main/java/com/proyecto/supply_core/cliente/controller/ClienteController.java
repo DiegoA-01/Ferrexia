@@ -18,10 +18,10 @@ import com.proyecto.supply_core.cliente.dto.ClienteResponse;
 import com.proyecto.supply_core.cliente.service.ClienteService;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -35,7 +35,7 @@ import jakarta.validation.constraints.Size;
 @RestController
 @RequestMapping("/api/clientes")
 @UsuarioInterno
-@RequiereRol({ Roles.CAJERO, Roles.VENDEDOR, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+@RequierePermiso(Permisos.CLIENTE_VER)
 public class ClienteController {
 
     private final ClienteService clienteService;
@@ -84,7 +84,7 @@ public class ClienteController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol({ Roles.CAJERO, Roles.VENDEDOR, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.CLIENTE_GESTIONAR)
     public ClienteResponse crear(@Valid @RequestBody ClienteRequest request) {
         return clienteService.crear(request);
     }
@@ -95,7 +95,7 @@ public class ClienteController {
      * @return cliente actualizado
      */
     @PutMapping("/{id}")
-    @RequiereRol({ Roles.CAJERO, Roles.VENDEDOR, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.CLIENTE_GESTIONAR)
     public ClienteResponse editar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody ClienteRequest request) {
         return clienteService.editar(id, request);

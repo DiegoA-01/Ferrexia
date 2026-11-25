@@ -19,15 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.inventario.dto.ProductoPlazoRequest;
 import com.proyecto.supply_core.inventario.dto.ProductoRequest;
 import com.proyecto.supply_core.inventario.dto.ProductoResponse;
 import com.proyecto.supply_core.inventario.dto.ProductoUpdateRequest;
 import com.proyecto.supply_core.inventario.service.ProductoService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -95,7 +95,7 @@ public class ProductoController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.PRODUCTO_GESTIONAR)
     public ProductoResponse crear(@Valid @RequestBody ProductoRequest request) {
         return productoService.crear(request);
     }
@@ -108,7 +108,7 @@ public class ProductoController {
      * @return producto actualizado
      */
     @PutMapping("/{id}")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.PRODUCTO_GESTIONAR)
     public ProductoResponse actualizar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody ProductoUpdateRequest request) {
         return productoService.actualizar(id, request);
@@ -121,7 +121,7 @@ public class ProductoController {
      * @return producto activo
      */
     @PatchMapping("/{id}/activar")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.PRODUCTO_GESTIONAR)
     public ProductoResponse activar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return productoService.cambiarEstado(id, true);
     }
@@ -133,7 +133,7 @@ public class ProductoController {
      * @return producto inactivo
      */
     @PatchMapping("/{id}/desactivar")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.PRODUCTO_GESTIONAR)
     public ProductoResponse desactivar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return productoService.cambiarEstado(id, false);
     }
@@ -146,7 +146,7 @@ public class ProductoController {
      * @return producto actualizado
      */
     @PatchMapping("/{id}/plazo")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.PRODUCTO_GESTIONAR)
     public ProductoResponse cambiarPlazo(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody ProductoPlazoRequest request) {
         return productoService.cambiarPlazo(id, request);

@@ -20,10 +20,10 @@ import com.proyecto.supply_core.catalogoproveedor.enums.EstadoEquivalencia;
 import com.proyecto.supply_core.catalogoproveedor.service.CatalogoService;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -36,7 +36,7 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("/api/catalogos")
 @UsuarioInterno
-@RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.AUDITOR, Roles.ADMIN_SISTEMA })
+@RequierePermiso(Permisos.CATALOGO_PROVEEDOR_VER)
 public class CatalogoController {
 
     private final CatalogoService catalogoService;
@@ -70,7 +70,7 @@ public class CatalogoController {
      * @return artículo actualizado
      */
     @PatchMapping("/{id}")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR })
+    @RequierePermiso(Permisos.CATALOGO_PROVEEDOR_DECIDIR)
     public CatalogoItemResponse decidir(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody EquivalenciaRequest request) {
         return catalogoService.decidir(id, request);

@@ -20,14 +20,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.factura.dto.FacturaResponse;
 import com.proyecto.supply_core.factura.dto.MotivoFacturaRequest;
 import com.proyecto.supply_core.factura.dto.RegistrarFacturaRequest;
 import com.proyecto.supply_core.factura.enums.EstadoFactura;
 import com.proyecto.supply_core.factura.service.FacturaService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -39,7 +39,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.ORDENES_PAGOS)
 @RestController
 @RequestMapping("/api")
-@RequiereRol({ Roles.ADMINISTRATIVO, Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.APROBADOR, Roles.AUDITOR })
+@RequierePermiso(Permisos.FACTURA_VER)
 public class FacturaController {
 
     private final FacturaService facturaService;
@@ -60,7 +60,7 @@ public class FacturaController {
      */
     @PostMapping("/ordenes/{ordenId}/facturas")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ADMINISTRATIVO)
+    @RequierePermiso(Permisos.FACTURA_REGISTRAR)
     public FacturaResponse registrar(@PathVariable @Positive(message = "debe ser un id válido") Long ordenId,
             @Valid @RequestBody RegistrarFacturaRequest request) {
         return facturaService.registrar(ordenId, request);
@@ -86,7 +86,7 @@ public class FacturaController {
      * @return página de facturas
      */
     @GetMapping("/facturas")
-    @RequiereRol({ Roles.ADMINISTRATIVO, Roles.ADMIN_COMPRAS, Roles.AUDITOR })
+    @RequierePermiso(Permisos.FACTURA_BUSCAR)
     public PageResponse<FacturaResponse> buscar(@RequestParam(required = false) EstadoFactura estado,
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long proveedorId,
             @PageableDefault(size = 20, sort = "creadoEn", direction = Sort.Direction.DESC) Pageable pageable) {
@@ -112,7 +112,7 @@ public class FacturaController {
      * @return factura con su documento
      */
     @PostMapping(path = "/facturas/{id}/archivo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @RequiereRol(Roles.ADMINISTRATIVO)
+    @RequierePermiso(Permisos.FACTURA_REGISTRAR)
     public FacturaResponse adjuntarArchivo(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @RequestPart("archivo") MultipartFile archivo) {
         return facturaService.adjuntarArchivo(id, archivo);
@@ -125,7 +125,7 @@ public class FacturaController {
      * @return factura con el cruce actualizado
      */
     @PostMapping("/facturas/{id}/recruzar")
-    @RequiereRol(Roles.ADMINISTRATIVO)
+    @RequierePermiso(Permisos.FACTURA_REGISTRAR)
     public FacturaResponse recruzar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return facturaService.recruzar(id);
     }
@@ -138,7 +138,7 @@ public class FacturaController {
      * @return factura APROBADA
      */
     @PostMapping("/facturas/{id}/aprobar")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.FACTURA_APROBAR)
     public FacturaResponse aprobar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody MotivoFacturaRequest request) {
         return facturaService.aprobar(id, request.motivo());
@@ -152,7 +152,7 @@ public class FacturaController {
      * @return factura ANULADA
      */
     @PostMapping("/facturas/{id}/anular")
-    @RequiereRol({ Roles.ADMINISTRATIVO, Roles.ADMIN_COMPRAS })
+    @RequierePermiso(Permisos.FACTURA_ANULAR)
     public FacturaResponse anular(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody MotivoFacturaRequest request) {
         return facturaService.anular(id, request.motivo());

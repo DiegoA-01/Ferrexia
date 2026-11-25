@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.catalogo.dto.CategoriaResponse;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.proveedor.dto.ActualizarProveedorRequest;
@@ -20,8 +21,7 @@ import com.proyecto.supply_core.proveedor.dto.EvaluacionResponse;
 import com.proyecto.supply_core.proveedor.dto.ProveedorResponse;
 import com.proyecto.supply_core.proveedor.service.EvaluacionProveedorService;
 import com.proyecto.supply_core.proveedor.service.ProveedorService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.Valid;
 
@@ -32,7 +32,7 @@ import jakarta.validation.Valid;
 @RequiereModulo(Modulos.PROVEEDORES)
 @RestController
 @RequestMapping("/api/portal")
-@RequiereRol(Roles.PROVEEDOR)
+@RequierePermiso(Permisos.PORTAL_PROVEEDOR)
 public class PortalProveedorController {
 
     private final ProveedorService proveedorService;

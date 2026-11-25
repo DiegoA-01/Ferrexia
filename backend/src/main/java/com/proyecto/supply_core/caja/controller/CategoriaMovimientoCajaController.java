@@ -19,10 +19,10 @@ import com.proyecto.supply_core.caja.dto.CategoriaMovimientoCajaResponse;
 import com.proyecto.supply_core.caja.enums.TipoCategoriaMovimiento;
 import com.proyecto.supply_core.caja.service.CategoriaMovimientoCajaService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -35,7 +35,7 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("/api/cajas/categorias-movimiento")
 @UsuarioInterno
-@RequiereRol({ Roles.ADMIN_SISTEMA, Roles.SUPERVISOR_VENTAS })
+@RequierePermiso(Permisos.CAJA_CATEGORIAS_GESTIONAR)
 public class CategoriaMovimientoCajaController {
 
     private final CategoriaMovimientoCajaService service;
@@ -53,7 +53,7 @@ public class CategoriaMovimientoCajaController {
      * @return categorías
      */
     @GetMapping
-    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.SUPERVISOR_VENTAS, Roles.CAJERO, Roles.AUDITOR })
+    @RequierePermiso(Permisos.CAJA_CATEGORIAS_VER)
     public List<CategoriaMovimientoCajaResponse> listar(@RequestParam(required = false) TipoCategoriaMovimiento tipo,
             @RequestParam(required = false) Boolean activa) {
         return service.listar(tipo, activa);

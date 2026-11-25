@@ -12,14 +12,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.reporte.dto.EstadoCuentaResponse;
 import com.proyecto.supply_core.reporte.dto.GastoItem;
 import com.proyecto.supply_core.reporte.dto.GastoResponse;
 import com.proyecto.supply_core.reporte.dto.InventarioResumen;
 import com.proyecto.supply_core.reporte.dto.ProveedorRanking;
 import com.proyecto.supply_core.reporte.service.ReporteService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.constraints.Positive;
 
@@ -30,7 +30,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.REPORTES)
 @RestController
 @RequestMapping("/api/reportes")
-@RequiereRol({ Roles.AUDITOR, Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.APROBADOR, Roles.ADMINISTRATIVO })
+@RequierePermiso(Permisos.REPORTE_COMPRAS)
 public class ReporteController {
 
     private final ReporteService reporteService;
@@ -69,8 +69,7 @@ public class ReporteController {
      * @return inventario de la empresa
      */
     @GetMapping("/inventario")
-    @RequiereRol({ Roles.AUDITOR, Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.APROBADOR, Roles.ADMINISTRATIVO,
-            Roles.ALMACENISTA })
+    @RequierePermiso(Permisos.REPORTE_INVENTARIO)
     public InventarioResumen inventario(
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long categoriaId,
             @RequestParam(defaultValue = "false") boolean soloBajoMinimo) {

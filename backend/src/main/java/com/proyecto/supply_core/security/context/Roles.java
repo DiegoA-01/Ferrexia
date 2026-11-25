@@ -2,7 +2,8 @@ package com.proyecto.supply_core.security.context;
 
 /**
  * Códigos de rol sembrados en la migración V2.
- * Usar siempre estas constantes en {@code @RequiereRol}, nunca texto suelto.
+ * El acceso a los endpoints va por permisos ({@link Permisos}, spec 022); estas constantes quedan para las reglas de
+ * los servicios que miran el rol y para las políticas de aprobación. Usarlas siempre, nunca texto suelto.
  */
 public final class Roles {
 

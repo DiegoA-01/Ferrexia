@@ -16,7 +16,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Rol del sistema (tabla {@code rol}). Los códigos se siembran en V2 y se usan en {@code @RequiereRol}. */
+/**
+ * Rol (tabla {@code rol}). Los de V2 son plantillas del sistema (spec 022, V43): reciben sus permisos en
+ * {@code rol_permiso}, y el acceso a cada endpoint lo decide {@code @RequierePermiso}. Los códigos viajan en el JWT y
+ * los usan las políticas de aprobación y algunas reglas de los servicios.
+ */
 @Entity
 @Table(name = "rol")
 @Getter

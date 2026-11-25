@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.compra.solicitud.dto.DecisionRequest;
 import com.proyecto.supply_core.compra.solicitud.dto.EnviarSolicitudRequest;
@@ -25,9 +26,8 @@ import com.proyecto.supply_core.compra.solicitud.dto.SolicitudResumenResponse;
 import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
 import com.proyecto.supply_core.compra.solicitud.service.AprobacionSolicitudService;
 import com.proyecto.supply_core.compra.solicitud.service.SolicitudService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -63,7 +63,7 @@ public class SolicitudController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.SOLICITANTE)
+    @RequierePermiso(Permisos.SOLICITUD_GESTIONAR)
     public SolicitudResponse crear(@Valid @RequestBody SolicitudRequest request) {
         return solicitudService.crear(request);
     }
@@ -76,7 +76,7 @@ public class SolicitudController {
      * @return solicitud actualizada
      */
     @PutMapping("/{id}")
-    @RequiereRol(Roles.SOLICITANTE)
+    @RequierePermiso(Permisos.SOLICITUD_GESTIONAR)
     public SolicitudResponse actualizar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody SolicitudRequest request) {
         return solicitudService.actualizar(id, request);
@@ -91,7 +91,7 @@ public class SolicitudController {
      * @return solicitud enviada
      */
     @PostMapping("/{id}/enviar")
-    @RequiereRol(Roles.SOLICITANTE)
+    @RequierePermiso(Permisos.SOLICITUD_GESTIONAR)
     public SolicitudResponse enviar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody(required = false) EnviarSolicitudRequest request) {
         return solicitudService.enviar(id, request == null ? null : request.justificacionExcepcion());
@@ -104,7 +104,7 @@ public class SolicitudController {
      * @return solicitud cancelada
      */
     @PostMapping("/{id}/cancelar")
-    @RequiereRol({ Roles.SOLICITANTE, Roles.ADMIN_COMPRAS })
+    @RequierePermiso(Permisos.SOLICITUD_CANCELAR)
     public SolicitudResponse cancelar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return solicitudService.cancelar(id);
     }

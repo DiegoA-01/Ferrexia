@@ -11,12 +11,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.auditoria.dto.AuditoriaFiltro;
 import com.proyecto.supply_core.auditoria.dto.AuditoriaResponse;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.dto.PageResponse;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -28,7 +28,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.AUDITORIA)
 @RestController
 @RequestMapping("/api/auditoria")
-@RequiereRol({ Roles.AUDITOR, Roles.ADMIN_SISTEMA })
+@RequierePermiso(Permisos.AUDITORIA_VER)
 public class AuditoriaController {
 
     private final AuditoriaService auditoriaService;

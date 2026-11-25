@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.compra.orden.dto.EmitirDirectaRequest;
 import com.proyecto.supply_core.compra.orden.dto.EmitirOrdenRequest;
@@ -25,8 +26,7 @@ import com.proyecto.supply_core.compra.orden.dto.OrdenResumenResponse;
 import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
 import com.proyecto.supply_core.compra.orden.service.OrdenCompraService;
 import com.proyecto.supply_core.compra.orden.service.OrdenDirectaService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -38,8 +38,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.ORDENES_PAGOS)
 @RestController
 @RequestMapping("/api/ordenes")
-@RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.ALMACENISTA, Roles.ADMINISTRATIVO, Roles.APROBADOR,
-        Roles.AUDITOR })
+@RequierePermiso(Permisos.ORDEN_VER)
 public class OrdenController {
 
     private final OrdenCompraService ordenService;
@@ -62,7 +61,7 @@ public class OrdenController {
      */
     @PostMapping("/directa")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.ORDEN_GESTIONAR)
     public OrdenResponse emitirDirecta(@Valid @RequestBody EmitirDirectaRequest request) {
         return directaService.emitir(request);
     }
@@ -75,7 +74,7 @@ public class OrdenController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.ORDEN_GESTIONAR)
     public OrdenResponse emitir(@Valid @RequestBody EmitirOrdenRequest request) {
         return ordenService.emitir(request);
     }
@@ -89,7 +88,7 @@ public class OrdenController {
      */
     @PostMapping("/{id}/version")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.ORDEN_GESTIONAR)
     public OrdenResponse nuevaVersion(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody NuevaVersionRequest request) {
         return ordenService.nuevaVersion(id, request);
@@ -103,7 +102,7 @@ public class OrdenController {
      * @return orden CANCELADA
      */
     @PostMapping("/{id}/cancelar")
-    @RequiereRol(Roles.COMPRADOR)
+    @RequierePermiso(Permisos.ORDEN_GESTIONAR)
     public OrdenResponse cancelar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody MotivoOrdenRequest request) {
         return ordenService.cancelar(id, request.observacion());

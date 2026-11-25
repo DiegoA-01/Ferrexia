@@ -16,10 +16,10 @@ import com.proyecto.supply_core.caja.dto.AutorizacionResponse;
 import com.proyecto.supply_core.caja.dto.PinRequest;
 import com.proyecto.supply_core.caja.service.AutorizacionService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 
@@ -48,7 +48,7 @@ public class AutorizacionController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol({ Roles.CAJERO, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.AUTORIZACION_PEDIR)
     public AutorizacionResponse otorgar(@Valid @RequestBody AutorizacionRequest request) {
         return autorizacionService.otorgar(request);
     }
@@ -58,7 +58,7 @@ public class AutorizacionController {
      */
     @PutMapping("/mi-pin")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.AUTORIZACION_PIN)
     public void cambiarPin(@Valid @RequestBody PinRequest request) {
         autorizacionService.cambiarPin(request);
     }
@@ -67,7 +67,7 @@ public class AutorizacionController {
      * @return {@code {"tienePin": true|false}} para la sesión
      */
     @GetMapping("/mi-pin")
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.AUTORIZACION_PIN)
     public Map<String, Boolean> tienePin() {
         return Map.of("tienePin", autorizacionService.tienePin());
     }

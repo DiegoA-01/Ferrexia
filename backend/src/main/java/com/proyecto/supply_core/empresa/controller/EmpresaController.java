@@ -11,9 +11,9 @@ import com.proyecto.supply_core.empresa.dto.ModulosEmpresaResponse;
 import com.proyecto.supply_core.empresa.dto.EmpresaResponse;
 import com.proyecto.supply_core.empresa.service.EmpresaService;
 import com.proyecto.supply_core.plataforma.service.AccesoEmpresaService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.SesionActual;
 
 import jakarta.validation.Valid;
@@ -64,7 +64,7 @@ public class EmpresaController {
      * @return empresa actualizada
      */
     @PutMapping
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.EMPRESA_GESTIONAR)
     public EmpresaResponse actualizar(@Valid @RequestBody EmpresaRequest request) {
         return empresaService.actualizar(request);
     }

@@ -18,9 +18,9 @@ import com.proyecto.supply_core.catalogo.dto.CategoriaRequest;
 import com.proyecto.supply_core.catalogo.dto.CategoriaResponse;
 import com.proyecto.supply_core.catalogo.dto.CategoriaUpdateRequest;
 import com.proyecto.supply_core.catalogo.service.CategoriaService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -70,7 +70,7 @@ public class CategoriaController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.CATALOGO_BASE_GESTIONAR)
     public CategoriaResponse crear(@Valid @RequestBody CategoriaRequest request) {
         return categoriaService.crear(request);
     }
@@ -83,7 +83,7 @@ public class CategoriaController {
      * @return categoría actualizada
      */
     @PutMapping("/{id}")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.CATALOGO_BASE_GESTIONAR)
     public CategoriaResponse actualizar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody CategoriaUpdateRequest request) {
         return categoriaService.actualizar(id, request);
@@ -96,7 +96,7 @@ public class CategoriaController {
      * @return categoría activa
      */
     @PatchMapping("/{id}/activar")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.CATALOGO_BASE_GESTIONAR)
     public CategoriaResponse activar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return categoriaService.cambiarEstado(id, true);
     }
@@ -108,7 +108,7 @@ public class CategoriaController {
      * @return categoría inactiva
      */
     @PatchMapping("/{id}/desactivar")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.CATALOGO_BASE_GESTIONAR)
     public CategoriaResponse desactivar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return categoriaService.cambiarEstado(id, false);
     }

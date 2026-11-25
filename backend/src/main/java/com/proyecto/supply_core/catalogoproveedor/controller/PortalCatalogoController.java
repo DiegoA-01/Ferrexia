@@ -14,15 +14,15 @@ import com.proyecto.supply_core.catalogoproveedor.dto.CargaCatalogoResponse;
 import com.proyecto.supply_core.catalogoproveedor.dto.PortalCatalogoItem;
 import com.proyecto.supply_core.catalogoproveedor.service.CatalogoProveedorService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 /** El proveedor sube y consulta su catálogo. Solo ve lo suyo, sin datos del inventario de la empresa. */
 @RequiereModulo(Modulos.PROVEEDORES)
 @RestController
 @RequestMapping("/api/portal/catalogo")
-@RequiereRol(Roles.PROVEEDOR)
+@RequierePermiso(Permisos.PORTAL_PROVEEDOR)
 public class PortalCatalogoController {
 
     private final CatalogoProveedorService catalogoProveedorService;

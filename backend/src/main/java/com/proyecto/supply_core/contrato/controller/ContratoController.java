@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.contrato.dto.ContratoRequest;
 import com.proyecto.supply_core.contrato.dto.ContratoResponse;
@@ -27,9 +28,8 @@ import com.proyecto.supply_core.contrato.dto.OfertaContratoResponse;
 import com.proyecto.supply_core.contrato.dto.VigenciaRequest;
 import com.proyecto.supply_core.contrato.enums.EstadoContrato;
 import com.proyecto.supply_core.contrato.service.ContratoService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -62,7 +62,7 @@ public class ContratoController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.CONTRATO_GESTIONAR)
     public ContratoResponse crear(@Valid @RequestBody ContratoRequest request) {
         return contratoService.crear(request);
     }
@@ -75,7 +75,7 @@ public class ContratoController {
      * @return contrato actualizado
      */
     @PatchMapping("/{id}/vigencia")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.CONTRATO_GESTIONAR)
     public ContratoResponse cambiarVigencia(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody VigenciaRequest request) {
         return contratoService.cambiarVigencia(id, request.vigenteHasta());
@@ -89,7 +89,7 @@ public class ContratoController {
      * @return contrato anulado
      */
     @PatchMapping("/{id}/anular")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.CONTRATO_GESTIONAR)
     public ContratoResponse anular(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody MotivoContratoRequest request) {
         return contratoService.anular(id, request.motivo());
@@ -103,7 +103,7 @@ public class ContratoController {
      * @return ofertas, primero las que se pueden emitir
      */
     @GetMapping("/ofertas")
-    @RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS })
+    @RequierePermiso(Permisos.CONTRATO_OFERTAS)
     public List<OfertaContratoResponse> ofertas(
             @RequestParam @Positive(message = "debe ser un id válido") Long solicitudId) {
         return contratoService.ofertas(solicitudId);
@@ -119,7 +119,7 @@ public class ContratoController {
      * @return página de contratos
      */
     @GetMapping
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.APROBADOR, Roles.ADMINISTRATIVO, Roles.AUDITOR })
+    @RequierePermiso(Permisos.CONTRATO_VER)
     public PageResponse<ContratoResumenResponse> buscar(
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long proveedorId,
             @RequestParam(required = false) EstadoContrato estado, @RequestParam(required = false) Boolean vigente,
@@ -134,7 +134,7 @@ public class ContratoController {
      * @return contrato
      */
     @GetMapping("/{id}")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.APROBADOR, Roles.ADMINISTRATIVO, Roles.AUDITOR })
+    @RequierePermiso(Permisos.CONTRATO_VER)
     public ContratoResponse obtener(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return contratoService.obtener(id);
     }

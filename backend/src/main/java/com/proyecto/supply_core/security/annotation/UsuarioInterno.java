@@ -8,9 +8,9 @@ import java.lang.annotation.Target;
 
 /**
  * Restringe un endpoint (o todo un controller) a usuarios internos de la empresa: cualquier rol
- * menos PROVEEDOR. Se combina con {@link RequiereRol}: si ambos están presentes, deben cumplirse los dos.
+ * menos PROVEEDOR. Se combina con {@link RequierePermiso}: si ambos están presentes, deben cumplirse los dos.
  * <p>Uso típico: el controller lleva {@code @UsuarioInterno} (todos los internos consultan) y los
- * métodos de escritura llevan además {@code @RequiereRol(Roles.ADMIN_SISTEMA)}.</p>
+ * métodos de escritura llevan además {@code @RequierePermiso} de administración.</p>
  */
 @Documented
 @Target({ ElementType.METHOD, ElementType.TYPE })

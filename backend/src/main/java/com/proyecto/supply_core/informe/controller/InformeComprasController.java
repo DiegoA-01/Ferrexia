@@ -22,9 +22,9 @@ import com.proyecto.supply_core.informe.dto.InformeResponse;
 import com.proyecto.supply_core.informe.dto.PedirInformeRequest;
 import com.proyecto.supply_core.informe.service.InformeComprasService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -36,7 +36,7 @@ import jakarta.validation.constraints.Positive;
 @RequiereModulo(Modulos.COMPRAS)
 @RestController
 @RequestMapping("/api/informes-compras")
-@RequiereRol({ Roles.ADMIN_SISTEMA, Roles.ADMIN_COMPRAS })
+@RequierePermiso(Permisos.INFORME_COMPRAS_VER)
 public class InformeComprasController {
 
     private final InformeComprasService service;
@@ -78,7 +78,7 @@ public class InformeComprasController {
      * @return contenido del periodo
      */
     @GetMapping("/vista-previa")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.INFORME_COMPRAS_ENVIAR)
     public InformeContenido vistaPrevia(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
         return service.vistaPrevia(desde, hasta);
@@ -92,7 +92,7 @@ public class InformeComprasController {
      */
     @PostMapping("/pedir")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.INFORME_COMPRAS_PEDIR)
     public InformeResponse pedir(@Valid @RequestBody PedirInformeRequest request) {
         return service.pedir(request);
     }
@@ -105,7 +105,7 @@ public class InformeComprasController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.INFORME_COMPRAS_ENVIAR)
     public InformeResponse enviar(@Valid @RequestBody EnviarInformeRequest request) {
         return service.enviar(request);
     }
@@ -117,7 +117,7 @@ public class InformeComprasController {
      * @return informe completo
      */
     @PostMapping("/{id}/leido")
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.INFORME_COMPRAS_PEDIR)
     public InformeResponse leido(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return service.marcarLeido(id);
     }

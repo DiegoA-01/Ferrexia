@@ -14,11 +14,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.inventario.dto.CargaMasivaResponse;
 import com.proyecto.supply_core.inventario.service.ProductoCargaService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
 
 /**
  * Carga y actualización masiva de productos, categorías y precios desde Excel (paso 18-d). Solo ADMIN_COMPRAS,
@@ -52,7 +52,7 @@ public class ProductoCargaController {
      * @return conteos y errores por fila
      */
     @PostMapping
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.PRODUCTO_GESTIONAR)
     public CargaMasivaResponse cargar(@RequestPart("archivo") MultipartFile archivo,
             @RequestParam(defaultValue = "false") boolean soloValidar) {
         return cargaService.cargar(archivo, soloValidar);
@@ -64,7 +64,7 @@ public class ProductoCargaController {
      * @return archivo .xlsx
      */
     @GetMapping("/plantilla")
-    @RequiereRol(Roles.ADMIN_COMPRAS)
+    @RequierePermiso(Permisos.PRODUCTO_GESTIONAR)
     public ResponseEntity<byte[]> plantilla() {
         return ResponseEntity.ok().contentType(XLSX)
                 .header(HttpHeaders.CONTENT_DISPOSITION,

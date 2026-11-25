@@ -17,9 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.proyecto.supply_core.empresa.dto.SedeRequest;
 import com.proyecto.supply_core.empresa.dto.SedeResponse;
 import com.proyecto.supply_core.empresa.service.SedeService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -69,7 +69,7 @@ public class SedeController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.SEDE_GESTIONAR)
     public SedeResponse crear(@Valid @RequestBody SedeRequest request) {
         return sedeService.crear(request);
     }
@@ -82,7 +82,7 @@ public class SedeController {
      * @return sede actualizada
      */
     @PutMapping("/{id}")
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.SEDE_GESTIONAR)
     public SedeResponse actualizar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody SedeRequest request) {
         return sedeService.actualizar(id, request);
@@ -95,7 +95,7 @@ public class SedeController {
      * @return sede activa
      */
     @PatchMapping("/{id}/activar")
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.SEDE_GESTIONAR)
     public SedeResponse activar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return sedeService.cambiarEstado(id, true);
     }
@@ -107,7 +107,7 @@ public class SedeController {
      * @return sede inactiva
      */
     @PatchMapping("/{id}/desactivar")
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.SEDE_GESTIONAR)
     public SedeResponse desactivar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return sedeService.cambiarEstado(id, false);
     }

@@ -27,4 +27,8 @@ public class Permiso {
 
     @Column(nullable = false, length = 150)
     private String nombre;
+
+    /** Módulo en el que se agrupa en pantalla (spec 022). */
+    @Column(nullable = false, length = 30)
+    private String modulo;
 }

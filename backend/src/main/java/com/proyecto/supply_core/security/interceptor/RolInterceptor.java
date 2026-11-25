@@ -10,21 +10,24 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.plataforma.service.AccesoEmpresaService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
+import com.proyecto.supply_core.security.service.PermisosService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Aplica el doble permiso de una empresa: {@link RequiereModulo} (lo decide el dueño de la plataforma) y
- * {@link RequiereRol} / {@link UsuarioInterno} (lo decide el administrador de la empresa).
+ * {@link RequierePermiso} / {@link UsuarioInterno} (lo decide el administrador de la empresa con los roles y los
+ * permisos sueltos de cada persona, spec 022).
  * <p>Antes de mirar el rol revisa la suscripción de la empresa en toda petición autenticada (menos
  * {@code /api/auth/**}, para que una empresa suspendida pueda cerrar su sesión): suspendida o cancelada no entra y
  * morosa solo consulta. La consola de la plataforma ({@code /api/plataforma/**}) no pasa por aquí: su token no es de
  * una empresa.</p>
+ * <p>Orden: suscripción, módulo y permiso. Sin el permiso responde 403 {@code PERMISO_REQUERIDO}.</p>
  * <p>Para cada anotación, la del método tiene prioridad sobre la de la clase. Si hay varias, deben cumplirse todas.</p>
  */
 @Component
@@ -34,12 +37,15 @@ public class RolInterceptor implements HandlerInterceptor {
     private static final String PREFIJO_PLATAFORMA = "/api/plataforma/";
 
     private final AccesoEmpresaService accesoEmpresa;
+    private final PermisosService permisos;
 
     /**
      * @param accesoEmpresa suscripción y módulos de la empresa del usuario
+     * @param permisos      permisos efectivos de la persona
      */
-    public RolInterceptor(AccesoEmpresaService accesoEmpresa) {
+    public RolInterceptor(AccesoEmpresaService accesoEmpresa, PermisosService permisos) {
         this.accesoEmpresa = accesoEmpresa;
+        this.permisos = permisos;
     }
 
     /**
@@ -70,7 +76,7 @@ public class RolInterceptor implements HandlerInterceptor {
                 accesoEmpresa.exigirModulo(usuario.empresaId(), modulo.value());
             }
         }
-        RequiereRol regla = buscar(metodo, RequiereRol.class);
+        RequierePermiso regla = buscar(metodo, RequierePermiso.class);
         boolean soloInternos = buscar(metodo, UsuarioInterno.class) != null;
         if (regla == null && !soloInternos) {
             return true; // basta con estar autenticado (lo garantiza el AuthFilter)
@@ -79,8 +85,8 @@ public class RolInterceptor implements HandlerInterceptor {
         if (soloInternos && sesion.esProveedor()) {
             throw new AccesoDenegadoException("Esta información es solo para usuarios internos");
         }
-        if (regla != null && !sesion.tieneAlgunRol(regla.value())) {
-            throw new AccesoDenegadoException("No tiene permisos para esta operación");
+        if (regla != null && !permisos.tiene(sesion, regla.value())) {
+            throw new AccesoDenegadoException("PERMISO_REQUERIDO", "No tiene permisos para esta operación");
         }
         return true;
     }

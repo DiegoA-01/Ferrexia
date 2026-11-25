@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 
 /**
  * Exige que el módulo esté activo para la empresa del usuario (lo decide el dueño de la plataforma). Se suma a
- * {@link RequiereRol}, que decide el administrador de la empresa: para entrar hay que cumplir las dos. Con el módulo
+ * {@link RequierePermiso}, que decide el administrador de la empresa: para entrar hay que cumplir las dos. Con el módulo
  * apagado responde 403 {@code MODULO_NO_CONTRATADO}.
  * <p>Uso: {@code @RequiereModulo(Modulos.COMPRAS)}. La del método reemplaza a la de la clase.</p>
  */

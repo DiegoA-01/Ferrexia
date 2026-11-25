@@ -20,9 +20,9 @@ import com.proyecto.supply_core.catalogo.dto.UnidadMedidaRequest;
 import com.proyecto.supply_core.catalogo.dto.UnidadMedidaResponse;
 import com.proyecto.supply_core.catalogo.dto.UnidadMedidaUpdateRequest;
 import com.proyecto.supply_core.catalogo.service.UnidadMedidaService;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Digits;
@@ -93,7 +93,7 @@ public class UnidadMedidaController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.CATALOGO_BASE_GESTIONAR)
     public UnidadMedidaResponse crear(@Valid @RequestBody UnidadMedidaRequest request) {
         return unidadService.crear(request);
     }
@@ -106,7 +106,7 @@ public class UnidadMedidaController {
      * @return unidad actualizada
      */
     @PutMapping("/{id}")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.CATALOGO_BASE_GESTIONAR)
     public UnidadMedidaResponse actualizar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody UnidadMedidaUpdateRequest request) {
         return unidadService.actualizar(id, request);
@@ -119,7 +119,7 @@ public class UnidadMedidaController {
      * @return unidad activa
      */
     @PatchMapping("/{id}/activar")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.CATALOGO_BASE_GESTIONAR)
     public UnidadMedidaResponse activar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return unidadService.cambiarEstado(id, true);
     }
@@ -131,7 +131,7 @@ public class UnidadMedidaController {
      * @return unidad inactiva
      */
     @PatchMapping("/{id}/desactivar")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.ADMIN_SISTEMA })
+    @RequierePermiso(Permisos.CATALOGO_BASE_GESTIONAR)
     public UnidadMedidaResponse desactivar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return unidadService.cambiarEstado(id, false);
     }

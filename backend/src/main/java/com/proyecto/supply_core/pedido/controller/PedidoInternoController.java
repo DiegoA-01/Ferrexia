@@ -21,10 +21,10 @@ import com.proyecto.supply_core.pedido.dto.PedidoInternoResponse;
 import com.proyecto.supply_core.pedido.enums.EstadoPedidoInterno;
 import com.proyecto.supply_core.pedido.service.PedidoInternoService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -83,7 +83,7 @@ public class PedidoInternoController {
      * @return pedido actualizado
      */
     @PatchMapping("/{id}")
-    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR })
+    @RequierePermiso(Permisos.PEDIDO_INTERNO_GESTIONAR)
     public PedidoInternoResponse gestionar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody GestionPedidoRequest request) {
         return pedidoInternoService.gestionar(id, request);

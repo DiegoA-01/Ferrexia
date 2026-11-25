@@ -269,6 +269,108 @@ class AislamientoEmpresasTest {
                 empresa));
     }
 
+    // ------------------------------------------------------------------ permisos (spec 022)
+
+    @Autowired private com.proyecto.supply_core.security.service.PermisosService permisosService;
+
+    /** Los 12 roles de siempre. */
+    private static final List<String> ROLES = List.of("ADMIN_SISTEMA", "ADMIN_COMPRAS", "SOLICITANTE", "COMPRADOR",
+            "APROBADOR", "ALMACENISTA", "ADMINISTRATIVO", "PROVEEDOR", "AUDITOR", "CAJERO", "SUPERVISOR_VENTAS", "VENDEDOR");
+
+    /**
+     * Equivalencia de acceso (spec 022): para cada endpoint y cada rol, lo que el rol podía hacer con
+     * {@code @RequiereRol} (foto guardada en {@code seguridad/acceso-antes-022.tsv}) es exactamente lo que puede hacer
+     * ahora con {@code @RequierePermiso} y los permisos que V43 dejó en la base.
+     *
+     * @throws Exception si no puede leer la foto
+     */
+    @Test
+    void cadaRolConservaExactamenteSuAccesoConLosPermisos() throws Exception {
+        java.util.Map<String, String> antes = new java.util.TreeMap<>();
+        try (var in = getClass().getResourceAsStream("/seguridad/acceso-antes-022.tsv")) {
+            for (String linea : new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).split("\n")) {
+                if (!linea.isBlank() && !linea.startsWith("#")) {
+                    String[] p = linea.split("\t");
+                    antes.put(p[0], p[1].trim());
+                }
+            }
+        }
+        java.util.Map<String, String> despues = com.proyecto.supply_core.security.MapaAcceso.endpoints(
+                com.proyecto.supply_core.security.annotation.RequierePermiso.class,
+                com.proyecto.supply_core.security.annotation.RequierePermiso::value);
+        java.util.Map<String, Set<String>> porRol = new java.util.HashMap<>();
+        jdbc.query("SELECT r.codigo, p.codigo FROM rol_permiso rp JOIN rol r ON r.id = rp.rol_id JOIN permiso p ON p.id = rp.permiso_id",
+                rs -> {
+                    porRol.computeIfAbsent(rs.getString(1), k -> new java.util.HashSet<>()).add(rs.getString(2));
+                });
+        assertEquals(antes.keySet(), despues.keySet(), "los endpoints son los mismos de la foto");
+        List<String> diferencias = new java.util.ArrayList<>();
+        antes.forEach((endpoint, regla) -> {
+            String[] a = regla.split("\\|");
+            String[] d = despues.get(endpoint).split("\\|");
+            if (a.length != d.length) {
+                diferencias.add(endpoint + ": cambió la exigencia de usuario interno");
+            }
+            Set<String> rolesAntes = a[0].equals("-") ? null : Set.of(a[0].split(","));
+            if ((rolesAntes == null) != d[0].equals("-")) {
+                diferencias.add(endpoint + ": antes " + a[0] + ", ahora " + d[0]);
+                return;
+            }
+            if (rolesAntes == null) {
+                return;
+            }
+            for (String rol : ROLES) {
+                boolean podia = rolesAntes.contains(rol);
+                boolean puede = porRol.getOrDefault(rol, Set.of()).contains(d[0]);
+                if (podia != puede) {
+                    diferencias.add(endpoint + " · " + rol + ": antes " + podia + ", ahora " + puede + " (" + d[0] + ")");
+                }
+            }
+        });
+        assertEquals(List.of(), diferencias);
+        assertEquals(97, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class));
+        assertEquals(12, jdbc.queryForObject("SELECT COUNT(*) FROM rol WHERE es_plantilla AND empresa_id IS NULL", Integer.class));
+    }
+
+    /**
+     * Permisos sueltos (spec 022): sumar o quitar un permiso a una persona cambia su acceso, y un permiso cargado con
+     * la empresa de otra no le sirve.
+     *
+     * @throws Exception si falla la petición
+     */
+    @Test
+    void losPermisosSueltosCambianElAccesoSoloDentroDeSuEmpresa() throws Exception {
+        String cajeroA = token(empresaA, usuarioA2, "CAJERO");
+        Long auditoria = jdbc.queryForObject("SELECT id FROM permiso WHERE codigo = 'AUDITORIA_VER'", Long.class);
+        Long cajas = jdbc.queryForObject("SELECT id FROM permiso WHERE codigo = 'CAJA_VER'", Long.class);
+        try {
+            mvc.perform(get("/api/auditoria").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("PERMISO_REQUERIDO"));
+            // una fila con la empresa de B no le da nada a la persona en A
+            jdbc.update("INSERT INTO usuario_permiso (usuario_id, permiso_id, empresa_id, concedido) VALUES (?, ?, ?, TRUE)",
+                    usuarioA2, auditoria, empresaB);
+            permisosService.limpiar();
+            mvc.perform(get("/api/auditoria").header(HttpHeaders.AUTHORIZATION, cajeroA)).andExpect(status().isForbidden());
+            // sumado en su empresa: ya entra
+            jdbc.update("UPDATE usuario_permiso SET empresa_id = ? WHERE usuario_id = ? AND permiso_id = ?", empresaA, usuarioA2,
+                    auditoria);
+            permisosService.limpiar();
+            mvc.perform(get("/api/auditoria").header(HttpHeaders.AUTHORIZATION, cajeroA)).andExpect(status().isOk());
+            // quitado a mano: el cajero deja de ver las cajas aunque su rol lo permita
+            mvc.perform(get("/api/cajas").header(HttpHeaders.AUTHORIZATION, cajeroA)).andExpect(status().isOk());
+            jdbc.update("INSERT INTO usuario_permiso (usuario_id, permiso_id, empresa_id, concedido) VALUES (?, ?, ?, FALSE)",
+                    usuarioA2, cajas, empresaA);
+            permisosService.limpiar();
+            mvc.perform(get("/api/cajas").header(HttpHeaders.AUTHORIZATION, cajeroA)).andExpect(status().isForbidden());
+            // otro cajero de la empresa sigue igual
+            mvc.perform(get("/api/cajas").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "CAJERO")))
+                    .andExpect(status().isOk());
+        } finally {
+            jdbc.update("DELETE FROM usuario_permiso WHERE usuario_id = ?", usuarioA2);
+            permisosService.limpiar();
+        }
+    }
+
     // ------------------------------------------------------------------ repositorios
 
     @Test
@@ -4067,7 +4169,7 @@ class AislamientoEmpresasTest {
                     .andExpect(status().isOk()).andExpect(jsonPath("$.modulos[?(@.codigo=='REPORTES')].excepcion").value(true));
             mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC)).andExpect(status().isOk());
             mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, token(empresaC, adminC, "SOLICITANTE")))
-                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("ACCESO_DENEGADO"));
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("PERMISO_REQUERIDO"));
             // quitar la excepción vuelve a mandar el plan; cambiar de plan da el módulo
             mvc.perform(put(base + "/modulos/REPORTES").header(HttpHeaders.AUTHORIZATION, plataforma)
                             .contentType(contentType).content("{}"))

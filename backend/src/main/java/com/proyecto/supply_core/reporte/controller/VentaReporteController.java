@@ -24,10 +24,10 @@ import com.proyecto.supply_core.reporte.service.CuadreDiarioService;
 import com.proyecto.supply_core.reporte.service.TableroVentasService;
 import com.proyecto.supply_core.reporte.service.VentaReporteService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
-import com.proyecto.supply_core.security.annotation.RequiereRol;
+import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
-import com.proyecto.supply_core.security.context.Roles;
+import com.proyecto.supply_core.security.context.Permisos;
 
 /**
  * Reportes de ventas y caja, bloque de ventas del tablero y cuadre diario (spec 009). Solo lectura, salvo volver a
@@ -67,7 +67,7 @@ public class VentaReporteController {
      * @return reporte
      */
     @GetMapping("/ventas")
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR, Roles.CAJERO, Roles.VENDEDOR })
+    @RequierePermiso(Permisos.REPORTE_VENTAS)
     public VentaReporte ventas(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @RequestParam(required = false) AgrupacionVenta agrupar) {
@@ -82,7 +82,7 @@ public class VentaReporteController {
      * @return reporte
      */
     @GetMapping("/caja")
-    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.REPORTE_CAJA)
     public CajaReporte caja(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
         return cajaReporte.reporte(desde, hasta);
@@ -92,7 +92,7 @@ public class VentaReporteController {
      * @return bloque de ventas del tablero del dueño (hoy y mes en curso)
      */
     @GetMapping("/tablero/ventas")
-    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.REPORTE_VENTAS_DUENO)
     public TableroVentas tablero() {
         return tablero.tablero();
     }
@@ -103,7 +103,7 @@ public class VentaReporteController {
      * @return días revisados por el cuadre
      */
     @GetMapping("/cuadre")
-    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    @RequierePermiso(Permisos.REPORTE_VENTAS_DUENO)
     public PageResponse<CuadreResponse> cuadres(@RequestParam(defaultValue = "false") boolean soloDescuadres,
             @PageableDefault(size = 31, sort = "fecha", direction = Sort.Direction.DESC) Pageable pageable) {
         return cuadre.listar(soloDescuadres, pageable);
@@ -116,7 +116,7 @@ public class VentaReporteController {
      * @return resultado nuevo
      */
     @PostMapping("/cuadre/{fecha}")
-    @RequiereRol(Roles.ADMIN_SISTEMA)
+    @RequierePermiso(Permisos.CUADRE_REVISAR)
     public CuadreResponse revisar(@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         return cuadre.revisar(fecha);
     }
