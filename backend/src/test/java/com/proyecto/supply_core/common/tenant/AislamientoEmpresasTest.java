@@ -2349,6 +2349,90 @@ class AislamientoEmpresasTest {
                             .contentType(json).content(retiro.formatted("1000")))
                     .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("AUTORIZACION_INVALIDA"));
 
+            // spec 021: categorías de ingreso y egreso. A ya existía al migrar y V42 le sembró las de defecto; B se creó
+            // después por SQL y no trae ninguna
+            String duenoB0 = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+            String categorias = "/api/cajas/categorias-movimiento";
+            mvc.perform(get(categorias).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$[?(@.nombre=='Papelería' && @.tipo=='EGRESO')]").isNotEmpty());
+            mvc.perform(get(categorias).header(HttpHeaders.AUTHORIZATION, duenoB0)).andExpect(jsonPath("$").isEmpty());
+            long papeleria = lector.readTree(mvc.perform(post(categorias).header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content("{\"tipo\":\"EGRESO\",\"nombre\":\"Pago a domiciliario\"}"))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.activa").value(true))
+                    .andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(post(categorias).header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"tipo\":\"EGRESO\",\"nombre\":\"  pago a   domiciliario \"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CATEGORIA_DUPLICADA"));
+            mvc.perform(post(categorias).header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"tipo\":\"EGRESO\",\"nombre\":\"Aseo\"}"))
+                    .andExpect(status().isForbidden());
+            long otroIngreso = lector.readTree(mvc.perform(post(categorias).header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content("{\"tipo\":\"INGRESO\",\"nombre\":\"Sencillo de otra caja\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            // la otra empresa puede usar el mismo nombre; nadie ve ni toca las categorías de la otra
+            long papeleriaB = lector.readTree(mvc.perform(post(categorias).header(HttpHeaders.AUTHORIZATION, duenoB0)
+                            .contentType(json).content("{\"tipo\":\"EGRESO\",\"nombre\":\"Papelería\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(get(categorias + "?tipo=EGRESO&activa=true").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.id==" + papeleria + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$[?(@.id==" + papeleriaB + ")]").isEmpty())
+                    .andExpect(jsonPath("$[?(@.id==" + otroIngreso + ")]").isEmpty());
+            mvc.perform(put(categorias + "/" + papeleria).header(HttpHeaders.AUTHORIZATION, duenoB0).contentType(json)
+                            .content("{\"nombre\":\"Robada\",\"activa\":false}"))
+                    .andExpect(status().isNotFound());
+
+            // gasto: sin categoría, con una de ingreso o con una de otra empresa no pasa (y no gasta el permiso)
+            String permisoGasto = lector.readTree(mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(pedir.replace("RETIRO", "GASTO").formatted("123456")))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("token").asText();
+            String gasto = "{\"tipo\":\"GASTO\",\"monto\":5000,\"motivo\":\"Resma\",\"autorizacion\":\"" + permisoGasto + "\"%s}";
+            String movimientos = "/api/turnos/" + turnoId + "/movimientos";
+            mvc.perform(post(movimientos).header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json).content(gasto.formatted("")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CATEGORIA_OBLIGATORIA"));
+            mvc.perform(post(movimientos).header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(gasto.formatted(",\"categoriaId\":" + otroIngreso)))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CATEGORIA_INVALIDA"));
+            mvc.perform(post(movimientos).header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(gasto.formatted(",\"categoriaId\":" + papeleriaB)))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CATEGORIA_INVALIDA"));
+            mvc.perform(post(movimientos).header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(gasto.formatted(",\"categoriaId\":" + papeleria)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.movimientos[?(@.tipo=='GASTO')].categoria").value("Pago a domiciliario"))
+                    .andExpect(jsonPath("$.esperado").doesNotExist());
+            // lo esperado (D20, opción A): lo ve quien supervisa, no el cajero ni otra empresa. 50.000 − 20.000 − 5.000
+            String esperado = "/api/turnos/" + turnoId + "/esperado";
+            mvc.perform(get(esperado).header(HttpHeaders.AUTHORIZATION, cajeroA)).andExpect(status().isForbidden());
+            mvc.perform(get(esperado).header(HttpHeaders.AUTHORIZATION, duenoB0)).andExpect(status().isNotFound());
+            mvc.perform(get(esperado).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.esperado.EFECTIVO").value(25000.0))
+                    .andExpect(jsonPath("$.total").value(25000.0));
+            // el ingreso con su categoría suma al esperado
+            String permisoIngreso = lector.readTree(mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(pedir.replace("RETIRO", "INGRESO").formatted("123456")))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("token").asText();
+            mvc.perform(post(movimientos).header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"tipo\":\"INGRESO\",\"monto\":5000,\"motivo\":\"Sencillo\",\"autorizacion\":\""
+                                    + permisoIngreso + "\",\"categoriaId\":" + otroIngreso + "}"))
+                    .andExpect(status().isOk());
+            mvc.perform(get(esperado).header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "SUPERVISOR_VENTAS")))
+                    .andExpect(jsonPath("$.esperado.EFECTIVO").value(30000.0));
+            // desactivar una categoría usada la oculta, pero el libro de caja la sigue nombrando; ya no se puede elegir
+            mvc.perform(put(categorias + "/" + papeleria).header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"nombre\":\"Pago a domiciliario\",\"activa\":false}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.activa").value(false));
+            mvc.perform(get(categorias + "?activa=true").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(jsonPath("$[?(@.id==" + papeleria + ")]").isEmpty());
+            mvc.perform(get(categorias).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$[?(@.id==" + papeleria + ")].activa").value(false));
+            mvc.perform(get("/api/turnos/actual").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(jsonPath("$.movimientos[?(@.tipo=='GASTO')].categoria").value("Pago a domiciliario"));
+            mvc.perform(post(movimientos).header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(gasto.formatted(",\"categoriaId\":" + papeleria)))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CATEGORIA_INVALIDA"));
+
             // una venta en efectivo (la registra la spec 004): el cajero no la ve ni ve el esperado, solo el aviso de tope
             jdbc.update("INSERT INTO movimiento_caja (empresa_id, turno_id, tipo, medio_pago, monto, usuario_id) "
                     + "VALUES (?, ?, 'VENTA', 'EFECTIVO', 80000, ?)", empresaA, turnoId, usuarioA2);
@@ -2434,6 +2518,7 @@ class AislamientoEmpresasTest {
         } finally {
             jdbc.update("DELETE FROM autorizacion_supervisor WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM categoria_movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM turno_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("UPDATE usuario SET pin_supervisor_hash = NULL, pin_intentos_fallidos = 0, pin_bloqueado_hasta = NULL "
@@ -2696,6 +2781,15 @@ class AislamientoEmpresasTest {
             mvc.perform(get("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA)).andExpect(status().isForbidden());
             mvc.perform(get("/api/ventas?consecutivo=v1-000001").header(HttpHeaders.AUTHORIZATION, cajeroA))
                     .andExpect(jsonPath("$.contenido[0].id").value(venta1));
+            // spec 021: sí lista las facturas de su turno abierto, con sus medios de pago; ningún otro turno
+            mvc.perform(get("/api/ventas?turnoId=" + turno + "&size=20").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalElementos").value(4))
+                    .andExpect(jsonPath("$.contenido[?(@.id==" + venta1 + ")].medios[0]").value("EFECTIVO"));
+            mvc.perform(get("/api/ventas?turnoId=" + (turno + 1000)).header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isForbidden());
+            mvc.perform(get("/api/ventas?turnoId=" + turno).header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "CAJERO")))
+                    .andExpect(status().isForbidden());
             mvc.perform(get("/api/ventas").header(HttpHeaders.AUTHORIZATION, duenoA))
                     .andExpect(jsonPath("$.totalElementos").value(4));
 
@@ -3879,6 +3973,7 @@ class AislamientoEmpresasTest {
                 + "(SELECT id FROM config_pesos_evaluacion WHERE empresa_id = ?)", id);
         jdbc.update("DELETE FROM config_pesos_evaluacion WHERE empresa_id = ?", id);
         jdbc.update("DELETE FROM empresa_modulo WHERE empresa_id = ?", id);
+        jdbc.update("DELETE FROM categoria_movimiento_caja WHERE empresa_id = ?", id);
         jdbc.update("DELETE FROM suscripcion WHERE empresa_id = ?", id);
         jdbc.update("DELETE FROM empresa WHERE id = ?", id);
     }
@@ -3950,6 +4045,9 @@ class AislamientoEmpresasTest {
             mvc.perform(get("/api/usuarios").header(HttpHeaders.AUTHORIZATION, adminToken))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.contenido.length()").value(1));
             assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM config_pesos_evaluacion WHERE empresa_id = ?",
+                    Integer.class, empresaC));
+            // spec 021: la empresa nueva trae sus categorías de caja por defecto (4 de egreso y 2 de ingreso)
+            assertEquals(6, jdbc.queryForObject("SELECT COUNT(*) FROM categoria_movimiento_caja WHERE empresa_id = ?",
                     Integer.class, empresaC));
             mvc.perform(get("/api/empresa/modulos").header(HttpHeaders.AUTHORIZATION, adminToken))
                     .andExpect(status().isOk())

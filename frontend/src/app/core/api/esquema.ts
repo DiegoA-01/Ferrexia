@@ -4984,6 +4984,34 @@ export interface components {
             autorizadoPor?: string;
             /** Format: date-time */
             creadoEn?: string;
+            categoria?: string;
+        };
+        CategoriaMovimientoCajaRequest: {
+            /** @enum {string} */
+            tipo: "INGRESO" | "EGRESO";
+            nombre: string;
+        };
+        CategoriaMovimientoCajaCambio: {
+            nombre: string;
+            activa: boolean;
+        };
+        CategoriaMovimientoCajaResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** @enum {string} */
+            tipo?: "INGRESO" | "EGRESO";
+            nombre?: string;
+            activa?: boolean;
+        };
+        EsperadoTurnoResponse: {
+            /** Format: int64 */
+            turnoId?: number;
+            /** @enum {string} */
+            estado?: "ABIERTO" | "CERRADO" | "APROBADO";
+            esperado?: {
+                [key: string]: number;
+            };
+            total?: number;
         };
         TurnoResponse: {
             /** Format: int64 */
@@ -5028,6 +5056,8 @@ export interface components {
             motivo: string;
             soporte?: string;
             autorizacion: string;
+            /** Format: int64 */
+            categoriaId?: number;
         };
         CerrarTurnoRequest: {
             contadoEfectivo: number;
@@ -6234,6 +6264,7 @@ export interface components {
             totalAPagar?: number;
             /** Format: date-time */
             confirmadaEn?: string;
+            medios?: ("EFECTIVO" | "TARJETA_DEBITO" | "TARJETA_CREDITO" | "TRANSFERENCIA" | "BILLETERA" | "CREDITO" | "SALDO_FAVOR")[];
         };
         ImpuestoTiquete: {
             tarifaPct?: number;

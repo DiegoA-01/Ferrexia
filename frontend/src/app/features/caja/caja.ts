@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { Bodega, Caja, MedioPago, Pagina, Turno } from '../../core/api/modelos';
+import { Bodega, Caja, EsperadoTurno, MedioPago, Pagina, Turno } from '../../core/api/modelos';
 import { FechaPipe, PesosPipe } from '../../core/formato/formato';
 import { CajaService } from '../../core/servicios/caja.service';
 import { InventarioService } from '../../core/servicios/inventario.service';
@@ -10,6 +10,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 
 import { Cifra } from '../../core/ui/cifra';
+import { CategoriasCaja } from './categorias-caja';
 /** Nombre de cada medio de pago. */
 export const MEDIOS: Record<MedioPago, string> = {
   EFECTIVO: 'Efectivo', TARJETA_DEBITO: 'Tarjeta débito', TARJETA_CREDITO: 'Tarjeta crédito',
@@ -28,11 +29,13 @@ interface EdicionCaja {
 
 /**
  * Cajas y turnos (spec 003), para supervisión, el dueño y auditoría: turnos con su tiquete Z, diferencias por aprobar,
- * configuración de cajas y de la tolerancia, y el PIN de supervisor. Esperados y diferencias los calcula el backend.
+ * configuración de cajas, de la tolerancia y de las categorías de ingresos y egresos (spec 021), y el PIN de supervisor.
+ * Quien supervisa ve lo esperado de un turno abierto en cualquier momento (D20). Esperados y diferencias los calcula el
+ * backend.
  */
 @Component({
   selector: 'sc-caja',
-  imports: [Cifra, FormsModule, RouterLink, PesosPipe, FechaPipe],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, FechaPipe, CategoriasCaja],
   templateUrl: './caja.html',
   styleUrl: './caja.scss',
 })
@@ -48,6 +51,8 @@ export class CajasTurnos implements OnInit {
   protected readonly turnos = signal<Pagina<Turno> | null>(null);
   protected readonly soloPendientes = signal(true);
   protected readonly detalle = signal<Turno | null>(null);
+  /** Lo que debería haber en el turno abierto que se está viendo (spec 021, D20; solo para quien supervisa). */
+  protected readonly esperado = signal<EsperadoTurno | null>(null);
   protected readonly explicacion = signal('');
   protected readonly cajas = signal<Caja[]>([]);
   protected readonly bodegas = signal<Bodega[]>([]);
@@ -98,7 +103,16 @@ export class CajasTurnos implements OnInit {
   /** @param t turno; abre su detalle (tiquete Z si está cerrado) */
   protected ver(t: Turno): void {
     this.explicacion.set('');
-    this.servicio.turno(t.id!).subscribe({ next: d => this.detalle.set(d), error: e => this.avisos.error(e) });
+    this.esperado.set(null);
+    this.servicio.turno(t.id!).subscribe({
+      next: d => {
+        this.detalle.set(d);
+        if (d.estado === 'ABIERTO' && this.puedeAprobar()) {
+          this.servicio.esperado(d.id!).subscribe({ next: e => this.esperado.set(e), error: e => this.avisos.error(e) });
+        }
+      },
+      error: e => this.avisos.error(e),
+    });
   }
 
   protected aprobar(): void {

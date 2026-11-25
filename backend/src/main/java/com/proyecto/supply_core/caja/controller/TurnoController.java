@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.proyecto.supply_core.caja.dto.AbrirTurnoRequest;
 import com.proyecto.supply_core.caja.dto.AprobarTurnoRequest;
 import com.proyecto.supply_core.caja.dto.CerrarTurnoRequest;
+import com.proyecto.supply_core.caja.dto.EsperadoTurnoResponse;
 import com.proyecto.supply_core.caja.dto.MovimientoCajaRequest;
 import com.proyecto.supply_core.caja.dto.TurnoResponse;
 import com.proyecto.supply_core.caja.enums.EstadoTurno;
@@ -115,6 +116,19 @@ public class TurnoController {
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long cajaId,
             @PageableDefault(size = 20) Pageable pageable) {
         return turnoService.buscar(estado, pendientes, cajaId, pageable);
+    }
+
+    /**
+     * Lo que debería haber en un turno (spec 021, decisión D20). El cajero no lo ve: cierra a ciegas. Mientras llega
+     * el permiso "ver esperado de caja" (spec 022), lo ven el supervisor de ventas y el dueño.
+     *
+     * @param id turno
+     * @return esperado por medio de pago y total
+     */
+    @GetMapping("/{id}/esperado")
+    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA })
+    public EsperadoTurnoResponse esperado(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
+        return turnoService.esperado(id);
     }
 
     /**

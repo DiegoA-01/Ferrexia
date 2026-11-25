@@ -1,7 +1,7 @@
 # 021 - "Mi turno": facturas del turno, ingresos y egresos
 
-**Estado:** Propuesta · **Rama:** `feature/mi-turno-movimientos` · **Depende de:** 018 · **Responsable:** Persona 1 ·
-**Puntos de la reunión 2:** 44, 45, 46, 53 · **Migración:** sí (se reserva al empezar) · **Decisión:** D20
+**Estado:** Aprobada · **Rama:** `feature/mi-turno-movimientos` · **Depende de:** 018 · **Responsable:** Persona 1 ·
+**Puntos de la reunión 2:** 44, 45, 46, 53 · **Migración:** V42 · **Decisión:** D20 (tomada: opción A)
 
 ## Objetivo
 Que el cajero maneje todo su turno desde "Mi turno": ver lo que vendió, registrar ingresos y egresos con una categoría,
@@ -23,16 +23,18 @@ y saber qué debería tener antes de cerrar.
   opcional del soporte. Quedan en el libro de caja y suman o restan en lo esperado.
 - **Categorías:** en Configuración › Caja se crean, renombran y desactivan categorías de ingreso y de egreso. Vienen
   algunas por defecto. No se borran si ya se usaron.
-- **Lo esperado antes de cerrar (D20):** hoy el cierre es ciego a propósito. Propuesta: el cajero cuenta primero, y
-  después de guardar su conteo ve lo esperado y la diferencia. Quien tenga el permiso "ver esperado de caja" lo ve en
-  todo momento.
+- **Lo esperado antes de cerrar (D20, tomada: opción A):** el cierre sigue ciego. El cajero cuenta primero, y
+  después de guardar su conteo ve lo esperado y la diferencia en un resumen. Quien tenga el permiso "ver esperado de
+  caja" lo ve en todo momento (`GET /api/turnos/{id}/esperado`); hasta la spec 022 ese permiso lo tienen
+  SUPERVISOR_VENTAS y ADMIN_SISTEMA.
 
 ## Criterios de aceptación
-- [ ] "Mi turno" muestra las facturas del turno con paginación, reimpresión y detalle.
-- [ ] Un ingreso o egreso se registra con su categoría y cambia lo esperado.
-- [ ] Las categorías se administran en Configuración y no se borran si se usaron.
-- [ ] Lo esperado se muestra según la decisión D20.
-- [ ] Prueba de fuga entre empresas para las categorías y los movimientos.
+- [x] "Mi turno" muestra las facturas del turno con paginación, reimpresión y detalle.
+- [x] Un ingreso o egreso se registra con su categoría y cambia lo esperado.
+- [x] Las categorías se administran en Configuración y no se borran si se usaron (en Cajas y turnos › Cajas; no hay
+  borrado: se desactivan).
+- [x] Lo esperado se muestra según la decisión D20 (cierre ciego; el supervisor lo ve en el detalle del turno abierto).
+- [x] Prueba de fuga entre empresas para las categorías y los movimientos.
 
 ## Fuera de alcance
 - Conteo por billetes y monedas (spec 023).

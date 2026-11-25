@@ -65,6 +65,19 @@ describe('Cajas y turnos', () => {
     backend.expectOne(r => r.url === '/api/turnos').flush(pagina([]));
   });
 
+  it('el supervisor ve lo esperado de un turno abierto (D20) y la categoría de cada movimiento', () => {
+    crear(['SUPERVISOR_VENTAS']);
+    const abierto: Turno = { ...pendiente, estado: 'ABIERTO', cerradoEn: undefined, esperado: undefined, contado: undefined,
+      diferencias: undefined, movimientos: [{ id: 3, tipo: 'GASTO', medioPago: 'EFECTIVO', monto: -5000, motivo: 'Resma', categoria: 'Papelería' }] };
+    c()['ver'](abierto);
+    backend.expectOne('/api/turnos/9').flush(abierto);
+    backend.expectOne('/api/turnos/9/esperado').flush({ turnoId: 9, estado: 'ABIERTO', esperado: { EFECTIVO: 45000 }, total: 45000 });
+    fixture.detectChanges();
+    expect(texto()).toContain('Lo que debería haber ahora');
+    expect(texto()).toContain('$ 45.000');
+    expect(texto()).toContain('Papelería');
+  });
+
   it('el auditor consulta pero no aprueba ni edita cajas', () => {
     crear(['AUDITOR']);
     c()['ver'](pendiente);
@@ -73,6 +86,11 @@ describe('Cajas y turnos', () => {
     expect(texto()).not.toContain('Aprobar diferencia');
     c()['pestana'].set('cajas');
     fixture.detectChanges();
+    backend.expectOne(r => r.url === '/api/cajas/categorias-movimiento')
+      .flush([{ id: 1, tipo: 'EGRESO', nombre: 'Papelería', activa: true }]);
+    fixture.detectChanges();
+    expect(texto()).toContain('Papelería');
+    expect(texto()).not.toContain('Renombrar');
     expect(texto()).not.toContain('Nueva caja');
     expect(texto()).not.toContain('Mi PIN');
   });
