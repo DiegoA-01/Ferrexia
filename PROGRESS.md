@@ -6,8 +6,8 @@
 > (PR #29, de Martin): les faltan la revisión en Docker, la aprobación y marcar sus criterios, y la 026 tiene una decisión
 > abierta. **Faltan las specs 028 a 035** (ver la **sección 8**, que manda sobre las anteriores). Migraciones: 49 (V1 a
 > V49), **próxima V50**.
-> **En curso (rama `feature/variantes-producto`): spec 028, variantes de producto, con la V50** (próxima libre V51).
-> Pruebas en esa rama: backend 919 en verde (1 omitida, Gemini en vivo); frontend 322; e2e de Playwright con 4 pruebas en el CI.
+> **028 mezclada (V50, PR #31). En curso (rama `feature/anular-factura-metodo-pago`): spec 029 con la V51** (próxima
+> libre V52). Pruebas en esa rama: backend 920 en verde (1 omitida, Gemini en vivo); frontend 327; e2e con 4 pruebas en el CI.
 > Las secciones 0 a 7 se dejan como historia.
 
 > Estado al 2026-11-19 (historia): **Ventas y Caja en construcción por specs: hechas la 000 (CI), 001 (catálogo de venta), 002 (clientes) y 003 (cajas y turnos); sigue la 004, la venta (ver sección 7)**. Antes: frontend completo (fases 0 a 8), stack de Docker e informe de compras para el dueño (V25). Antes: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), exportación a Excel y PDF con archivos legibles, y cruce de totales de la IA con Gemini como proveedor de lectura (sin migración)**.
@@ -662,7 +662,8 @@ de aceptación verificados → rama propia desde `develop` → PR que crea y mez
 | 025 | El dueño vende, cajas por persona, retiros y gastos sin PIN con permiso (D15); el Dueño y el Administrador cotizan | V47, V48 | #29 |
 | 026 | Producto completo: impuesto, proveedor y fecha del costo, alta al vuelo, aviso de stock máximo (D17) | V49 | #29 |
 | 027 | Venta ágil: categorías en el POS y el pedido, cliente y pago en un paso | — | #29 |
-| 028 | Variantes de producto: cada variante es un producto (código, barras, stock, kardex y precio propios) bajo un producto general que no se mueve ni se vende; hereda categoría, unidad e impuesto; tabla de combinaciones, inventario desplegable, selectores sin el general. `esquema.ts` regenerado (estaba atrasado desde la 021) | V50 | rama `feature/variantes-producto` |
+| 028 | Variantes de producto: cada variante es un producto (código, barras, stock, kardex y precio propios) bajo un producto general que no se mueve ni se vende; hereda categoría, unidad e impuesto; tabla de combinaciones, inventario desplegable, selectores sin el general. `esquema.ts` regenerado (estaba atrasado desde la 021) | V50 | #31 |
+| 029 | Anular una factura de un turno cerrado con permiso (el dinero sale del turno de quien anula) y cambiar el método de pago (D16): ajuste por medio en la caja, historial `venta_pago_cambio`, cajero con PIN del supervisor; diálogo en Facturas del turno y en Ventas | V51 | rama `feature/anular-factura-metodo-pago` |
 | Docker | El proyecto de Compose y las imágenes pasan a llamarse `ferrexia` (ver "Docker" más abajo) | — | #23 |
 
 Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agents/specs/018-mi-turno-claro/revision-flujo-cajas.md`.
@@ -695,7 +696,6 @@ cada `spec.md` sigue "En construcción" y sin criterios marcados.
 
 | Spec | Qué entrega | Responsable | Decisión que la bloquea |
 |---|---|---|---|
-| 029 Anular factura y método de pago | Anular factura de un turno cerrado y cambiar el método de pago | Persona 1 | D16 |
 | 030 Venta sin stock | Vender sin existencia con permiso, aviso y reporte | Persona 1 | D13 (falta elegir stock negativo o faltante pendiente) |
 | 031 Proveedor sin perfil | Cotizar con enlace de un solo uso y anti-bot, sin cuenta | Persona 2 | D14 (depende de 033) |
 | 032 Domicilios | Venta a domicilio, domiciliarios, estados, contraentrega | Persona 1 | D19 |
@@ -703,7 +703,7 @@ cada `spec.md` sigue "En construcción" y sin criterios marcados.
 | 034 Reportes de ventas ampliados | Más reportes de ventas | Persona 1 | — |
 | 035 Sedes con super administrador | Grupo de empresas con un super administrador | Persona 2 | D12 (hay que aclararla antes) |
 
-Las decisiones abiertas están en `agents/specs/README.md`: D12, D13, D14, D16, D19 y D21 (D10, D11, D15, D17, D18 y D20 ya
+Las decisiones abiertas están en `agents/specs/README.md`: D12, D13, D14, D19 y D21 (D10, D11, D15, D16, D17, D18 y D20 ya
 se tomaron). Hay que tomarlas antes de aprobar la spec que bloquean.
 
 ### Qué sigue, en orden
@@ -714,7 +714,8 @@ se tomaron). Hay que tomarlas antes de aprobar la spec que bloquean.
 3. **Spec 028, variantes de producto: hecha en `feature/variantes-producto` (V50)**; falta el PR, el merge y la revisión
    en Docker (crear un producto con variantes, comprarlo, recibirlo y venderlo por código de barras). La unidad de una
    variante es la de su producto general y solo cambia si ninguna variante tiene movimientos.
-4. **Tomar las decisiones abiertas** D13, D16, D19, D21, D14 y aclarar D12; luego 029, 030, 032, 033, 031 y 035. La 034
+4. **Spec 029 hecha en su rama (V51, D16 tomada)**: falta PR, merge y revisión en Docker. Luego **tomar las decisiones
+   abiertas** D13, D19, D21, D14 y aclarar D12, y seguir con 030, 032, 033, 031 y 035. La 034
    (reportes de ventas ampliados) no espera decisión y se puede hacer en paralelo.
 5. Pendientes menores de la 022: botones internos de algunas pantallas que usan listas de roles sueltas y los avisos por
    rol (`notificarRol`), que no llegan a quien tiene un rol propio.

@@ -13,7 +13,10 @@ import { Ventas } from './ventas';
 const resumen: VentaResumen = { id: 5, consecutivo: 'C1-000005', estado: 'CONFIRMADA', caja: 'Caja 1', cliente: 'Consumidor final', cajero: 'Pedro', totalAPagar: 18500 };
 const pagina = <T>(l: T[]) => ({ contenido: l, pagina: 0, tamano: 20, totalElementos: l.length, totalPaginas: 1 });
 const sesion = (roles: string[]) => ({ provide: SesionService,
-  useValue: { tieneRol: (r: string[]) => r.some(x => roles.includes(x)), soloLectura: () => false, empresa: signal(null) } });
+  useValue: { tieneRol: (r: string[]) => r.some(x => roles.includes(x)), soloLectura: () => false, empresa: signal(null),
+    // spec 029: Dueño y Supervisor anulan de otro turno y cambian pagos sin PIN
+    tienePermiso: (p: string) => ['VENTA_ANULAR_OTRO_TURNO', 'VENTA_CAMBIAR_PAGO'].includes(p)
+      && roles.some(x => x === 'ADMIN_SISTEMA' || x === 'SUPERVISOR_VENTAS') } });
 const limites = [{ rol: 'CAJERO', descuentoMaximoPct: 5 }, { rol: 'SUPERVISOR_VENTAS', descuentoMaximoPct: 15 }, { rol: 'VENDEDOR', descuentoMaximoPct: 5 }];
 
 describe('Ventas', () => {
@@ -56,6 +59,27 @@ describe('Ventas', () => {
     expect(texto()).toContain('Ana Supervisora');
     // el supervisor ve los límites pero no los cambia
     expect(c()['esDueno']()).toBe(false);
+  });
+
+  it('con permiso anula una factura de un turno cerrado sin PIN y ve el historial de pagos (spec 029)', () => {
+    crear(['SUPERVISOR_VENTAS'], { id: 9, estado: 'ABIERTO' });
+    c()['ver'](resumen);
+    backend.expectOne('/api/ventas/5').flush({ ...resumen, turnoId: 3, turnoAbierto: false, totalDevuelto: 0, lineas: [],
+      pagos: [{ medio: 'TARJETA_DEBITO', monto: 18500 }],
+      cambiosPago: [{ fecha: '2026-11-25T10:00:00', usuario: 'Ana', antes: { EFECTIVO: 18500 }, despues: { TARJETA_DEBITO: 18500 }, motivo: 'Era tarjeta' }] });
+    fixture.detectChanges();
+    expect(texto()).toContain('Pago corregido');
+    expect(texto()).toContain('Tarjeta débito');
+    expect(c()['puedeAnular']()).toBe(false);
+    expect(c()['puedeAnularOtro']()).toBe(true);
+    expect(c()['puedeCambiarPago']()).toBe(true);
+    c()['empezar']('anularOtro');
+    c()['motivo'].set('Factura duplicada');
+    c()['anularDeOtroTurno']();
+    const r = backend.expectOne(x => x.url === '/api/ventas/5/anular-otro-turno' && x.method === 'POST');
+    expect(r.request.body).toEqual({ motivo: 'Factura duplicada' });
+    r.flush({ ...resumen, estado: 'ANULADA', lineas: [], pagos: [] });
+    backend.expectOne(x => x.url === '/api/ventas').flush(pagina([resumen]));
   });
 
   it('el dueño guarda los límites de descuento', () => {

@@ -13,6 +13,7 @@ import { VentaService } from '../../core/servicios/venta.service';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 import { AutorizacionPin } from '../caja/autorizacion-pin';
+import { CambioPago, MEDIOS_CAJA } from './cambio-pago';
 import { MEDIOS_VENTA } from '../pos/pos';
 import { imprimirTiquete } from '../pos/tiquete';
 
@@ -43,7 +44,7 @@ const ROLES_LIMITE: Record<string, string> = { CAJERO: 'Cajero', SUPERVISOR_VENT
  */
 @Component({
   selector: 'sc-ventas',
-  imports: [Cifra, FormsModule, RouterLink, PesosPipe, NumeroPipe, FechaPipe, AutorizacionPin],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, NumeroPipe, FechaPipe, AutorizacionPin, CambioPago],
   templateUrl: './ventas.html',
   styles: `
     .filtros { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--sc-borde); align-items: flex-end;
@@ -77,7 +78,7 @@ export class Ventas implements OnInit {
   protected readonly formas = Object.keys(REEMBOLSOS) as FormaReembolso[];
   /** Turno abierto de la sesión (para anular o devolver). */
   protected readonly miTurno = signal<Turno | null>(null);
-  protected readonly correccion = signal<'anular' | 'devolver' | null>(null);
+  protected readonly correccion = signal<'anular' | 'devolver' | 'anularOtro' | 'pago' | null>(null);
   protected readonly motivo = signal('');
   protected readonly pidiendoPin = signal(false);
   protected readonly lineasDevueltas = signal<LineaDevuelta[]>([]);
@@ -94,6 +95,24 @@ export class Ventas implements OnInit {
     const d = this.detalle();
     return !!d && this.cobra() && d.estado === 'CONFIRMADA' && !!d.turnoAbierto && this.miTurno()?.id === d.turnoId
       && (d.totalDevuelto ?? 0) === 0;
+  });
+  /** Spec 029: con el permiso se anula una factura de un turno ya cerrado (el dinero sale del turno de la sesión). */
+  protected readonly puedeAnularOtro = computed(() => {
+    const d = this.detalle();
+    return !!d && !this.sesion.soloLectura() && this.sesion.tienePermiso('VENTA_ANULAR_OTRO_TURNO') && d.estado === 'CONFIRMADA'
+      && !d.turnoAbierto && (d.totalDevuelto ?? 0) === 0;
+  });
+  /**
+   * Spec 029: cambia el método de pago quien tiene el permiso, o el cajero en su turno abierto (con PIN). Solo facturas
+   * pagadas con medios de caja y sin devoluciones.
+   */
+  protected readonly puedeCambiarPago = computed(() => {
+    const d = this.detalle();
+    if (!d || this.sesion.soloLectura() || d.estado !== 'CONFIRMADA' || (d.totalDevuelto ?? 0) > 0
+      || !(d.pagos ?? []).every(p => MEDIOS_CAJA.includes(p.medio!))) {
+      return false;
+    }
+    return this.sesion.tienePermiso('VENTA_CAMBIAR_PAGO') || (this.cobra() && !!d.turnoAbierto && this.miTurno()?.id === d.turnoId);
   });
   protected readonly puedeDevolver = computed(() => {
     const d = this.detalle();
@@ -141,8 +160,30 @@ export class Ventas implements OnInit {
     this.motivo.set('');
   }
 
+  /** Anula una factura de un turno cerrado (spec 029): con el permiso, sin PIN. */
+  protected anularDeOtroTurno(): void {
+    const d = this.detalle()!;
+    this.enviando.set(true);
+    this.ventas.anularDeOtroTurno(d.id!, this.motivo().trim()).subscribe({
+      next: v => {
+        this.enviando.set(false);
+        this.abrir(v);
+        this.avisos.ok(`Venta ${v.consecutivo} anulada: el stock volvió y el dinero salió de su turno.`);
+        if (!this.soloConsecutivo()) {
+          this.buscar(this.pagina()?.pagina ?? 0);
+        }
+      },
+      error: e => this.fallo(e),
+    });
+  }
+
+  /** @param v venta con el pago corregido (spec 029) */
+  protected alCambiarPago(v: Venta): void {
+    this.abrir(v);
+  }
+
   /** @param tipo corrección que se empieza */
-  protected empezar(tipo: 'anular' | 'devolver'): void {
+  protected empezar(tipo: 'anular' | 'devolver' | 'anularOtro' | 'pago'): void {
     const d = this.detalle()!;
     this.correccion.set(tipo);
     this.motivo.set('');
@@ -220,6 +261,11 @@ export class Ventas implements OnInit {
   /** @param rol código @returns nombre */
   protected nombreRol(rol: string | undefined): string {
     return ROLES_LIMITE[rol ?? ''] ?? rol ?? '';
+  }
+
+  /** @param montos monto por medio @returns "Efectivo $ 20.000" */
+  protected textoMontos(montos: Record<string, number> | undefined): string {
+    return Object.entries(montos ?? {}).map(([m, v]) => `${this.textoMedio(m)} $ ${Math.round(v).toLocaleString('es-CO')}`).join(' + ');
   }
 
   /** @param medio medio @returns texto */

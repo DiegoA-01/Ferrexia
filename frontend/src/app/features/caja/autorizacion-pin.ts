@@ -9,6 +9,7 @@ import { Avisos } from '../../core/ui/avisos';
 const ACCIONES: Record<AccionAutorizada, string> = {
   ANULAR_VENTA: 'anular la venta', DESCUENTO: 'el descuento', PRECIO_BAJO_MINIMO: 'vender bajo el precio mínimo',
   DEVOLUCION: 'la devolución', RETIRO: 'el retiro de efectivo', GASTO: 'el gasto', INGRESO: 'el ingreso de efectivo',
+  CAMBIAR_PAGO: 'cambiar el método de pago',
 };
 
 /**

@@ -231,7 +231,8 @@ public class CajaReporteService {
                 BigDecimal monto = s.monto() == null ? CERO : s.monto().setScale(2, RoundingMode.HALF_UP);
                 esperado = esperado.add(monto);
                 switch (s.tipo()) {
-                    case "VENTA" -> ventas.merge(s.medio(), monto, BigDecimal::add);
+                    // spec 029: el ajuste de pago mueve la venta de un medio a otro (suma cero en la venta original)
+                    case "VENTA", "AJUSTE_PAGO" -> ventas.merge(s.medio(), monto, BigDecimal::add);
                     case "ANULACION" -> {
                         ventas.merge(s.medio(), monto, BigDecimal::add);
                         anulaciones = anulaciones.add(monto.abs());

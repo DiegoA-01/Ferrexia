@@ -85,6 +85,21 @@ class VentasPorTurnoTest {
         assertThat(r.totales().ventas().get("BILLETERA")).isEqualByComparingTo("20000");
     }
 
+    /** Spec 029: el ajuste de pago pasa la venta de un medio a otro sin cambiar el total ni el esperado. */
+    @Test
+    void elAjusteDePagoMueveLaVentaDeMedioSinCambiarElTotal() {
+        BaseTurno abierto = new BaseTurno(4L, "Caja 1", "Ana", "ABIERTO", ABRIO, null, null);
+        List<SumaLibro> sumas = List.of(suma(4, "BASE", "EFECTIVO", "50000"), suma(4, "VENTA", "EFECTIVO", "20000"),
+                suma(4, "AJUSTE_PAGO", "EFECTIVO", "-20000"), suma(4, "AJUSTE_PAGO", "TARJETA_DEBITO", "20000"));
+
+        VentasTurnoReporte.Turno t = CajaReporteService.ventasPorTurno(HOY, HOY, List.of(abierto), sumas).turnos().getFirst();
+
+        assertThat(t.ventas().get("EFECTIVO")).isEqualByComparingTo("0");
+        assertThat(t.ventas().get("TARJETA_DEBITO")).isEqualByComparingTo("20000");
+        assertThat(t.totalVentas()).isEqualByComparingTo("20000");
+        assertThat(t.esperado()).isEqualByComparingTo("70000");
+    }
+
     /** Un turno sin movimientos sale en cero. */
     @Test
     void unTurnoSinMovimientosSaleEnCero() {

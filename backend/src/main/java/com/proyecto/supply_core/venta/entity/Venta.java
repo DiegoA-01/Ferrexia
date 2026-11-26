@@ -129,7 +129,7 @@ public class Venta {
     @OrderBy("id")
     private List<VentaLinea> lineas = new ArrayList<>();
 
-    @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id")
     private List<VentaPago> pagos = new ArrayList<>();
 

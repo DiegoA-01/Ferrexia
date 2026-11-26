@@ -130,6 +130,9 @@ public class VentaService {
     private final NotificacionService notificacionService;
     private final CarteraService carteraService;
     private final AlertaCajeroService alertaCajero;
+    /** Historial de cambios del método de pago (spec 029). */
+    private final com.proyecto.supply_core.venta.repository.VentaPagoCambioRepository cambioPagoRepository;
+    private final tools.jackson.databind.json.JsonMapper json = tools.jackson.databind.json.JsonMapper.builder().build();
 
     /**
      * Línea lista para cobrar: el producto, su precio del día y el resultado del cálculo.
@@ -194,7 +197,9 @@ public class VentaService {
             AutorizacionService autorizacionService, LimiteDescuentoService limiteService,
             UsuarioRepository usuarioRepository, AuditoriaService auditoriaService, JdbcTemplate jdbc,
             EmpresaRepository empresaRepository, DevolucionVentaRepository devolucionRepository,
-            NotificacionService notificacionService, CarteraService carteraService, AlertaCajeroService alertaCajero) {
+            NotificacionService notificacionService, CarteraService carteraService, AlertaCajeroService alertaCajero,
+            com.proyecto.supply_core.venta.repository.VentaPagoCambioRepository cambioPagoRepository) {
+        this.cambioPagoRepository = cambioPagoRepository;
         this.ventaRepository = ventaRepository;
         this.pedidoRepository = pedidoRepository;
         this.turnoRepository = turnoRepository;
@@ -866,6 +871,13 @@ public class VentaService {
         ids.add(v.getVendedorUsuarioId());
         ids.add(v.getAutorizadaPorUsuarioId());
         v.getLineas().forEach(l -> ids.add(l.getAutorizadoPorUsuarioId()));
+        List<com.proyecto.supply_core.venta.entity.VentaPagoCambio> cambios = cambioPagoRepository
+                .findByVentaIdOrderByIdAsc(v.getId());
+        cambios.forEach(c -> {
+            ids.add(c.getUsuarioId());
+            ids.add(c.getAutorizadoPorUsuarioId());
+        });
+        ids.remove(null);
         Map<Long, String> nombres = nombres(ids);
         Map<Long, Producto> productos = productoRepository.findAllById(v.getLineas().stream().map(VentaLinea::getProductoId)
                 .collect(Collectors.toSet())).stream().collect(Collectors.toMap(Producto::getId, Function.identity()));
@@ -896,6 +908,17 @@ public class VentaService {
                 nombres.get(v.getCajeroUsuarioId()), nombres.get(v.getVendedorUsuarioId()), lista, v.getPedidoVentaId(),
                 v.getSubtotal(), v.getDescuentoTotal(), v.getBaseGravable(), v.getImpuestos(), v.getTotal(), v.getRedondeo(),
                 v.totalAPagar(), v.getCambio(), v.getConfirmadaEn(), nombres.get(v.getAutorizadaPorUsuarioId()),
-                v.getAnuladaEn(), v.getMotivoAnulacion(), lineas, pagos, turnoAbierto, totalDevuelto);
+                v.getAnuladaEn(), v.getMotivoAnulacion(), lineas, pagos, turnoAbierto, totalDevuelto,
+                cambios.stream().map(c -> new com.proyecto.supply_core.venta.dto.CambioPagoResponse(c.getCreadoEn(),
+                        nombres.get(c.getUsuarioId()), nombres.get(c.getAutorizadoPorUsuarioId()), c.getTurnoId(),
+                        montos(c.getAntes()), montos(c.getDespues()), c.getMotivo())).toList());
+    }
+
+    /**
+     * @param texto JSON guardado de un cambio de pago
+     * @return monto por medio
+     */
+    private Map<String, BigDecimal> montos(String texto) {
+        return json.readValue(texto, new tools.jackson.core.type.TypeReference<java.util.LinkedHashMap<String, BigDecimal>>() { });
     }
 }

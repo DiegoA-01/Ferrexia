@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import {
   CotizacionVenta, Devolucion, DevolucionRequest, EstadoPedidoVenta, EstadoVenta, LimiteDescuento, LineaVentaRequest, PagoVentaRequest, Pagina, PedidoVenta,
-  PedidoVentaRequest, Tiquete, Venta, VentaRequest, VentaResumen,
+  PedidoVentaRequest, Tiquete, Venta, VentaRequest, VentaResumen, CambiarPago,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -71,6 +71,21 @@ export class VentaService {
    */
   anular(id: number, motivo: string, autorizacion: string): Observable<Venta> {
     return this.http.post<Venta>(api(`/api/ventas/${id}/anular`), { motivo, autorizacion });
+  }
+
+  /**
+   * Anula una venta de un turno ya cerrado (spec 029): solo con el permiso; el dinero sale del turno de la sesión.
+   *
+   * @param id     venta
+   * @param motivo por qué se anula
+   */
+  anularDeOtroTurno(id: number, motivo: string): Observable<Venta> {
+    return this.http.post<Venta>(api(`/api/ventas/${id}/anular-otro-turno`), { motivo });
+  }
+
+  /** @param id venta; @param datos pagos nuevos (suman el total), motivo y, sin permiso, el PIN del supervisor (spec 029) */
+  cambiarPago(id: number, datos: CambiarPago): Observable<Venta> {
+    return this.http.post<Venta>(api(`/api/ventas/${id}/cambiar-pago`), datos);
   }
 
   /** @param datos devolución de cliente con su autorización */

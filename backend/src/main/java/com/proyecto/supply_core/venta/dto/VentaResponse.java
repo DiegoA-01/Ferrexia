@@ -38,11 +38,13 @@ import com.proyecto.supply_core.venta.enums.EstadoVenta;
  * @param pagos            pagos
  * @param turnoAbierto     {@code true} si su turno sigue abierto (solo así se anula)
  * @param totalDevuelto    total ya devuelto al cliente
+ * @param cambiosPago      cambios del método de pago, del más antiguo al más reciente (spec 029)
  */
 public record VentaResponse(Long id, String consecutivo, EstadoVenta estado, Long cajaId, String caja, Long turnoId,
         Long clienteId, String cliente, String clienteDocumento, String cajero, String vendedor, String lista,
         Long pedidoVentaId, BigDecimal subtotal, BigDecimal descuentoTotal, BigDecimal baseGravable,
         BigDecimal impuestos, BigDecimal total, BigDecimal redondeo, BigDecimal totalAPagar, BigDecimal cambio,
         LocalDateTime confirmadaEn, String autorizadaPor, LocalDateTime anuladaEn, String motivoAnulacion,
-        List<VentaLineaResponse> lineas, List<VentaPagoResponse> pagos, boolean turnoAbierto, BigDecimal totalDevuelto) {
+        List<VentaLineaResponse> lineas, List<VentaPagoResponse> pagos, boolean turnoAbierto, BigDecimal totalDevuelto,
+        List<CambioPagoResponse> cambiosPago) {
 }

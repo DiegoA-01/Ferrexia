@@ -30,6 +30,9 @@ plantilla **Administrador** (`ADMINISTRADOR`, = Dueño sin `EMPRESA_GESTIONAR`) 
 `PEDIDO_VENTA_VER_TODOS`, `ORDEN_DOCUMENTOS`, `SOLICITUD_VER_TODAS`, `SOLICITUD_CANCELAR_AJENA`,
 `DELEGACION_REVOCAR_AJENA` y `PEDIDO_INTERNO_VER_TODOS` (107 en total).
 
+Después se sumaron `CAJA_RETIRO_SIN_PIN`, `CAJA_GASTO_SIN_PIN` y `CAJA_INGRESO_SIN_PIN` (spec 025, V47) y
+`VENTA_ANULAR_OTRO_TURNO` y `VENTA_CAMBIAR_PAGO` (spec 029, V51; Dueño, Administrador y Supervisor de ventas): 112 en total.
+
 ## Compras
 
 | Permiso | Qué permite | Roles que lo tienen | Controladores |

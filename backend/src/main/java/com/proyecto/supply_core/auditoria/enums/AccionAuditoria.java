@@ -269,6 +269,8 @@ public enum AccionAuditoria {
     VENTA_REIMPRIMIR,
     /** Se anuló una venta de un turno abierto con autorización (spec 006). */
     VENTA_ANULAR,
+    /** Cambio del método de pago de una venta (spec 029, D16). */
+    VENTA_CAMBIAR_PAGO,
     /** Un cliente devolvió mercancía de una venta (spec 006). */
     VENTA_DEVOLVER,
     /** Se habilitó o se retiró la excepción de crédito de un cliente en mora (spec 007). */

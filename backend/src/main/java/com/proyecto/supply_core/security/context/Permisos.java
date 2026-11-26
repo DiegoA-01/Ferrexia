@@ -240,6 +240,10 @@ public final class Permisos {
     public static final String DELEGACION_REVOCAR_AJENA = "DELEGACION_REVOCAR_AJENA";
     /** Ver los pedidos internos de todas las sedes. */
     public static final String PEDIDO_INTERNO_VER_TODOS = "PEDIDO_INTERNO_VER_TODOS";
+    /** Anular facturas de un turno ya cerrado (spec 029). */
+    public static final String VENTA_ANULAR_OTRO_TURNO = "VENTA_ANULAR_OTRO_TURNO";
+    /** Cambiar el método de pago de una factura sin el PIN del supervisor (spec 029, D16). */
+    public static final String VENTA_CAMBIAR_PAGO = "VENTA_CAMBIAR_PAGO";
 
     /** Clase de constantes: no se instancia. */
     private Permisos() {
