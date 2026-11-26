@@ -14,7 +14,29 @@ import java.math.BigDecimal;
  * @param stockMinimo     mínimo configurado
  * @param stockMaximo     máximo configurado (puede ser {@code null})
  * @param costoReferencia último costo conocido (puede ser {@code null})
+ * @param esAgrupador     {@code true} si es un producto general que agrupa variantes (spec 028)
+ * @param agrupadorId     producto general del que es variante, o {@code null}
  */
 public record InventarioFila(Long productoId, String codigo, String nombre, String categoria, String unidad,
-        BigDecimal stock, BigDecimal stockMinimo, BigDecimal stockMaximo, BigDecimal costoReferencia) {
+        BigDecimal stock, BigDecimal stockMinimo, BigDecimal stockMaximo, BigDecimal costoReferencia,
+        boolean esAgrupador, Long agrupadorId) {
+
+    /**
+     * Fila de un producto sin variantes (como antes de la spec 028).
+     *
+     * @param productoId      producto
+     * @param codigo          código
+     * @param nombre          nombre
+     * @param categoria       categoría
+     * @param unidad          unidad
+     * @param stock           stock total
+     * @param stockMinimo     mínimo
+     * @param stockMaximo     máximo
+     * @param costoReferencia costo de referencia
+     */
+    public InventarioFila(Long productoId, String codigo, String nombre, String categoria, String unidad,
+            BigDecimal stock, BigDecimal stockMinimo, BigDecimal stockMaximo, BigDecimal costoReferencia) {
+        this(productoId, codigo, nombre, categoria, unidad, stock, stockMinimo, stockMaximo, costoReferencia, false,
+                null);
+    }
 }

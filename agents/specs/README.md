@@ -57,7 +57,7 @@ decisiones y se aprueban antes de escribir el plan.
 | [025-caja-con-permisos](025-caja-con-permisos/spec.md) | 3 | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | `feature/cierre-por-denominacion` (con la 023, 024 y 027) | 022 | Persona 1 | Mezclada (V47 y V48, PR #29); revisada en Docker, falta aprobación |
 | [026-producto-completo](026-producto-completo/spec.md) | 3 | Categoría y proveedor al vuelo, impuesto, unidad ajustable, stock máximo, proveedor y fecha del costo | `feature/cierre-por-denominacion` | 001 | Persona 2 | Mezclada (V49, PR #29); falta decidir la unidad con movimientos |
 | [027-venta-agil](027-venta-agil/spec.md) | 3 | Categorías en el pedido y el POS, cliente y pago en un paso | `feature/cierre-por-denominacion` (con la 023) | 005, 016 | Persona 1 | Mezclada (PR #29); falta revisión en Docker |
-| [028-variantes-producto](028-variantes-producto/spec.md) | 3 | Atributos y variantes con código, precio y stock propios | `feature/variantes-producto` | 026 | Persona 2 | Propuesta |
+| [028-variantes-producto](028-variantes-producto/spec.md) | 3 | Atributos y variantes con código, precio y stock propios | `feature/variantes-producto` | 026 | Persona 2 | Hecha (V50); falta revisión en Docker |
 | [029-anular-factura-metodo-pago](029-anular-factura-metodo-pago/spec.md) | 3 | Anular factura de un turno cerrado y cambiar el método de pago | `feature/anular-factura-metodo-pago` | 006, 022 | Persona 1 | Propuesta (D16) |
 | [030-venta-sin-stock](030-venta-sin-stock/spec.md) | 4 | Vender sin existencia con permiso, aviso y reporte | `feature/venta-sin-stock` | 004, 022 | Persona 1 | Propuesta (D13) |
 | [031-proveedor-sin-perfil](031-proveedor-sin-perfil/spec.md) | 4 | Proveedor sin cuenta que cotiza con un enlace de un solo uso y anti-bot | `feature/proveedor-sin-perfil` | 033 | Persona 2 | Propuesta (D14) |
@@ -126,7 +126,8 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V47 | `feature/cierre-por-denominacion` | Caja con permisos: el Dueño opera el turno y cobra, permisos de retiro, gasto e ingreso sin PIN y `caja_usuario` (spec 025) |
 | V48 | `feature/cierre-por-denominacion` | El Dueño y el Administrador cotizan el carrito para entrar al Punto de venta (spec 025) |
 | V49 | `feature/cierre-por-denominacion` | Producto completo: proveedor y fecha del costo de referencia, NIT de proveedor opcional y evento `STOCK_SOBRE_MAXIMO` (spec 026) |
-| V50 en adelante | libre | Se reserva al empezar cada spec |
+| V50 | `feature/variantes-producto` | Variantes de producto: `producto.agrupador_id`, `es_agrupador`, `atributos` y `combinacion` (spec 028) |
+| V51 en adelante | libre | Se reserva al empezar cada spec |
 
 **Numeración propuesta en los planes 018 a 035 (no es reserva):** V41 (020), V42 (021), V43 y V44 (022), V45 (023),
 V46 (025), V47 (026), V48 (028), V49 (029), V50 (030), V51 (031), V52 (032), V53 (033), V54 (035). Las specs 018, 019,

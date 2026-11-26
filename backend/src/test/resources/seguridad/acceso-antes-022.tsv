@@ -218,7 +218,7 @@ ProductoCargaController#plantilla()	ADMIN_COMPRAS|I
 ProductoController#activar(Long)	ADMIN_COMPRAS|I
 ProductoController#actualizar(Long,ProductoUpdateRequest)	ADMIN_COMPRAS|I
 ProductoController#alertasStock()	-|I
-ProductoController#buscar(String,Long,Boolean,Pageable)	-|I
+ProductoController#buscar(String,Long,Boolean,Boolean,Pageable)	-|I
 ProductoController#cambiarPlazo(Long,ProductoPlazoRequest)	ADMIN_COMPRAS|I
 ProductoController#crear(ProductoRequest)	ADMIN_COMPRAS|I
 ProductoController#desactivar(Long)	ADMIN_COMPRAS|I

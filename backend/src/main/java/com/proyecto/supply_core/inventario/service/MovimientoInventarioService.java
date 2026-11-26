@@ -459,6 +459,8 @@ public class MovimientoInventarioService {
         if (!p.isActivo()) {
             throw new NegocioException("PRODUCTO_INACTIVO", "El producto " + p.getCodigo() + " está inactivo");
         }
+        // spec 028: el agrupador no tiene stock; se mueve una de sus variantes
+        p.exigirNoAgrupador();
         return p;
     }
 

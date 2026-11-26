@@ -30,6 +30,7 @@ import com.proyecto.supply_core.inventario.enums.TipoMovimiento;
 import com.proyecto.supply_core.inventario.service.BodegaService;
 import com.proyecto.supply_core.inventario.service.MovimientoInventarioService;
 import com.proyecto.supply_core.inventario.service.ProductoService;
+import com.proyecto.supply_core.inventario.service.VarianteService;
 
 @WebMvcTest({ InventarioController.class, ProductoController.class, BodegaController.class })
 class InventarioControllerTest extends WebTestBase {
@@ -40,6 +41,8 @@ class InventarioControllerTest extends WebTestBase {
     private ProductoService productoService;
     @MockitoBean
     private BodegaService bodegaService;
+    @MockitoBean
+    private VarianteService varianteService;
 
     @BeforeEach
     void catalogosActivos() {
@@ -169,5 +172,25 @@ class InventarioControllerTest extends WebTestBase {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detalles", hasItem("sedeId: no existe o está inactiva")));
         verifyNoInteractions(productoService, bodegaService);
+    }
+
+    @Test
+    void soloQuienAdministraProductosCreaVariantesYElAltaSeValida() throws Exception {
+        String alta = """
+                {"codigo":"TD","nombre":"Tornillo drywall","categoriaId":1,"unidadMedidaId":1,
+                 "atributos":[{"nombre":"Medida","valores":["1\\"","2\\""]}],
+                 "variantes":[{"valores":{"Medida":"1\\""},"codigo":"TD-1","stockMinimo":0}]}""";
+        mvc.perform(post("/api/productos/con-variantes").header(HttpHeaders.AUTHORIZATION, bearer("ALMACENISTA"))
+                        .contentType(MediaType.APPLICATION_JSON).content(alta))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/productos/con-variantes").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_COMPRAS"))
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"codigo":"TD","nombre":"Tornillo","categoriaId":1,"unidadMedidaId":1,
+                                 "atributos":[{"nombre":"","valores":[]}],"variantes":[]}"""))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(varianteService);
+        mvc.perform(post("/api/productos/con-variantes").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_COMPRAS"))
+                        .contentType(MediaType.APPLICATION_JSON).content(alta))
+                .andExpect(status().isCreated());
     }
 }

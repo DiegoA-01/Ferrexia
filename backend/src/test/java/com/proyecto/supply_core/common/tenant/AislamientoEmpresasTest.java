@@ -1014,6 +1014,63 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void lasVariantesYSusAtributosSonDeSuEmpresaYElProductoGeneralNoSeMueve() throws Exception {
+        // Spec 028: se crea en B (en A hay pruebas que cuentan los productos); A no ve ni cambia nada de B
+        String comprasB = token(empresaB, usuarioB, "ADMIN_COMPRAS");
+        String comprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+        Long unidad = jdbc.queryForObject("SELECT unidad_medida_id FROM producto WHERE id = ?", Long.class, productoB);
+        mvc.perform(post("/api/productos/con-variantes").header(HttpHeaders.AUTHORIZATION, comprasB)
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"codigo":"VAR-FUGA","nombre":"Cable con variantes","categoriaId":%d,"unidadMedidaId":%d,
+                                 "atributos":[{"nombre":"Color","valores":["Rojo","Azul"]}],
+                                 "variantes":[{"valores":{"Color":"Rojo"},"codigo":"VAR-FUGA-R","codigoBarras":"77028001","stockMinimo":1},
+                                              {"valores":{"Color":"Azul"},"codigo":"VAR-FUGA-A","stockMinimo":1}]}"""
+                                .formatted(categoriaB, unidad)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.variantes.length()").value(2))
+                .andExpect(jsonPath("$.variantes[0].nombre").value("Cable con variantes · Rojo"));
+        Long general = jdbc.queryForObject("SELECT id FROM producto WHERE codigo = 'VAR-FUGA'", Long.class);
+        Long rojo = jdbc.queryForObject("SELECT id FROM producto WHERE codigo = 'VAR-FUGA-R'", Long.class);
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM producto WHERE empresa_id = ? AND agrupador_id = ?",
+                Integer.class, empresaB, general));
+        assertTrue(jdbc.queryForObject("SELECT atributos FROM producto WHERE id = ?", String.class, general)
+                .contains("Rojo"));
+
+        // A no ve el general, sus variantes ni sus atributos, y no los puede cambiar
+        mvc.perform(get("/api/productos/" + general + "/variantes").header(HttpHeaders.AUTHORIZATION, comprasA))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/productos/" + rojo).header(HttpHeaders.AUTHORIZATION, comprasA))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/productos").param("texto", "VAR-FUGA").header(HttpHeaders.AUTHORIZATION, comprasA))
+                .andExpect(jsonPath("$.contenido.length()").value(0));
+        mvc.perform(put("/api/productos/" + general + "/variantes").header(HttpHeaders.AUTHORIZATION, comprasA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"atributos\":[{\"nombre\":\"Color\",\"valores\":[\"Rojo\"]}],\"variantes\":[]}"))
+                .andExpect(status().isNotFound());
+        assertEquals(1, jdbc.queryForObject("SELECT activo FROM producto WHERE codigo = 'VAR-FUGA-A'", Integer.class));
+
+        // en B: los selectores no traen el general, y el general no se mueve; la variante sí
+        mvc.perform(get("/api/productos").param("texto", "VAR-FUGA").param("agrupadores", "false")
+                        .header(HttpHeaders.AUTHORIZATION, comprasB))
+                .andExpect(jsonPath("$.contenido.length()").value(2));
+        String bodegueroB = token(empresaB, usuarioB, "ALMACENISTA");
+        String ajuste = "{\"productoId\":%d,\"tipo\":\"AJUSTE_POSITIVO\",\"bodegaDestinoId\":%d,\"cantidad\":5,"
+                + "\"motivo\":\"Conteo inicial\"}";
+        mvc.perform(post("/api/inventario/movimientos").header(HttpHeaders.AUTHORIZATION, bodegueroB)
+                        .contentType(MediaType.APPLICATION_JSON).content(ajuste.formatted(general, bodegaB)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("PRODUCTO_AGRUPADOR"));
+        mvc.perform(post("/api/inventario/movimientos").header(HttpHeaders.AUTHORIZATION, bodegueroB)
+                        .contentType(MediaType.APPLICATION_JSON).content(ajuste.formatted(rojo, bodegaB)))
+                .andExpect(status().isCreated());
+        mvc.perform(get("/api/productos/" + general + "/variantes").header(HttpHeaders.AUTHORIZATION, comprasB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.agrupador.stockTotal").value(5.0))
+                .andExpect(jsonPath("$.variantes[?(@.codigo == 'VAR-FUGA-A')].stockTotal").value(0.0))
+                .andExpect(jsonPath("$.variantes[?(@.codigo == 'VAR-FUGA-R')].stockTotal").value(5.0));
+    }
+
+    @Test
     void laSedeConEnlaceDeMapaEsDeSuEmpresa() throws Exception {
         // Spec 020: la ubicación de la sede es un enlace de Google Maps (columna enlace_mapa de la V41)
         String adminA = token(empresaA, usuarioA, "ADMIN_SISTEMA");

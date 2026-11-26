@@ -5,7 +5,8 @@ import { InventarioService } from '../servicios/inventario.service';
 
 /**
  * Buscador de producto por código o nombre: la persona escribe y elige de la lista. El id sale del texto elegido.
- * Consulta al backend a partir de 2 letras para no cargar todo el catálogo.
+ * Consulta al backend a partir de 2 letras para no cargar todo el catálogo. No ofrece los productos generales con
+ * variantes (spec 028): se elige la variante, que sale con su nombre completo.
  */
 export class BuscadorProducto {
   readonly texto = signal('');
@@ -32,7 +33,7 @@ export class BuscadorProducto {
     if (texto.trim().length < 2) {
       return;
     }
-    this.espera = setTimeout(() => this.servicio.productos({ texto: texto.trim(), tamano: 15 })
+    this.espera = setTimeout(() => this.servicio.productos({ texto: texto.trim(), tamano: 15, agrupadores: false })
       .subscribe({ next: p => this.opciones.set(p.contenido ?? []), error: () => undefined }), 250);
   }
 

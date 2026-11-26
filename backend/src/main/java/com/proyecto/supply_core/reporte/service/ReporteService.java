@@ -148,12 +148,28 @@ public class ReporteService {
      * @return inventario de la empresa
      */
     public InventarioResumen inventario(Long categoriaId, boolean soloBajoMinimo) {
-        List<InventarioItem> items = reporteRepository.inventario(categoriaId, null).stream()
-                .map(ReporteService::item)
-                .filter(i -> !soloBajoMinimo || i.bajoMinimo())
+        List<InventarioFila> filas = reporteRepository.inventario(categoriaId, null);
+        // spec 028: el producto general muestra la suma del stock de sus variantes (solo informativo)
+        Map<Long, BigDecimal> porGeneral = new HashMap<>();
+        for (InventarioFila f : filas) {
+            if (f.agrupadorId() != null) {
+                porGeneral.merge(f.agrupadorId(), f.stock(), BigDecimal::add);
+            }
+        }
+        Set<Long> generalesConBajo = new java.util.HashSet<>();
+        List<InventarioItem> todos = filas.stream()
+                .map(f -> f.esAgrupador() ? itemGeneral(f, porGeneral.getOrDefault(f.productoId(), BigDecimal.ZERO))
+                        : item(f))
                 .toList();
-        BigDecimal valorTotal = suma(items.stream().map(InventarioItem::valor).filter(v -> v != null));
-        return new InventarioResumen(items.size(), items.stream().filter(InventarioItem::bajoMinimo).count(),
+        todos.stream().filter(i -> i.bajoMinimo() && i.agrupadorId() != null)
+                .forEach(i -> generalesConBajo.add(i.agrupadorId()));
+        // con "solo bajo el mínimo" el producto general queda si alguna de sus variantes está bajo el mínimo
+        List<InventarioItem> items = todos.stream()
+                .filter(i -> !soloBajoMinimo || i.bajoMinimo() || i.esAgrupador() && generalesConBajo.contains(i.productoId()))
+                .toList();
+        List<InventarioItem> conStock = items.stream().filter(i -> !i.esAgrupador()).toList();
+        BigDecimal valorTotal = suma(conStock.stream().map(InventarioItem::valor).filter(v -> v != null));
+        return new InventarioResumen(conStock.size(), conStock.stream().filter(InventarioItem::bajoMinimo).count(),
                 valorTotal, items);
     }
 
@@ -282,6 +298,17 @@ public class ReporteService {
         BigDecimal stock = f.stock();
         BigDecimal valor = f.costoReferencia() == null ? null : dos(stock.multiply(f.costoReferencia()));
         return new InventarioItem(f.productoId(), f.codigo(), f.nombre(), f.categoria(), f.unidad(), stock,
-                f.stockMinimo(), f.stockMaximo(), f.costoReferencia(), valor, stock.compareTo(f.stockMinimo()) < 0);
+                f.stockMinimo(), f.stockMaximo(), f.costoReferencia(), valor, stock.compareTo(f.stockMinimo()) < 0,
+                false, f.agrupadorId());
+    }
+
+    /**
+     * @param f     fila del producto general
+     * @param total suma del stock de sus variantes
+     * @return fila informativa: sin valor ni alerta propios (spec 028)
+     */
+    private static InventarioItem itemGeneral(InventarioFila f, BigDecimal total) {
+        return new InventarioItem(f.productoId(), f.codigo(), f.nombre(), f.categoria(), f.unidad(), total,
+                f.stockMinimo(), null, null, null, false, true, null);
     }
 }

@@ -145,13 +145,14 @@ public interface ReporteRepository extends Repository<OrdenCompra, Long> {
     @Query("""
             select new com.proyecto.supply_core.reporte.dto.InventarioFila(p.id, p.codigo, p.nombre, c.nombre,
                    u.codigo, coalesce(sum(case when :sedeId is null or se.id = :sedeId then s.cantidad else 0 end), 0),
-                   p.stockMinimo, p.stockMaximo, p.costoReferencia)
-            from Producto p join p.categoria c join p.unidadMedida u
+                   p.stockMinimo, p.stockMaximo, p.costoReferencia, p.esAgrupador, ag.id)
+            from Producto p join p.categoria c join p.unidadMedida u left join p.agrupador ag
                  left join StockProductoBodega s on s.producto = p
                  left join s.bodega b left join b.sede se
             where p.activo = true
               and (:categoriaId is null or c.id = :categoriaId)
-            group by p.id, p.codigo, p.nombre, c.nombre, u.codigo, p.stockMinimo, p.stockMaximo, p.costoReferencia
+            group by p.id, p.codigo, p.nombre, c.nombre, u.codigo, p.stockMinimo, p.stockMaximo, p.costoReferencia,
+                     p.esAgrupador, ag.id
             order by p.nombre
             """)
     List<InventarioFila> inventario(@Param("categoriaId") Long categoriaId, @Param("sedeId") Long sedeId);

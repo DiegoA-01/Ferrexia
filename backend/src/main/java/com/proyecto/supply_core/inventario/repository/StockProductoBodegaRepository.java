@@ -145,6 +145,19 @@ public interface StockProductoBodegaRepository extends JpaRepository<StockProduc
     List<TotalPorProducto> totalesDe(@Param("ids") Collection<Long> ids);
 
     /**
+     * Stock total de las variantes de varios productos generales (spec 028), sumado por producto general. Es solo
+     * informativo: el producto general no tiene stock propio.
+     *
+     * @param ids productos generales
+     * @return total por producto general (los que no tienen filas no aparecen)
+     */
+    @Query("""
+            select s.producto.agrupador.id as productoId, sum(s.cantidad) as total
+            from StockProductoBodega s where s.producto.agrupador.id in :ids group by s.producto.agrupador.id
+            """)
+    List<TotalPorProducto> totalesDeAgrupadores(@Param("ids") Collection<Long> ids);
+
+    /**
      * Existencias con filtros opcionales.
      *
      * @param productoId producto ({@code null} = todos)

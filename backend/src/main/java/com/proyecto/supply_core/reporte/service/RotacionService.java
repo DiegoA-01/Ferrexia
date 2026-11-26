@@ -127,6 +127,8 @@ public class RotacionService {
                 .collect(Collectors.toMap(RotacionUltima::productoId, RotacionUltima::ultima));
 
         List<RotacionItem> items = reporteRepository.inventario(categoriaId, sedeId).stream()
+                // spec 028: el producto general no tiene stock ni movimientos; rotan sus variantes
+                .filter(f -> !f.esAgrupador())
                 .map(f -> item(f, movido.getOrDefault(f.productoId(), Map.of()), ultimas.get(f.productoId()), dias, hoy))
                 .sorted(Comparator.comparing(RotacionItem::salidas).reversed().thenComparing(RotacionItem::nombre))
                 .toList();
