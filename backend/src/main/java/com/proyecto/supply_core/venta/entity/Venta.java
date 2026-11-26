@@ -101,6 +101,10 @@ public class Venta {
     @Column(name = "es_credito", nullable = false, updatable = false)
     private boolean esCredito;
 
+    /** MOSTRADOR o DOMICILIO (spec 032), para los reportes. */
+    @Column(name = "tipo_servicio", nullable = false, updatable = false, length = 20)
+    private String tipoServicio = "MOSTRADOR";
+
     @Column(name = "clave_idempotencia", nullable = false, updatable = false, length = 64)
     private String claveIdempotencia;
 

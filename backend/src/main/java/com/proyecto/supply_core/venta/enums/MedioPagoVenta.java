@@ -17,7 +17,9 @@ public enum MedioPagoVenta {
     /** Venta a crédito del cliente: crea una cuenta por cobrar (spec 007). */
     CREDITO,
     /** Saldo a favor del cliente, que sale de sus devoluciones (spec 007). */
-    SALDO_FAVOR;
+    SALDO_FAVOR,
+    /** Domicilio que se paga al entregar (spec 032): no entra a la caja hasta que un cajero lo cobra. */
+    CONTRAENTREGA;
 
     /**
      * @return {@code true} si es una tarjeta (guarda últimos 4 dígitos y autorización)
@@ -30,7 +32,7 @@ public enum MedioPagoVenta {
      * @return {@code true} si el dinero entra a la caja del turno
      */
     public boolean entraACaja() {
-        return this != CREDITO && this != SALDO_FAVOR;
+        return this != CREDITO && this != SALDO_FAVOR && this != CONTRAENTREGA;
     }
 
     /**
@@ -44,7 +46,8 @@ public enum MedioPagoVenta {
             case TARJETA_CREDITO -> MedioPago.TARJETA_CREDITO;
             case TRANSFERENCIA -> MedioPago.TRANSFERENCIA;
             case BILLETERA -> MedioPago.BILLETERA;
-            case CREDITO, SALDO_FAVOR -> throw new IllegalStateException("El crédito y el saldo a favor no entran a la caja");
+            case CREDITO, SALDO_FAVOR, CONTRAENTREGA ->
+                throw new IllegalStateException("El crédito, el saldo a favor y la contraentrega no entran a la caja");
         };
     }
 }

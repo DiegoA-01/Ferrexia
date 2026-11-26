@@ -19,5 +19,7 @@ public enum TipoMovimientoCaja {
     /** Abono de un cliente a su cartera (spec 007). */
     ABONO_CARTERA,
     /** Corrección del medio de pago de una venta: sale del medio viejo y entra al nuevo (spec 029, D16). */
-    AJUSTE_PAGO
+    AJUSTE_PAGO,
+    /** Dinero de un domicilio contraentrega que llega al turno del cajero que lo cobra (spec 032). */
+    COBRO_DOMICILIO
 }

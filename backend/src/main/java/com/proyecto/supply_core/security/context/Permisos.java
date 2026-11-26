@@ -246,6 +246,10 @@ public final class Permisos {
     public static final String VENTA_CAMBIAR_PAGO = "VENTA_CAMBIAR_PAGO";
     /** Vender sin existencia con motivo: queda un faltante pendiente (spec 030, D13). */
     public static final String VENTA_SIN_EXISTENCIA = "VENTA_SIN_EXISTENCIA";
+    /** Asignar, cancelar y devolver domicilios y configurar el envío (spec 032). */
+    public static final String DOMICILIO_GESTIONAR = "DOMICILIO_GESTIONAR";
+    /** Repartir domicilios: ver los asignados y marcarlos en camino y entregados (spec 032). */
+    public static final String DOMICILIO_REPARTIR = "DOMICILIO_REPARTIR";
 
     /** Clase de constantes: no se instancia. */
     private Permisos() {

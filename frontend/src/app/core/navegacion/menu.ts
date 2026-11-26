@@ -49,6 +49,9 @@ export const ROLES_MI_TURNO = conPermiso(['CAJERO', 'SUPERVISOR_VENTAS'], 'TURNO
 export const ROLES_VENTAS = conPermiso(['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR', 'CAJERO'], 'VENTA_VER');
 /** Roles que ven los reportes de ventas (mismos que {@code GET /api/reportes/ventas}). */
 export const ROLES_REPORTES_VENTAS = conPermiso(['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR', 'CAJERO'], 'REPORTE_VENTAS');
+/** Spec 032: entran a Domicilios quien los gestiona, quien los reparte y quien cobra la contraentrega. */
+export const ROLES_DOMICILIOS = conPermiso(['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'CAJERO'],
+  ['DOMICILIO_GESTIONAR', 'DOMICILIO_REPARTIR', 'VENTA_COBRAR']);
 /** Roles que ven los pedidos de venta (mismos que {@code /api/pedidos-venta}). */
 export const ROLES_PEDIDOS_VENTA = conPermiso(['VENDEDOR', 'CAJERO', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA'], 'PEDIDO_VENTA_GESTIONAR');
 /** Roles que ven la cartera (mismos que {@code GET /api/cartera}). */
@@ -105,6 +108,7 @@ export const MENU: SeccionMenu[] = [
       { texto: 'Mi turno', icono: 'schedule', ruta: '/app/caja/mi-turno', roles: ROLES_MI_TURNO, modulo: 'CAJA' },
       { texto: 'Pedidos de venta', icono: 'receipt_long', ruta: '/app/pedidos-venta', roles: ROLES_PEDIDOS_VENTA, modulo: 'VENTAS' },
       { texto: 'Ventas', icono: 'point_of_sale', ruta: '/app/ventas', roles: ROLES_VENTAS, modulo: 'VENTAS', exacta: true },
+      { texto: 'Domicilios', icono: 'two_wheeler', ruta: '/app/domicilios', roles: ROLES_DOMICILIOS, modulo: 'VENTAS' },
       { texto: 'Clientes', icono: 'groups', ruta: '/app/clientes', roles: ROLES_CLIENTES, modulo: 'VENTAS' },
       { texto: 'Precios y margen', icono: 'sell', ruta: '/app/precios', roles: ROLES_PRECIOS, modulo: 'VENTAS' },
       { texto: 'Cartera', icono: 'account_balance_wallet', ruta: '/app/cartera', roles: ROLES_CARTERA, modulo: 'CARTERA' },

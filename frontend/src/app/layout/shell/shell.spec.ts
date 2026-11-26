@@ -232,11 +232,11 @@ describe('Marco de la empresa: campana y menú', () => {
       expect(html().querySelector('main nav.pestanas')?.getAttribute('aria-label')).toBe('Pantallas de Compras');
     });
 
-    it('el cajero en el punto de venta ve las seis pantallas de Ventas de su rol', async () => {
+    it('el cajero en el punto de venta ve las siete pantallas de Ventas de su rol (Domicilios, spec 032)', async () => {
       crear(['CAJERO']);
       await ir('/app/pos');
       expect(pestanas().map(p => p.getAttribute('href'))).toEqual([
-        '/app/pos', '/app/caja/mi-turno', '/app/pedidos-venta', '/app/ventas', '/app/clientes', '/app/cartera',
+        '/app/pos', '/app/caja/mi-turno', '/app/pedidos-venta', '/app/ventas', '/app/domicilios', '/app/clientes', '/app/cartera',
       ]);
     });
 

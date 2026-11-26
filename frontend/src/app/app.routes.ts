@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { ROLES_DOMICILIOS } from './core/navegacion/menu';
 import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO, ROLES_PRECIOS, ROLES_CATALOGOS, ROLES_CLIENTES, ROLES_CAJA, ROLES_POS, ROLES_MI_TURNO, ROLES_VENTAS, ROLES_PEDIDOS_VENTA, ROLES_CARTERA, ROLES_RECEPCION, ROLES_REPORTES_VENTAS, ROLES_CONFIGURACION,
   ROLES_CATALOGOS_BASE, ROLES_USUARIOS, ROLES_AUDITORIA, ROLES_INFORMES, ROLES_NOTIFICACIONES, ROLES_EMPRESA, ROLES_IMPORTACION,
   ROLES_SOLICITAR, ROLES_CREAR_RFQ, ROLES_EMITIR_ORDEN } from './core/navegacion/menu';
@@ -205,6 +206,13 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ROLES_VENTAS, modulo: 'VENTAS' },
         loadComponent: () => import('./features/ventas/ventas').then(m => m.Ventas),
+      },
+      {
+        path: 'domicilios',
+        title: 'Domicilios · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_DOMICILIOS, modulo: 'VENTAS' },
+        loadComponent: () => import('./features/ventas/domicilios').then(m => m.Domicilios),
       },
       {
         path: 'pedidos-venta',

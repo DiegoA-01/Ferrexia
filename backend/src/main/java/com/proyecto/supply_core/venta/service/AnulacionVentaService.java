@@ -57,6 +57,16 @@ public class AnulacionVentaService {
     private final VentaService ventaService;
     private final CarteraService carteraService;
     private final AlertaCajeroService alertaCajero;
+    /** Domicilio de la venta: si se anula por fuera del tablero, queda cancelado (spec 032). */
+    private com.proyecto.supply_core.domicilio.service.DomicilioRegistro domicilioRegistro;
+
+    /**
+     * @param domicilioRegistro domicilios (spec 032)
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setDomicilioRegistro(com.proyecto.supply_core.domicilio.service.DomicilioRegistro domicilioRegistro) {
+        this.domicilioRegistro = domicilioRegistro;
+    }
 
     /**
      * @param ventaRepository             ventas
@@ -98,7 +108,7 @@ public class AnulacionVentaService {
      */
     /** Movimientos de caja que forman lo que una venta dejó en la caja: el cobro y sus correcciones de pago. */
     private static final Set<TipoMovimientoCaja> DE_LA_VENTA = Set.of(TipoMovimientoCaja.VENTA,
-            TipoMovimientoCaja.AJUSTE_PAGO);
+            TipoMovimientoCaja.AJUSTE_PAGO, TipoMovimientoCaja.COBRO_DOMICILIO);
 
     @Transactional
     public VentaResponse anular(Long id, AnularVentaRequest req) {
@@ -175,6 +185,37 @@ public class AnulacionVentaService {
     }
 
     /**
+     * Anula la venta de un domicilio devuelto o cancelado (spec 032), sin PIN: lo pide quien gestiona domicilios. El
+     * stock vuelve; si la venta se pagó antes de salir, el dinero sale del turno abierto de quien la anula.
+     *
+     * @param ventaId venta del domicilio
+     * @param motivo  motivo de la devolución o cancelación
+     * @throws NegocioException si ya está anulada, tiene devoluciones, o se pagó y quien anula no tiene turno abierto
+     *                          o efectivo suficiente
+     */
+    @Transactional
+    public void anularPorDomicilio(Long ventaId, String motivo) {
+        Venta v = ventaRepository.bloquear(ventaId).orElseThrow(() -> new NoEncontradoException("Venta no encontrada"));
+        if (v.getEstado() != EstadoVenta.CONFIRMADA) {
+            throw new NegocioException("VENTA_ANULADA", "La venta " + v.getConsecutivo() + " ya está anulada");
+        }
+        if (devolucionRepository.existsByVentaId(v.getId())) {
+            throw new NegocioException("TIENE_DEVOLUCIONES", "La venta del domicilio ya tiene devoluciones");
+        }
+        Long yo = SesionActual.usuario().id();
+        Map<MedioPago, BigDecimal> netos = netos(v);
+        TurnoCaja turno = null;
+        if (!netos.isEmpty()) {
+            turno = turnoRepository.abiertoDeBloqueado(yo).orElseThrow(() -> new NegocioException("SIN_TURNO_ABIERTO",
+                    "El domicilio se pagó al vender: abra un turno, el dinero sale de su caja"));
+            exigirEfectivo(turno, netos);
+        }
+        aplicar(v, turno, netos, yo, null, motivo, "Domicilio devuelto: " + v.getConsecutivo());
+        auditoriaService.exito(AccionAuditoria.VENTA_ANULAR, EntidadAuditada.VENTA, v.getId(), v.getConsecutivo()
+                + "; total=" + v.totalAPagar().toPlainString() + "; porDomicilio; motivo=" + motivo);
+    }
+
+    /**
      * @param v venta
      * @return lo que la venta dejó en la caja por medio (cobro más correcciones de pago), sin los medios en cero
      */
@@ -204,7 +245,7 @@ public class AnulacionVentaService {
      * Revierte cartera, stock y caja y deja la venta anulada.
      *
      * @param v          venta
-     * @param turno      turno del que sale el dinero
+     * @param turno      turno del que sale el dinero ({@code null} solo si {@code netos} está vacío)
      * @param netos      lo que sale por medio
      * @param yo         quien anula
      * @param supervisor quien autorizó con su PIN, o {@code null}
@@ -247,5 +288,8 @@ public class AnulacionVentaService {
         v.setAnuladaPorUsuarioId(yo);
         v.setMotivoAnulacion(motivo);
         v.setAnulacionAutorizadaPorUsuarioId(supervisor);
+        if (domicilioRegistro != null) {
+            domicilioRegistro.cancelarPorAnulacion(v.getId(), yo, motivo);
+        }
     }
 }

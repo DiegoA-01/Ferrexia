@@ -220,6 +220,10 @@ public class DevolucionService {
         }
 
         Set<MedioPagoVenta> mediosVenta = v.getPagos().stream().map(p -> p.getMedio()).collect(Collectors.toSet());
+        if (mediosVenta.contains(MedioPagoVenta.CONTRAENTREGA)) {
+            throw new NegocioException("DOMICILIO_SIN_COBRAR",
+                    "El domicilio todavía no se ha cobrado: márquelo como devuelto en el tablero de domicilios");
+        }
         if (req.formaReembolso() == FormaReembolso.EFECTIVO && mediosVenta.contains(MedioPagoVenta.SALDO_FAVOR)) {
             throw new NegocioException("REEMBOLSO_SALDO",
                     "Parte de la venta se pagó con saldo a favor: devuelva como saldo a favor, no en efectivo");

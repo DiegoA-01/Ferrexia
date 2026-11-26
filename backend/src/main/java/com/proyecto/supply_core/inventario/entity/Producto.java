@@ -111,6 +111,10 @@ public class Producto {
     @Column(name = "precio_incluye_impuesto", nullable = false)
     private boolean precioIncluyeImpuesto = true;
 
+    /** {@code true} si es un servicio (por ejemplo el envío a domicilio): no tiene stock ni kardex (spec 032, V53). */
+    @Column(name = "es_servicio", nullable = false)
+    private boolean esServicio;
+
     /** {@code true} si solo agrupa variantes: no tiene stock, no se vende ni se compra (spec 028, V50). */
     @Column(name = "es_agrupador", nullable = false)
     private boolean esAgrupador;
@@ -139,6 +143,18 @@ public class Producto {
         if (esAgrupador) {
             throw new com.proyecto.supply_core.common.exception.NegocioException("PRODUCTO_AGRUPADOR",
                     "El producto " + codigo + " agrupa variantes: elija una de sus variantes");
+        }
+    }
+
+    /**
+     * Un servicio no mueve stock: no entra a inventario, compras ni recepción (spec 032).
+     *
+     * @throws com.proyecto.supply_core.common.exception.NegocioException {@code PRODUCTO_SERVICIO} si lo es
+     */
+    public void exigirNoServicio() {
+        if (esServicio) {
+            throw new com.proyecto.supply_core.common.exception.NegocioException("PRODUCTO_SERVICIO",
+                    "El producto " + codigo + " es un servicio: no tiene stock");
         }
     }
 

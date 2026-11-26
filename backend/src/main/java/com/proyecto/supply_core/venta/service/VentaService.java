@@ -130,6 +130,8 @@ public class VentaService {
     private final NotificacionService notificacionService;
     private final CarteraService carteraService;
     private final AlertaCajeroService alertaCajero;
+    /** Crea el domicilio de una venta a domicilio (spec 032). */
+    private final com.proyecto.supply_core.domicilio.service.DomicilioRegistro domicilioRegistro;
     /** Historial de cambios del método de pago (spec 029). */
     private final com.proyecto.supply_core.venta.repository.VentaPagoCambioRepository cambioPagoRepository;
     private final tools.jackson.databind.json.JsonMapper json = tools.jackson.databind.json.JsonMapper.builder().build();
@@ -198,8 +200,10 @@ public class VentaService {
             UsuarioRepository usuarioRepository, AuditoriaService auditoriaService, JdbcTemplate jdbc,
             EmpresaRepository empresaRepository, DevolucionVentaRepository devolucionRepository,
             NotificacionService notificacionService, CarteraService carteraService, AlertaCajeroService alertaCajero,
-            com.proyecto.supply_core.venta.repository.VentaPagoCambioRepository cambioPagoRepository) {
+            com.proyecto.supply_core.venta.repository.VentaPagoCambioRepository cambioPagoRepository,
+            com.proyecto.supply_core.domicilio.service.DomicilioRegistro domicilioRegistro) {
         this.cambioPagoRepository = cambioPagoRepository;
+        this.domicilioRegistro = domicilioRegistro;
         this.ventaRepository = ventaRepository;
         this.pedidoRepository = pedidoRepository;
         this.turnoRepository = turnoRepository;
@@ -305,6 +309,12 @@ public class VentaService {
                 : null;
 
         CalculoVenta.Totales totales = CalculoVenta.totales(lineas.stream().map(LineaPreparada::resultado).toList());
+        // Spec 032: la contraentrega es de un domicilio, es el único pago y va por el total exacto
+        boolean contraentrega = req.pagos().stream().anyMatch(p -> p.medio() == MedioPagoVenta.CONTRAENTREGA);
+        if (contraentrega && (req.domicilio() == null || req.pagos().size() > 1)) {
+            throw new NegocioException("CONTRAENTREGA_INVALIDA",
+                    "La contraentrega es solo para domicilios y debe ser el único pago de la venta");
+        }
         List<CalculoVenta.Pago> pagos = req.pagos().stream().map(p -> new CalculoVenta.Pago(p.medio(), p.monto())).toList();
         boolean soloEfectivo = pagos.stream().allMatch(p -> p.medio() == MedioPagoVenta.EFECTIVO);
         BigDecimal redondeo = CalculoVenta.redondeo(totales.total(), soloEfectivo);
@@ -339,6 +349,7 @@ public class VentaService {
         v.setRedondeo(redondeo);
         v.setCambio(cobro.cambio());
         v.setEsCredito(credito.signum() > 0);
+        v.setTipoServicio(req.domicilio() != null ? "DOMICILIO" : "MOSTRADOR");
         v.setClaveIdempotencia(llave);
         v.setConfirmadaEn(LocalDateTime.now());
         v.setAutorizadaPorUsuarioId(autorizaDescuento != null ? autorizaDescuento : autorizaPrecio);
@@ -353,7 +364,9 @@ public class VentaService {
         // Stock: una salida por producto, en orden de id (si alguno no alcanza, la excepción deshace todo). Un producto
         // marcado para vender sin existencia (spec 030) saca lo que haya y deja la diferencia como faltante pendiente.
         Map<Long, BigDecimal> porProducto = new TreeMap<>();
-        lineas.forEach(l -> porProducto.merge(l.producto().getId(), l.cantidadProducto(), BigDecimal::add));
+        // spec 032: un servicio (el envío a domicilio) no tiene stock
+        lineas.stream().filter(l -> !l.producto().isEsServicio())
+                .forEach(l -> porProducto.merge(l.producto().getId(), l.cantidadProducto(), BigDecimal::add));
         porProducto.forEach((productoId, cantidad) -> {
             if (sinExistencia.containsKey(productoId)) {
                 movimientoInventarioService.registrarSalidaVentaConFaltante(productoId, v.getBodegaId(), cantidad,
@@ -369,6 +382,9 @@ public class VentaService {
         }
         if (saldoFavor.signum() > 0) {
             carteraService.usarSaldoFavor(v, cliente, saldoFavor);
+        }
+        if (req.domicilio() != null) {
+            domicilioRegistro.crear(v.getId(), req.domicilio(), contraentrega, cajero);
         }
 
         // Caja: un movimiento por medio de pago con lo que queda en ella (el crédito y el saldo a favor no entran)
@@ -548,7 +564,7 @@ public class VentaService {
         return PageResponse.of(pagina, v -> new VentaResumen(v.getId(), v.getConsecutivo(), v.getEstado(),
                 cajas.get(v.getCajaId()), v.getTurnoId(), clientes.get(v.getClienteId()), nombres.get(v.getCajeroUsuarioId()),
                 nombres.get(v.getVendedorUsuarioId()), v.totalAPagar(), v.getConfirmadaEn(),
-                v.getPagos().stream().map(p -> p.getMedio()).distinct().toList()));
+                v.getPagos().stream().map(p -> p.getMedio()).distinct().toList(), v.getTipoServicio()));
     }
 
     /**

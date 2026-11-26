@@ -283,6 +283,18 @@
         </div>
       }
       <p class="sub">De la tarjeta no escriba ningún número: el código del voucher es opcional.</p>
+      <div class="domicilio" role="group" aria-label="Domicilio">
+        <label class="opcion"><input type="checkbox" [checked]="domicilio()" (change)="alternarDomicilio()"> Es un domicilio</label>
+        @if (domicilio()) {
+          <div class="campos-domicilio">
+            <input class="entrada" maxlength="300" aria-label="Dirección del domicilio" placeholder="Dirección" [ngModel]="domDireccion()" (ngModelChange)="domDireccion.set($event)">
+            <input class="entrada" maxlength="30" aria-label="Teléfono del domicilio" placeholder="Teléfono" [ngModel]="domTelefono()" (ngModelChange)="domTelefono.set($event)">
+            <input class="entrada" maxlength="300" aria-label="Referencia del domicilio" placeholder="Referencia (barrio, portería…)" [ngModel]="domReferencia()" (ngModelChange)="domReferencia.set($event)">
+          </div>
+          <span class="sub">Si se paga al entregar, elige "Contraentrega": el dinero lo recibe un cajero cuando vuelva el domiciliario.
+            @if (!envio()?.productoId) { El envío no está configurado (Ventas › Domicilios). }</span>
+        }
+      </div>
       @if (sinMedio()) { <p class="aviso ambar" role="status">Elige cómo paga el cliente (E = Efectivo).</p> }
       @if (cotizacion(); as c) {
         @if (c.mensajePago) { <p class="aviso ambar" role="status">{{ c.mensajePago }}</p> }

@@ -340,6 +340,9 @@ public class MovimientoInventarioService {
     @Transactional
     public RegistroMovimientoResponse registrarAnulacionVenta(Long productoId, Long bodegaId, BigDecimal cantidad,
             String motivo, Long ventaId) {
+        if (esServicio(productoId)) {
+            return null; // spec 032: un servicio (el envío) nunca salió del stock
+        }
         return aplicar(TipoMovimiento.ANULACION_VENTA, productoId, null, bodegaId, cantidad, motivo, "VENTA", ventaId);
     }
 
@@ -356,6 +359,9 @@ public class MovimientoInventarioService {
     @Transactional
     public RegistroMovimientoResponse registrarDevolucionCliente(Long productoId, Long bodegaId, BigDecimal cantidad,
             String motivo, Long devolucionId) {
+        if (esServicio(productoId)) {
+            return null; // spec 032: un servicio no vuelve al stock
+        }
         return aplicar(TipoMovimiento.DEVOLUCION_CLIENTE, productoId, null, bodegaId, cantidad, motivo, "DEVOLUCION_VENTA",
                 devolucionId);
     }
@@ -509,6 +515,14 @@ public class MovimientoInventarioService {
     }
 
     /**
+     * @param productoId producto
+     * @return {@code true} si es un servicio (no mueve stock, spec 032)
+     */
+    private boolean esServicio(Long productoId) {
+        return productoRepository.findById(productoId).map(Producto::isEsServicio).orElse(false);
+    }
+
+    /**
      * Descuenta los faltantes pendientes del producto en la bodega, del más viejo al más nuevo, hasta donde alcance el
      * stock (spec 030). Cada descuento es una {@code SALIDA_VENTA} que apunta a su venta, con la fila de stock
      * bloqueada: nunca queda negativo.
@@ -599,8 +613,9 @@ public class MovimientoInventarioService {
         if (!p.isActivo()) {
             throw new NegocioException("PRODUCTO_INACTIVO", "El producto " + p.getCodigo() + " está inactivo");
         }
-        // spec 028: el agrupador no tiene stock; se mueve una de sus variantes
+        // spec 028: el agrupador no tiene stock; se mueve una de sus variantes. Spec 032: un servicio tampoco
         p.exigirNoAgrupador();
+        p.exigirNoServicio();
         return p;
     }
 

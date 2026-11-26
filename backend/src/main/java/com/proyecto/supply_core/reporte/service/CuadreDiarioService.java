@@ -84,11 +84,14 @@ public class CuadreDiarioService {
         List<CuadreResponse.VentaDescuadrada> ventas = jdbc.query("""
                 SELECT v.id, v.consecutivo,
                   COALESCE((SELECT SUM(p.monto) FROM venta_pago p
-                            WHERE p.venta_id = v.id AND p.medio NOT IN ('CREDITO', 'SALDO_FAVOR')), 0) AS cobrado,
+                            WHERE p.venta_id = v.id AND p.medio NOT IN ('CREDITO', 'SALDO_FAVOR', 'CONTRAENTREGA')), 0) AS cobrado,
                   COALESCE((SELECT SUM(m.monto) FROM movimiento_caja m
-                            WHERE m.empresa_id = v.empresa_id AND m.tipo = 'VENTA' AND m.referencia_tipo = 'VENTA'
-                              AND m.referencia_id = v.id), 0) AS en_caja,
-                  COALESCE((SELECT SUM(l.cantidad_unidad_producto) FROM venta_linea l WHERE l.venta_id = v.id), 0) AS vendidas,
+                            WHERE m.empresa_id = v.empresa_id AND m.tipo IN ('VENTA', 'AJUSTE_PAGO', 'COBRO_DOMICILIO')
+                              AND m.referencia_tipo = 'VENTA' AND m.referencia_id = v.id), 0) AS en_caja,
+                  COALESCE((SELECT SUM(l.cantidad_unidad_producto) FROM venta_linea l JOIN producto pr ON pr.id = l.producto_id
+                            WHERE l.venta_id = v.id AND pr.es_servicio = 0), 0)
+                    - COALESCE((SELECT SUM(f.pendiente) FROM venta_sin_existencia f
+                                WHERE f.venta_id = v.id AND f.estado = 'PENDIENTE'), 0) AS vendidas,
                   COALESCE((SELECT SUM(i.cantidad) FROM movimiento_inventario i
                             WHERE i.empresa_id = v.empresa_id AND i.tipo = 'SALIDA_VENTA' AND i.referencia_tipo = 'VENTA'
                               AND i.referencia_id = v.id), 0) AS salidas

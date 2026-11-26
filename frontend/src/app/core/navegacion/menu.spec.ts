@@ -26,6 +26,8 @@ const PERMISOS: Record<string, { roles?: string[]; modulo?: string }> = {
   '/app/caja/mi-turno': { roles: ['CAJERO', 'SUPERVISOR_VENTAS'], modulo: 'CAJA' },
   '/app/pedidos-venta': { roles: ['VENDEDOR', 'CAJERO', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA'], modulo: 'VENTAS' },
   '/app/ventas': { roles: ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR', 'CAJERO'], modulo: 'VENTAS' },
+  // spec 032: domicilios (gestiona, reparte o cobra la contraentrega)
+  '/app/domicilios': { roles: ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'CAJERO'], modulo: 'VENTAS' },
   '/app/reportes/ventas': { roles: ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR', 'CAJERO'], modulo: 'VENTAS' },
   '/app/clientes': { roles: ['CAJERO', 'VENDEDOR', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'], modulo: 'VENTAS' },
   '/app/cartera': { roles: ['CAJERO', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'], modulo: 'CARTERA' },
@@ -50,10 +52,10 @@ describe('Menú lateral por categorías (spec 011)', () => {
     expect(MENU[0].opciones.map(o => o.ruta)).toEqual(['/app/inicio']);
   });
 
-  it('conserva las 32 opciones sin repetir rutas', () => {
+  it('conserva las 33 opciones sin repetir rutas (32 + Domicilios de la spec 032)', () => {
     const rutas = opciones().map(o => o.ruta);
-    expect(rutas.length).toBe(32);
-    expect(new Set(rutas).size).toBe(32);
+    expect(rutas.length).toBe(33);
+    expect(new Set(rutas).size).toBe(33);
     expect([...rutas].sort()).toEqual(Object.keys(PERMISOS).sort());
   });
 

@@ -1,14 +1,15 @@
 # Tasks 032
 
-- [ ] T1: Tomar D19 (alcance y si se aparta la mercancía en contraentrega) y anotarla
-- [ ] T2: Reservar la migración y crear `V52__domicilios.sql` (tipo de servicio, domicilio, eventos, consecutivo, costo por
-  defecto, eventos de aviso); módulo `DOMICILIOS`
-- [ ] T3: `DomicilioService` (crear, asignar, estados, historial, costo de envío como línea); pruebas
-- [ ] T4: Contraentrega cobrada desde Pedidos de venta y devuelto que descarta; pruebas
-- [ ] T5: Reserva de stock (si se aprobó); pruebas
-- [ ] T6: Permiso del domiciliario y su lista; `tipoServicio` en ventas; pruebas de fuga
-- [ ] T7: POS y pedido con interruptor "Domicilio"; pruebas
-- [ ] T8: Tablero de domicilios y vista del domiciliario; pruebas
-- [ ] T9: E2E de domicilio contraentrega
-- [ ] T10: `./mvnw verify`, `npm test`, `npm run build` y revisión en Docker
-- [ ] T11: Verificar los criterios de aceptación y actualizar el índice de specs
+- [x] T1: Tomar D19 (2026-11-26: tal como está; contraentrega como venta al despachar; envío como producto servicio)
+- [x] T2: Reservar y crear `V53__domicilios.sql`
+- [x] T3: Producto servicio sin stock (venta, anulación, devolución, inventario, selectores, reportes)
+- [x] T4: Venta a domicilio y medio contraentrega; domicilio con consecutivo
+- [x] T5: `DomicilioService`: listar, asignar, estados con historial, devolver o cancelar (anula), cobrar contraentrega,
+  envío y domiciliarios
+- [x] T6: Reportes (por turno con `VentasPorTurnoTest`, cuadre diario, tipo de servicio); prueba de punta a punta y de fuga
+  (`AislamientoEmpresasTest.elDomicilioContraentregaSaleVendido...`)
+- [x] T7: POS con domicilio y contraentrega (`pos.spec.ts`); tablero de domicilios y vista del domiciliario
+  (`domicilios.spec.ts`); opción en el menú
+- [ ] T8: `./mvnw verify` (924 en verde, 1 omitida), `npm test` (334 en verde), tipos regenerados y `tsc` sin errores.
+  **Falta:** e2e del CI (corre en el PR) y revisión en Docker con vendedor, cajero y domiciliario a 360 px.
+- [x] T9: Verificar los criterios de aceptación y actualizar el índice de specs

@@ -1,62 +1,60 @@
 # Plan 032
 
-Rama `feature/domicilios`, sacada de `develop` actualizado **después de la 021**. Migración propuesta **V52**. Decisión
-**D19** debe estar tomada.
+Rama `feature/domicilios`, sacada de `develop` actualizado (`fe6e60b`, con la 030). Migración **V53** (reservada en el
+índice). D19 tomada el 2026-11-26: contraentrega como venta al despachar y envío como producto servicio.
 
 ## Lo que hay hoy (revisado en el código)
-- **Venta** (`Venta`): caja, turno, bodega, cliente, vendedor, cajero, lista, pedido, totales, crédito e idempotencia. No
-  tiene tipo de servicio ni dirección. Se confirma ya cobrada: los pagos deben cuadrar al confirmar.
-- **Pedido de venta** (`PedidoVenta`): cliente, vendedor, nota, `ventaId` y estado PENDIENTE_COBRO, COBRADO o DESCARTADO
-  (con motivo, spec 016). No mueve stock ni caja hasta que se cobra.
-- **Cliente** (spec 002): documento, nombre, teléfono y dirección (opcional).
-- **Módulos:** no hay uno de domicilios.
+- `Venta` se confirma ya cobrada: los pagos cuadran al confirmar; el crédito y el saldo a favor no entran a la caja.
+- La caja (`movimiento_caja.tipo`) y los medios de la venta (`venta_pago.medio`) son ENUM de MySQL.
+- La anulación (spec 006 y 029) revierte el neto de la venta en la caja, el stock y la cartera.
+- El cuadre diario (spec 009) compara, por venta, lo cobrado por medios de caja con la caja y lo vendido con las salidas.
 
 ## Diseño
-El domicilio se apoya en lo que ya existe:
-- **Pagado antes de salir:** se cobra como venta normal y se le asocia un domicilio.
-- **Contraentrega:** se arma como **pedido de venta** con domicilio; el stock y el dinero se mueven **cuando se cobra**, es
-  decir, cuando el domiciliario vuelve y el cajero lo cobra en su turno. Así no hay ventas "medio cobradas".
-- Decisión a confirmar en D19: si en contraentrega la mercancía debe **apartarse** al salir (para no venderla dos veces).
-  Propuesta: sí, con una reserva simple (ver punto 4).
-
-## Backend
-1. **Módulo `DOMICILIOS`** en `Modulos` (activo para todos, spec 024).
-2. **V52:**
-   - `venta.tipo_servicio ENUM('MOSTRADOR','DOMICILIO') NOT NULL DEFAULT 'MOSTRADOR'` y lo mismo en `pedido_venta`.
-   - `domicilio (id, empresa_id, consecutivo, venta_id NULL, pedido_venta_id NULL, cliente_id, direccion, telefono,
-     referencia, costo_envio, pago ENUM('PAGADO','CONTRAENTREGA'), estado ENUM('PENDIENTE','ASIGNADO','EN_CAMINO',
-     'ENTREGADO','DEVUELTO','CANCELADO'), domiciliario_usuario_id NULL, domiciliario_externo_nombre NULL,
-     domiciliario_externo_telefono NULL, motivo, creado_en, entregado_en)` con CHECK: venta o pedido, uno de los dos.
-   - `domicilio_evento (domicilio_id, estado, usuario_id, nota, creado_en)` para el historial.
-   - Consecutivo `DOM` por empresa; `empresa.costo_envio_defecto DECIMAL NULL`; eventos de notificación por empresa.
-3. **Servicio `DomicilioService`** (`/api/domicilios`): crear desde una venta pagada o desde un pedido; asignar
-   domiciliario; cambiar estado con transiciones válidas; listar por día y estado; detalle con historial.
-   - El costo de envío se agrega como línea de servicio (producto de tipo servicio sin stock, creado por empresa) para que
-     sume en la venta y en los reportes sin tocar el cálculo de impuestos.
-   - **Contraentrega:** al pasar a ENTREGADO queda listo para cobrar; el cajero lo cobra desde "Pedidos de venta" (flujo de
-     la spec 005), y el turno recibe el dinero. Si vuelve DEVUELTO, el pedido se descarta con motivo.
-4. **Reserva (si D19 la aprueba):** tabla `reserva_stock (producto_id, bodega_id, cantidad, domicilio_id)`; la búsqueda para
-   vender resta lo reservado del disponible. La reserva se libera al cobrar (la salida real la hace la venta) o al
-   devolver. No toca `stock_producto_bodega`.
-5. **Domiciliario:** permiso `DOMICILIO_REPARTIR` (spec 022) para ver solo sus domicilios y marcar EN_CAMINO y ENTREGADO.
-6. `VentaResumen` y los reportes de la 034 llevan `tipoServicio`.
+1. **V53:**
+   - `producto.es_servicio`; `venta.tipo_servicio ENUM('MOSTRADOR','DOMICILIO')`.
+   - `venta_pago.medio` suma `CONTRAENTREGA`; `movimiento_caja.tipo` suma `COBRO_DOMICILIO`.
+   - `domicilio (id, empresa_id, consecutivo, venta_id, direccion, telefono, referencia, pago ENUM('PAGADO',
+     'CONTRAENTREGA'), estado ENUM('PENDIENTE','ASIGNADO','EN_CAMINO','ENTREGADO','DEVUELTO','CANCELADO'),
+     domiciliario_usuario_id, domiciliario_nombre, domiciliario_telefono, motivo, creado_en, entregado_en, cobrado_en,
+     cobrado_turno_id, cobrado_por_usuario_id)` y `domicilio_evento (domicilio_id, estado, usuario_id, nota, creado_en)`.
+   - Permisos `DOMICILIO_GESTIONAR` (Dueño, Administrador, Supervisor de ventas) y `DOMICILIO_REPARTIR` (sin plantilla:
+     se da como permiso suelto o en un rol propio "Domiciliario").
+2. **Producto servicio:** no mueve stock. La venta, la anulación y la devolución saltan sus líneas;
+   `MovimientoInventarioService` rechaza un servicio (409 `PRODUCTO_SERVICIO`); los selectores de compras e inventario y
+   el reporte de inventario y rotación lo dejan fuera.
+3. **Venta a domicilio:** `VentaRequest.domicilio` (dirección, teléfono, referencia). `CONTRAENTREGA` es un medio que no
+   entra a la caja, debe ser el único pago, por el total exacto, y exige domicilio. Al confirmar se crea el domicilio
+   PENDIENTE con su consecutivo `DOM` y la venta queda `DOMICILIO`.
+4. **`DomicilioService`** (`/api/domicilios`):
+   - listar por día y estado (quien gestiona o cobra ve todos; el domiciliario, los suyos); detalle con historial;
+   - asignar (interno con el permiso o externo) — `DOMICILIO_GESTIONAR`;
+   - estados: EN_CAMINO y ENTREGADO (quien gestiona o el domiciliario asignado); DEVUELTO desde EN_CAMINO y CANCELADO
+     antes de salir (quien gestiona), que anulan la venta sin PIN (si se pagó antes, el dinero sale del turno abierto de
+     quien lo hace);
+   - cobrar contraentrega (`VENTA_COBRAR` con turno abierto): pagos por medios de caja que suman el total; un
+     `COBRO_DOMICILIO` por medio en ese turno y los pagos de la venta pasan a ser los reales;
+   - envío: `GET /api/domicilios/envio` (producto y precio, si existe) y `PUT /api/domicilios/envio` (precio; crea el
+     producto servicio la primera vez, exige poder fijar precios);
+   - domiciliarios: usuarios activos con el permiso de repartir.
+5. **Anulación:** el neto de la venta suma `COBRO_DOMICILIO`; anular la venta de un domicilio abierto lo deja CANCELADO.
+   Una devolución sobre una venta contraentrega sin cobrar se rechaza (409 `DOMICILIO_SIN_COBRAR`).
+6. **Reportes:** el reporte por turno cuenta `COBRO_DOMICILIO` como venta de su medio; el cuadre diario cuenta en la caja
+   `VENTA`, `AJUSTE_PAGO` y `COBRO_DOMICILIO`, deja fuera las líneas de servicio y descuenta lo pendiente de la 030.
+   `VentaResumen` lleva `tipoServicio`.
 
 ## Frontend
-- **POS y pedido de venta:** interruptor "Domicilio" que pide dirección (prellenada del cliente), teléfono, referencia,
-  costo del envío y si es pagado o contraentrega.
-- **Ventas › Domicilios:** tablero del día por estado (columnas Pendiente, Asignado, En camino, Entregado/Devuelto) con
-  tiempos, asignar domiciliario y cambiar estado.
-- **Vista del domiciliario:** lista de sus domicilios con dirección, teléfono (enlace `tel:`), "Abrir en mapa" y botones de
-  estado; pensada para celular.
+- **POS:** en el cobro, "Domicilio" con dirección (prellenada del cliente), teléfono y referencia; agrega la línea del
+  envío si existe; el medio "Contraentrega" solo con domicilio.
+- **Ventas › Domicilios:** tablero del día por estado con tiempos, asignar, cambiar estado, cobrar contraentrega y
+  configurar el precio del envío. El domiciliario ve solo los suyos, con enlace `tel:` y "Abrir en el mapa", pensado para
+  celular.
 
 ## Pruebas
-- `DomicilioServiceTest`: transiciones válidas e inválidas; pagado vs contraentrega; devuelto descarta el pedido; costo de
-  envío como línea.
-- Reserva (si aplica): lo reservado no se puede vender; se libera al cobrar o devolver.
-- Cobro de contraentrega entra al turno del cajero que cobra y la caja cuadra.
-- `AislamientoEmpresasTest`: domicilios y eventos de A no se ven en B; un domiciliario de B no ve los de A.
-- Frontend: interruptor en el POS, tablero, vista del domiciliario.
-- E2E: venta a domicilio contraentrega de punta a punta.
+- Prueba de punta a punta contra MySQL: venta contraentrega con envío (el servicio no mueve stock), estados con
+  historial y transiciones inválidas, domiciliario que solo ve lo suyo, cobro en el turno del cajero y caja que cuadra,
+  domicilio devuelto que devuelve el stock, fuga entre empresas.
+- `VentasPorTurnoTest`: el cobro de domicilio cuenta como venta de su medio.
+- Frontend: domicilio en el POS, tablero y vista del domiciliario.
 
-Verificación final: `./mvnw verify`, `npm test`, `npm run build`, e2e y revisión en Docker con vendedor, cajero y
-domiciliario a 360 px.
+Verificación final: `./mvnw verify`, `npm test`, tipos, e2e y revisión en Docker con vendedor, cajero y domiciliario a
+360 px.
