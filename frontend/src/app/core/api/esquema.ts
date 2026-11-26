@@ -6303,6 +6303,13 @@ export interface components {
             unidad?: string;
             precio?: number;
         };
+        CategoriaParaVender: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
+            /** Format: int64 */
+            productos?: number;
+        };
         ProductoParaVender: {
             /** Format: int64 */
             productoId?: number;

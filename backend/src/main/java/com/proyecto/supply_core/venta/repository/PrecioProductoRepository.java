@@ -111,6 +111,51 @@ public interface PrecioProductoRepository extends JpaRepository<PrecioProducto, 
             org.springframework.data.domain.Pageable pagina);
 
     /**
+     * Productos activos y vendibles de una categoría, por nombre (spec 027). Una categoría de otra empresa no trae
+     * nada: {@code @TenantId} filtra los productos.
+     *
+     * @param categoriaId categoría
+     * @param pagina      cuántos traer
+     * @return productos con su unidad e impuesto
+     */
+    @Query("""
+            select p from Producto p join fetch p.unidadMedida left join fetch p.tarifaImpuesto
+            where p.activo = true and p.vendible = true and p.categoria.id = :categoriaId
+            order by p.nombre
+            """)
+    List<com.proyecto.supply_core.inventario.entity.Producto> paraVenderDeCategoria(
+            @Param("categoriaId") Long categoriaId, org.springframework.data.domain.Pageable pagina);
+
+    /**
+     * Categorías activas con al menos un producto activo, vendible y con precio vigente en la lista General, con cuántos
+     * tiene (spec 027). {@code @TenantId} deja solo las de la empresa.
+     *
+     * @return id, nombre y número de productos, por nombre
+     */
+    @Query("""
+            select c.id as id, c.nombre as nombre, count(p) as productos
+            from Producto p join p.categoria c
+            where p.activo = true and p.vendible = true and c.activo = true
+              and exists (select 1 from PrecioProducto pp where pp.producto = p and pp.lista.esGeneral = true
+                          and pp.vigenteHasta is null)
+            group by c.id, c.nombre
+            order by c.nombre
+            """)
+    List<CategoriaConProductos> categoriasParaVender();
+
+    /** Fila de {@link #categoriasParaVender()}. */
+    interface CategoriaConProductos {
+        /** @return id de la categoría */
+        Long getId();
+
+        /** @return nombre */
+        String getNombre();
+
+        /** @return productos vendibles con precio */
+        Long getProductos();
+    }
+
+    /**
      * @param bodegaId    bodega
      * @param productoIds productos
      * @return existencias de esos productos en la bodega (los que no tienen fila no aparecen)

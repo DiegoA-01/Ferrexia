@@ -50,6 +50,30 @@
         } @else if (sinCoincidencias()) {
           <p class="sub ayuda-lector">No hay productos que coincidan con «{{ sinCoincidencias() }}».</p>
         }
+        @if (categorias().length) {
+          <div class="categorias" role="group" aria-label="Elegir productos por categoría">
+            <button type="button" class="chip-categoria" [class.activa]="categoriaElegida() === null"
+              [attr.aria-pressed]="categoriaElegida() === null" (click)="elegirCategoria(null)">Todas</button>
+            @for (k of categorias(); track k.id) {
+              <button type="button" class="chip-categoria" [class.activa]="categoriaElegida() === k.id"
+                [attr.aria-pressed]="categoriaElegida() === k.id" (click)="elegirCategoria(k.id!)">
+                {{ k.nombre }} <span class="cuenta">{{ k.productos }}</span></button>
+            }
+          </div>
+        }
+        @if (categoriaElegida() !== null) {
+          @if (productosCategoria(); as lista) {
+            <div class="grilla-productos" aria-label="Productos de la categoría">
+              @for (p of lista; track p.productoId + '-' + p.unidadMedidaId) {
+                <button type="button" class="producto-tarjeta" [disabled]="p.precio == null" (click)="agregar(p)">
+                  <strong>{{ p.nombre }}</strong>
+                  <span class="precio">{{ p.precio != null ? (p.precio | pesos) : 'sin precio' }}</span>
+                  <span class="sub">{{ p.codigo }} · stock {{ p.stock | numero }} {{ p.unidad }}</span>
+                </button>
+              } @empty { <p class="sub">Esta categoría no tiene productos para vender.</p> }
+            </div>
+          } @else { <p class="sub">Cargando productos…</p> }
+        }
         @if (pedidoConsecutivo()) { <p class="chip azul pedido">Cobrando el pedido {{ pedidoConsecutivo() }}</p> }
 
         <div class="tabla-contenedor">
@@ -179,6 +203,33 @@
     <div class="velo" (click)="cancelar()"></div>
     <section #dialogoCobro class="tarjeta dialogo cobro" role="dialog" aria-modal="true" aria-labelledby="t-cobro">
       <h2 id="t-cobro">Cobrar {{ cotizacion()?.totalAPagar | pesos }}</h2>
+      <div class="bloque-cliente" aria-label="Cliente de la venta">
+        <p class="etiqueta-cobro">Cliente (F4)</p>
+        @if (creandoCliente()) {
+          <sc-cliente-formulario (guardado)="elegirCliente($event)" (cancelado)="creandoCliente.set(false)" />
+        } @else {
+          <div class="fila entre cliente-elegido">
+            <span><strong data-prueba="cliente-cobro">{{ cliente()?.nombre ?? 'Consumidor final' }}</strong>
+              @if (cliente()?.numeroDocumento) { <span class="sub">{{ cliente()?.tipoDocumento }} {{ cliente()?.numeroDocumento }}</span> }</span>
+            @if (cliente()) { <button type="button" class="boton chico" (click)="elegirCliente(null)">Consumidor final</button> }
+          </div>
+          <div class="fila">
+            <input id="cobro-cliente" class="entrada" placeholder="Cédula, NIT o nombre" aria-label="Buscar cliente para esta venta"
+              [ngModel]="buscarCliente()" (ngModelChange)="buscarCliente.set($event)" (keydown.enter)="$event.preventDefault(); buscarClientes()">
+            <button type="button" class="boton chico" (click)="buscarClientes()">Buscar</button>
+            <button type="button" class="boton chico" (click)="creandoCliente.set(true)">Crear cliente</button>
+          </div>
+          @if (clientesEncontrados().length) {
+            <ul class="opciones">
+              @for (c of clientesEncontrados(); track c.id) {
+                <li><button type="button" (click)="elegirCliente(c)"><strong>{{ c.nombre }}</strong><span class="sub">{{ c.tipoDocumento }} {{ c.numeroDocumento }}</span></button></li>
+              }
+            </ul>
+          } @else if (buscado()) {
+            <p class="sub">No hay ningún cliente con «{{ buscado() }}». Créelo o siga como consumidor final.</p>
+          }
+        }
+      </div>
       @if (!dividido()) {
         @let p = pagos()[0];
         <p class="etiqueta-cobro">¿Cómo paga el cliente?</p>

@@ -56,7 +56,7 @@ decisiones y se aprueban antes de escribir el plan.
 | [024-planes-simbolicos](024-planes-simbolicos/spec.md) | 2 | Todos los módulos para todos los planes; planes solo como etiqueta | `feature/planes-simbolicos` | SaaS 2 | Persona 2 | Propuesta (D11) |
 | [025-caja-con-permisos](025-caja-con-permisos/spec.md) | 3 | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | `feature/caja-con-permisos` | 022 | Persona 1 | Propuesta (D15) |
 | [026-producto-completo](026-producto-completo/spec.md) | 3 | Categoría y proveedor al vuelo, impuesto, unidad ajustable, stock máximo, proveedor y fecha del costo | `feature/producto-completo` | 001 | Persona 2 | Propuesta (D17) |
-| [027-venta-agil](027-venta-agil/spec.md) | 3 | Categorías en el pedido y el POS, cliente y pago en un paso | `feature/venta-agil` | 005, 016 | Persona 1 | Propuesta |
+| [027-venta-agil](027-venta-agil/spec.md) | 3 | Categorías en el pedido y el POS, cliente y pago en un paso | `feature/cierre-por-denominacion` (con la 023) | 005, 016 | Persona 1 | En construcción (falta revisión en Docker) |
 | [028-variantes-producto](028-variantes-producto/spec.md) | 3 | Atributos y variantes con código, precio y stock propios | `feature/variantes-producto` | 026 | Persona 2 | Propuesta |
 | [029-anular-factura-metodo-pago](029-anular-factura-metodo-pago/spec.md) | 3 | Anular factura de un turno cerrado y cambiar el método de pago | `feature/anular-factura-metodo-pago` | 006, 022 | Persona 1 | Propuesta (D16) |
 | [030-venta-sin-stock](030-venta-sin-stock/spec.md) | 4 | Vender sin existencia con permiso, aviso y reporte | `feature/venta-sin-stock` | 004, 022 | Persona 1 | Propuesta (D13) |

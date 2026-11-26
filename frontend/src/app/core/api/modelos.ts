@@ -136,6 +136,7 @@ export type HistorialPrecio = S['HistorialPrecio'];
 export type PrecioUnidad = S['PrecioUnidad'];
 export type CargaPrecios = S['CargaPreciosResponse'];
 export type ProductoParaVender = S['ProductoParaVender'];
+export type CategoriaParaVender = S['CategoriaParaVender'];
 export type Cliente = S['ClienteResponse'];
 export type ClienteRequest = S['ClienteRequest'];
 export type TipoDocumento = ClienteRequest['tipoDocumento'];

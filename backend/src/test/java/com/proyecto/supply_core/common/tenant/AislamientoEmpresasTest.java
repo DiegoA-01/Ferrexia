@@ -2364,6 +2364,28 @@ class AislamientoEmpresasTest {
                             .header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "CAJERO")))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.length()").value(0));
+            // spec 027: categorías para vender con su conteo y productos por categoría, sin cruzar empresas
+            Long categoriaA = jdbc.queryForObject("SELECT categoria_producto_id FROM producto WHERE id = ?", Long.class,
+                    productoA);
+            mvc.perform(get("/api/ventas/categorias").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.id==" + categoriaA + ")].productos").value(org.hamcrest.Matchers.hasItem(
+                            org.hamcrest.Matchers.greaterThanOrEqualTo(1))));
+            mvc.perform(get("/api/ventas/productos?categoriaId=" + categoriaA).header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.productoId==" + productoA + ")].precio").value(org.hamcrest.Matchers.hasItem(1500.0)));
+            mvc.perform(get("/api/ventas/productos?q=" + codigoProducto + "&categoriaId=" + categoriaA)
+                            .header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(jsonPath("$[0].productoId").value(productoA));
+            mvc.perform(get("/api/ventas/productos").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isBadRequest());
+            String cajeroB = token(empresaB, usuarioB, "CAJERO");
+            mvc.perform(get("/api/ventas/categorias").header(HttpHeaders.AUTHORIZATION, cajeroB))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.id==" + categoriaA + ")]").isEmpty());
+            mvc.perform(get("/api/ventas/productos?categoriaId=" + categoriaA).header(HttpHeaders.AUTHORIZATION, cajeroB))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(0));
             // el cajero busca, pero no ve márgenes ni fija precios
             mvc.perform(get("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, cajeroA))
                     .andExpect(status().isForbidden());

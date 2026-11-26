@@ -1,6 +1,6 @@
 # 027 - Venta ágil: categorías en el pedido y cobro en un paso
 
-**Estado:** Propuesta · **Rama:** `feature/venta-agil` · **Depende de:** 005, 016 · **Responsable:** Persona 1 ·
+**Estado:** En construcción (2026-11-25) · **Rama:** `feature/cierre-por-denominacion` (junto con la 023) · **Depende de:** 005, 016 · **Responsable:** Persona 1 ·
 **Puntos de la reunión 2:** 17, 23
 
 ## Objetivo
