@@ -22,6 +22,10 @@
       </div>
     </div>
 
+    @if (puedeVerEnlaces()) {
+      <sc-enlaces-rfq [rfqId]="r.id!" [consecutivo]="r.consecutivo ?? ''" [soloLectura]="sesion.soloLectura()" />
+    }
+
     @if (analisis()?.pendientes?.length) {
       <div class="aviso ambar">
         <span class="material-symbols-outlined">warning</span>

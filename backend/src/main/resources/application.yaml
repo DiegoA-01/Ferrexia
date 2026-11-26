@@ -75,6 +75,13 @@ app:
   admin:
     email: ${ADMIN_EMAIL:admin@supplycore.local}
     password: ${ADMIN_PASSWORD:}      # solo se usa si aún no existe un ADMIN_SISTEMA
+  url-publica: ${PUBLIC_URL:http://localhost:4200}   # dirección pública de la aplicación (enlaces que salen por correo)
+  portal:
+    habilitado: ${PORTAL_HABILITADO:false}   # spec 031 (D14): el portal del proveedor está retirado (410 PORTAL_RETIRADO)
+  turnstile:                                 # anti-bot del enlace de cotización (Cloudflare Turnstile, spec 031)
+    secret: ${TURNSTILE_SECRET:}             # clave secreta; vacía = sin verificación (solo desarrollo)
+    site-key: ${TURNSTILE_SITE_KEY:}         # clave pública del widget
+    obligatorio: ${TURNSTILE_OBLIGATORIO:false}
   plataforma:
     admin-correo: ${PLATAFORMA_ADMIN_CORREO:dueno@supplycore.local}
     admin-password: ${PLATAFORMA_ADMIN_PASSWORD:}   # 12 a 72 caracteres; solo se usa si aún no hay usuario de plataforma

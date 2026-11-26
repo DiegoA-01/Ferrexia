@@ -123,7 +123,7 @@ export class Inicio implements OnInit {
     }),
     ...this.proveedoresNuevos().map(p => ({
       tipo: 'Proveedor nuevo', tono: 'gris' as const,
-      titulo: p.razonSocial ?? '', detalle: 'Se registró en el portal y espera habilitación.',
+      titulo: p.razonSocial ?? '', detalle: 'Espera habilitación.',
       accion: 'Habilitar', proveedorId: p.id,
     })),
   ]);

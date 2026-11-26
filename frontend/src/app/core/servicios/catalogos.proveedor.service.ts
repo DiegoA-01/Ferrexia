@@ -6,24 +6,12 @@ import { CargaCatalogo, CatalogoItem, EstadoEquivalencia, Oportunidad, Pagina, P
 import { api, parametros } from '../http/api';
 
 /**
- * Catálogos de proveedores. El portal sube y ve su propio catálogo; compras ve todos, confirma equivalencias y revisa
+ * Catálogos de proveedores (los que subieron en el portal, retirado en la spec 031); compras ve todos, confirma equivalencias y revisa
  * oportunidades. Los precios comparables y el ahorro los calcula el backend.
  */
 @Injectable({ providedIn: 'root' })
 export class CatalogosProveedorService {
   private readonly http = inject(HttpClient);
-
-  /** Portal: el catálogo del proveedor de la sesión. */
-  miCatalogo(): Observable<PortalCatalogoItem[]> {
-    return this.http.get<PortalCatalogoItem[]>(api('/api/portal/catalogo'));
-  }
-
-  /** @param archivo Excel .xlsx del catálogo; portal: sube o reemplaza el catálogo */
-  subir(archivo: File): Observable<CargaCatalogo> {
-    const datos = new FormData();
-    datos.append('archivo', archivo);
-    return this.http.post<CargaCatalogo>(api('/api/portal/catalogo'), datos);
-  }
 
   /**
    * Compras: catálogo de todos los proveedores.

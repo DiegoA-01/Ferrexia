@@ -15,6 +15,8 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 import com.proyecto.supply_core.common.exception.NoAutenticadoException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.tenant.EmpresaContexto;
+import com.proyecto.supply_core.compra.enlace.EnlaceActual;
+import com.proyecto.supply_core.compra.enlace.service.FirmaEnlace;
 import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
 import com.proyecto.supply_core.security.context.PlataformaActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
@@ -46,9 +48,13 @@ public class AuthFilter extends OncePerRequestFilter {
     /** El autorregistro lleva el código público de la empresa en la ruta: {@code /api/portal/registro/{codigo}/...}. */
     private static final String PREFIJO_REGISTRO = "/api/portal/registro/";
 
+    /** Cotizar con un enlace, sin cuenta (spec 031): {@code /api/publico/cotizar/{token}/...}. */
+    private static final String PREFIJO_ENLACE = "/api/publico/cotizar/";
+
     private final JwtUtil jwtUtil;
     private final EmpresaRepository empresaRepository;
     private final SesionUsuarioService sesionUsuario;
+    private final FirmaEnlace firmaEnlace;
     private final HandlerExceptionResolver exceptionResolver;
     private final AntPathMatcher matcher = new AntPathMatcher();
 
@@ -56,13 +62,15 @@ public class AuthFilter extends OncePerRequestFilter {
      * @param jwtUtil           validador de tokens
      * @param empresaRepository resuelve la empresa del autorregistro público por su código
      * @param sesionUsuario     corta el token de quien cambió su clave o fue desactivado
+     * @param firmaEnlace       valida los enlaces de cotización y dice su empresa
      * @param exceptionResolver resolver de Spring MVC que invoca al {@code @RestControllerAdvice}
      */
     public AuthFilter(JwtUtil jwtUtil, EmpresaRepository empresaRepository, SesionUsuarioService sesionUsuario,
-            @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
+            FirmaEnlace firmaEnlace, @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
         this.jwtUtil = jwtUtil;
         this.empresaRepository = empresaRepository;
         this.sesionUsuario = sesionUsuario;
+        this.firmaEnlace = firmaEnlace;
         this.exceptionResolver = exceptionResolver;
     }
 
@@ -106,6 +114,10 @@ public class AuthFilter extends OncePerRequestFilter {
             String ruta = ruta(request);
             if (ruta.startsWith(PREFIJO_REGISTRO)) {
                 EmpresaContexto.fijar(empresaDelRegistro(ruta));
+            } else if (ruta.startsWith(PREFIJO_ENLACE)) {
+                FirmaEnlace.EnlaceFirmado enlace = enlaceDeLaRuta(ruta);
+                request.setAttribute(EnlaceActual.ATRIBUTO, enlace);
+                EmpresaContexto.fijar(enlace.empresaId());
             } else if (esPublica(ruta)) {
                 EmpresaContexto.fijarSinEmpresa();
             } else if (ruta.startsWith(PREFIJO_PLATAFORMA)) {
@@ -157,6 +169,21 @@ public class AuthFilter extends OncePerRequestFilter {
         }
         return empresaRepository.idPorCodigoPublico(codigo)
                 .orElseThrow(() -> new NoEncontradoException("La empresa indicada no existe"));
+    }
+
+    /**
+     * Enlace de cotización de la ruta, validado por su firma (sin empresa: se lee por id). Vencido, usado o inventado
+     * se revisa después, dentro de la empresa; aquí solo se rechaza el que no existe o tiene otra firma.
+     *
+     * @param ruta ruta {@code /api/publico/cotizar/{token}/...}
+     * @return enlace firmado
+     * @throws NoEncontradoException el mismo 404 de todo enlace que no sirve
+     */
+    private FirmaEnlace.EnlaceFirmado enlaceDeLaRuta(String ruta) {
+        String resto = ruta.substring(PREFIJO_ENLACE.length());
+        String token = resto.contains("/") ? resto.substring(0, resto.indexOf('/')) : resto;
+        EmpresaContexto.fijarSinEmpresa();
+        return firmaEnlace.validar(token).orElseThrow(EnlaceActual.CotizacionPublicaErrores::noValido);
     }
 
     /**

@@ -28,6 +28,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import com.proyecto.supply_core.notificacion.email.EmailClient;
 import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
@@ -89,7 +90,8 @@ class PagoServiceTest {
     private final EmpresaRepository empresas = mock(EmpresaRepository.class);
     private final FacturaService facturas = mock(FacturaService.class);
     private final PagoService service = new PagoService(pagos, ordenes, adjudicaciones, aprobaciones, usuarios,
-            documentos, auditoria, notificaciones, empresas, facturas, mock(SolicitudCompraRepository.class));
+            documentos, auditoria, notificaciones, empresas, facturas, mock(SolicitudCompraRepository.class),
+            mock(EmailClient.class));
 
     private MockHttpServletRequest request;
     private OrdenCompra orden;

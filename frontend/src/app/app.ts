@@ -3,7 +3,7 @@ import { RouterOutlet } from '@angular/router';
 
 import { TablasResponsivas } from './core/ui/tablas-responsivas';
 
-/** Raíz: cada zona (empresa, portal del proveedor, consola del dueño) trae su propio marco. */
+/** Raíz: cada zona (empresa, consola del dueño y la página pública para cotizar) trae su propio marco. */
 @Component({
   selector: 'sc-root',
   imports: [RouterOutlet],

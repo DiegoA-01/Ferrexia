@@ -54,6 +54,10 @@ export type Rfq = S['RfqResponse'];
 export type Analisis = S['AnalisisResponse'];
 export type ResultadoAnalisis = S['Resultado'];
 export type Cotizacion = S['CotizacionResponse'];
+/** Spec 031: enlace para cotizar sin cuenta, visto por compras. */
+export type EnlaceCotizacion = S['EnlaceResponse'];
+/** Spec 031: lo que ve el proveedor al abrir su enlace. */
+export type CotizacionPublica = S['CotizacionPublicaResponse'];
 export type Adjudicacion = S['AdjudicacionResponse'];
 export type Pesos = S['PesosResponse'];
 export type Procesamiento = S['ProcesamientoResponse'];

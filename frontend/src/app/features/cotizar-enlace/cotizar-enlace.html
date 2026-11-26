@@ -1,0 +1,122 @@
+<div class="publica">
+  <header class="barra">
+    <span class="marca"><span class="material-symbols-outlined">request_quote</span> Solicitud de cotización</span>
+    @if (datos(); as d) { <span class="empresa">{{ d.empresa }}</span> }
+  </header>
+
+  <main class="pagina">
+    @if (noValido()) {
+      <section class="tarjeta mensaje">
+        <span class="material-symbols-outlined">link_off</span>
+        <h1>Este enlace ya no está disponible</h1>
+        <p class="texto-2">Puede que ya haya enviado su cotización, que la fecha límite haya pasado o que el enlace no esté
+          completo. Si cree que es un error, pida a la empresa un enlace nuevo.</p>
+      </section>
+    } @else if (enviada()) {
+      <section class="tarjeta mensaje">
+        <span class="material-symbols-outlined ok">check_circle</span>
+        <h1>¡Cotización enviada!</h1>
+        <p class="texto-2">{{ datos()?.empresa }} recibió su cotización para la {{ datos()?.rfq?.consecutivo }}. La verán cuando
+          cierre la fecha límite. Ya puede cerrar esta página.</p>
+      </section>
+    } @else if (datos(); as d) {
+      <div class="encabezado">
+        <div>
+          <h1>{{ d.rfq?.consecutivo }}</h1>
+          <p>Hola {{ d.proveedor }}: {{ d.empresa }} le pide cotizar estos productos hasta el {{ d.rfq?.fechaLimite | fecha: 'hora' }}.
+            @if (d.rfq?.condiciones) { {{ d.rfq?.condiciones }} }</p>
+        </div>
+      </div>
+
+      <div class="rejilla principal">
+        <div class="columna">
+          <section class="tarjeta sin-relleno">
+            <div class="tabla-contenedor">
+              <table class="tabla cotizar">
+                <thead><tr><th>Producto pedido</th><th class="num">Cantidad</th><th class="num">Su precio unitario</th><th class="num">Impuesto %</th></tr></thead>
+                <tbody>
+                  @for (l of d.rfq?.lineas; track l.id) {
+                    <tr>
+                      <td><strong>{{ l.productoNombre }}</strong><span class="sub">{{ l.especificaciones || l.productoCodigo }}</span></td>
+                      <td class="num">{{ l.cantidad | numero }} {{ l.unidadCodigo }}</td>
+                      <td class="num">
+                        <input scCifra min="0" class="entrada num precio" [attr.aria-label]="'Precio de ' + l.productoNombre"
+                               [ngModel]="oferta(l.id).precio" (ngModelChange)="cambiar(l.id, 'precio', $event)">
+                      </td>
+                      <td class="num">
+                        <input scCifra min="0" max="100" class="entrada num impuesto" [attr.aria-label]="'Impuesto de ' + l.productoNombre"
+                               [ngModel]="oferta(l.id).impuesto" (ngModelChange)="cambiar(l.id, 'impuesto', +$event)">
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="tarjeta">
+            <h2>Condiciones</h2>
+            <div class="formulario dos">
+              <div class="campo"><label for="plazo">Plazo de entrega (días)</label>
+                <input scCifra [decimales]="0" id="plazo" min="0" class="entrada" [ngModel]="plazo()" (ngModelChange)="plazo.set($event); sinGuardar.set(true)"></div>
+              <div class="campo"><label for="pago">Condiciones de pago</label>
+                <select id="pago" class="entrada" [ngModel]="condiciones()" (ngModelChange)="condiciones.set($event); sinGuardar.set(true)">
+                  @for (c of ['Contado', 'A 15 días', 'A 30 días', 'A 60 días']; track c) { <option [value]="c">{{ c }}</option> }
+                  @if (!['Contado', 'A 15 días', 'A 30 días', 'A 60 días'].includes(condiciones())) { <option [value]="condiciones()">{{ condiciones() }}</option> }
+                </select></div>
+              <div class="campo"><label for="validez">Vigencia de la oferta</label>
+                <input id="validez" type="date" class="entrada" [ngModel]="validez()" (ngModelChange)="validez.set($event); sinGuardar.set(true)"></div>
+              <div class="campo"><label for="garantia">Garantía (meses)</label>
+                <input scCifra [decimales]="0" id="garantia" min="0" class="entrada" [ngModel]="garantia()" (ngModelChange)="garantia.set($event); sinGuardar.set(true)"></div>
+            </div>
+            <div class="campo margen-arriba"><label for="notas">Notas para el comprador</label>
+              <textarea id="notas" class="entrada" placeholder="Opcional" [ngModel]="notas()" (ngModelChange)="notas.set($event)"></textarea></div>
+            <!-- campo trampa: oculto para las personas; los bots lo llenan -->
+            <div class="trampa" aria-hidden="true">
+              <label for="sitio-web">Sitio web</label>
+              <input id="sitio-web" name="sitio-web" type="text" tabindex="-1" autocomplete="off" [ngModel]="sitioWeb()" (ngModelChange)="sitioWeb.set($event)">
+            </div>
+          </section>
+        </div>
+
+        <div class="columna">
+          <section class="tarjeta">
+            <h2>Su total</h2>
+            @if (cotizacion(); as c) {
+              <div class="pares">
+                <div class="par"><span>Subtotal</span><span>{{ c.subtotal | pesos }}</span></div>
+                <div class="par"><span>Impuestos</span><span>{{ c.impuestos | pesos }}</span></div>
+                <div class="par total"><span>Total</span><span>{{ c.total | pesos }}</span></div>
+              </div>
+              @if (sinGuardar()) { <p class="texto-chico aviso ambar">Cambió precios: guarde el borrador para ver el total actualizado.</p> }
+            } @else {
+              <p class="texto-2">Escriba sus precios y guarde el borrador: el sistema calcula el subtotal, el IVA y el total.</p>
+            }
+            @if (conAntiBot()) { <div #turnstile class="turnstile margen-arriba"></div> }
+            <button type="button" class="boton primario bloque margen-arriba" [disabled]="!puedeEnviar()" (click)="guardar(true)">Enviar cotización</button>
+            <button type="button" class="boton bloque margen-arriba" [disabled]="trabajando()" (click)="guardar()">Guardar borrador</button>
+            <p class="texto-chico texto-2">Una vez enviada no podrá editarla y el enlace se cerrará.</p>
+          </section>
+
+          <label class="tarjeta archivo" [class.listo]="tieneArchivo()">
+            @if (tieneArchivo()) {
+              <span class="material-symbols-outlined ok">check_circle</span>
+              <strong>Archivo adjunto</strong>
+              <span class="nombre-archivo">{{ nombreArchivo() ?? 'Documento de su cotización' }}</span>
+              <span class="texto-chico texto-2">Ya puede enviar la cotización. Escribir los precios es opcional.</span>
+              <span class="boton chico">Cambiar archivo</span>
+            } @else {
+              <span class="material-symbols-outlined">upload_file</span>
+              <strong>¿Ya tiene su cotización en un archivo?</strong>
+              <span class="texto-chico texto-2">Suba Excel, PDF o una foto. Con el archivo puede enviarla sin escribir los precios.</span>
+              <span class="boton chico">Subir archivo</span>
+            }
+            <input type="file" accept=".xlsx,.xls,.docx,.pdf,image/*" (change)="subirArchivo($event)">
+          </label>
+        </div>
+      </div>
+    } @else {
+      <p class="cargando">Cargando…</p>
+    }
+  </main>
+</div>

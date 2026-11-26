@@ -93,7 +93,7 @@ Después se sumaron `CAJA_RETIRO_SIN_PIN`, `CAJA_GASTO_SIN_PIN` y `CAJA_INGRESO_
 
 | Permiso | Qué permite | Roles que lo tienen | Controladores |
 |---|---|---|---|
-| `PORTAL_PROVEEDOR` | Usar el portal del proveedor | Proveedor | PortalCatalogoController, PortalCotizacionController, PortalFacturaController, PortalOrdenController, PortalPagoController, PortalProveedorController, PortalRecepcionController, PortalRfqController |
+| `PORTAL_PROVEEDOR` | Usar el portal del proveedor (retirado en la spec 031: el portal responde 410) | Proveedor | PortalCatalogoController, PortalCotizacionController, PortalFacturaController, PortalOrdenController, PortalPagoController, PortalProveedorController, PortalRecepcionController, PortalRfqController |
 
 ## Inventario
 

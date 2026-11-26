@@ -16,6 +16,8 @@ app:
     sla-automatico: false
   ventas:
     cuadre-cron: "-"            # el cuadre diario se prueba llamándolo, no a la 01:00
+  portal:
+    habilitado: true            # las pruebas de siempre del portal; el retiro se prueba aparte (spec 031)
   plataforma:
     cache-segundos: 0           # cada petición lee la suscripción de la base, sin memoria
   sesion:

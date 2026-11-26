@@ -40,6 +40,8 @@ app:
     secret: ${JWT_SECRET}                # sin valor por defecto: sin secreto no se arranca
   sesion:
     mfa-admin-obligatorio: ${MFA_ADMIN_OBLIGATORIO:true}
+  turnstile:
+    obligatorio: ${TURNSTILE_OBLIGATORIO:true}   # sin TURNSTILE_SECRET no se aceptan cotizaciones por enlace
 
 springdoc:
   api-docs:

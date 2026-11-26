@@ -2,6 +2,7 @@ package com.proyecto.supply_core.common.web;
 
 import java.util.Set;
 
+import org.springframework.test.context.TestPropertySource;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +10,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.proyecto.supply_core.compra.enlace.service.FirmaEnlace;
 import com.proyecto.supply_core.catalogo.repository.CategoriaProductoRepository;
 import com.proyecto.supply_core.catalogo.repository.UnidadMedidaRepository;
 import com.proyecto.supply_core.empresa.repository.CentroCostoRepository;
@@ -35,6 +37,7 @@ import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
  * aquí se simulan los repositorios que usan los validadores ({@code @CorreoUnico}, {@code @NitUnico}...).
  */
 @Import({ JwtUtil.class, SecurityBeansConfig.class, RolInterceptor.class })
+@TestPropertySource(properties = "app.portal.habilitado=true") // el retiro del portal se prueba aparte (spec 031)
 public abstract class WebTestBase {
 
     @Autowired
@@ -45,6 +48,10 @@ public abstract class WebTestBase {
 
     @MockitoBean
     protected UsuarioRepository usuarioRepository;
+
+    /** Simulado: valida los enlaces de cotización de {@code /api/publico/cotizar/**} (spec 031). */
+    @MockitoBean
+    protected FirmaEnlace firmaEnlace;
 
     @MockitoBean
     protected EmpresaRepository empresaRepository;

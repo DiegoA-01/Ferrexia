@@ -8,9 +8,9 @@ import { SesionService } from '../sesion/sesion.service';
 /** Marca una petición que ya se reintentó con un token renovado, para no entrar en un ciclo. */
 const REINTENTO = new HttpContextToken<boolean>(() => false);
 
-/** Rutas que no llevan token: ingreso, renovación y autorregistro de proveedores. */
+/** Rutas que no llevan token: ingreso, renovación y cotizar con un enlace (spec 031). */
 const PUBLICAS = ['/api/auth/login', '/api/auth/refresh', '/api/auth/recuperar', '/api/auth/restablecer', '/api/plataforma/auth/',
-  '/api/portal/registro/'];
+  '/api/publico/'];
 
 /**
  * Agrega {@code Authorization: Bearer} a las llamadas al backend: el token del dueño en {@code /api/plataforma} y el

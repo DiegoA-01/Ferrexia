@@ -4,7 +4,7 @@ Uso (con el stack arriba y un .env en la raíz):
     py scripts/sembrar_demo.py
 
 Crea, con contraseñas aleatorias fuertes: la empresa, su administrador, un jefe de compras, un jefe de bodega,
-un bodeguero, un solicitante, un aprobador, un comprador, tesorería, un auditor y un proveedor habilitado, más
+un bodeguero, un solicitante, un aprobador, un comprador, tesorería, un auditor y un proveedor sin cuenta, más
 sede, centro de costo, bodega, productos con existencias y políticas de aprobación.
 
 Las claves y los secretos de la app autenticadora se guardan en `credenciales-docker.local.txt` (ignorado por git).
@@ -197,16 +197,15 @@ def main():
         exigir('política ' + tipo, llamar('POST', '/api/politicas-aprobacion', {
             'tipo': tipo, 'rolAprobador': rol, 'montoDesde': 0}, tok_compras))
 
-    # 7. Un proveedor: se autorregistra y el jefe de compras lo habilita
-    prov_correo, prov_clave = 'proveedor@electrosur.local', clave()
-    from urllib.parse import quote
-    exigir('registro del proveedor', llamar('POST', '/api/portal/registro/' + quote(CODIGO_EMPRESA, safe=''), {
-        'razonSocial': 'Electro Sur Ltda.', 'nit': '800123456-1', 'telefono': '3001234567', 'direccion': 'Carrera 5 # 6-7',
-        'categoriaIds': [categorias['Eléctrico'], categorias['Herramientas']], 'nombreContacto': 'Marta Rojas',
-        'correo': prov_correo, 'password': prov_clave}))
-    lista = exigir('proveedores pendientes', llamar('GET', '/api/proveedores?estado=PENDIENTE', token=tok_compras))
-    pendientes = lista['contenido'] if isinstance(lista, dict) else lista
-    exigir('habilitar proveedor', llamar('PATCH', f'/api/proveedores/{pendientes[0]["id"]}/habilitar', token=tok_compras))
+    # 7. Un proveedor sin cuenta (spec 031): compras lo crea habilitado y le asigna sus categorías. Cotiza desde el
+    #    enlace que recibe por correo al abrir cada RFQ.
+    prov_correo = 'proveedor@electrosur.local'
+    proveedor = exigir('proveedor', llamar('POST', '/api/proveedores', {
+        'razonSocial': 'Electro Sur Ltda.', 'nit': '800123456-1', 'correo': prov_correo, 'telefono': '3001234567'},
+        tok_compras))
+    exigir('categorías del proveedor', llamar('PUT', f'/api/proveedores/{proveedor["id"]}', {
+        'correoContacto': prov_correo, 'telefono': '3001234567', 'direccion': 'Carrera 5 # 6-7',
+        'categoriaIds': [categorias['Eléctrico'], categorias['Herramientas']]}, tok_compras))
 
     # 8. Archivo local de credenciales (nunca se sube a git)
     filas = ''.join(f'{n:<18}{c:<40}{claves[c]}\n' for n, c, _ in cuentas)
@@ -232,9 +231,9 @@ Usuarios con rol (sin segundo factor; entran con código de empresa, correo y cl
 {filas}
 PIN del supervisor de ventas (autoriza retiros, gastos y anulaciones en la caja): {pin_supervisor}
 
-== PROVEEDOR (portal, zona /portal; mismo código de empresa) ==
-Correo:  {prov_correo}
-Clave:   {prov_clave}
+== PROVEEDOR (sin cuenta, spec 031) ==
+Electro Sur Ltda. ({prov_correo}): cotiza desde el enlace que se crea al abrir cada RFQ. Compras lo copia en la RFQ
+(sección "Enlaces para cotizar") y lo abre en una ventana privada.
 """, encoding='utf-8')
     # Copia en JSON para las pruebas de punta a punta y de carga (spec 010); tampoco se sube a git
     SALIDA_JSON.write_text(json.dumps({

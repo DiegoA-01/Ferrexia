@@ -436,6 +436,42 @@ public class ExportacionService {
         return entregar(archivo, destino, id, "ORDEN_COMPRA; " + orden.consecutivo() + " v" + orden.version());
     }
 
+    /**
+     * Envía la orden de compra en PDF al correo del proveedor (spec 031: el proveedor ya no la ve en un portal).
+     *
+     * @param id orden
+     * @return a quién se envió
+     * @throws NegocioException {@code PROVEEDOR_SIN_CORREO} si el proveedor no tiene correo, o
+     *                          {@code CORREO_NO_ENVIADO} si el envío falla
+     * @throws com.proyecto.supply_core.common.exception.NoEncontradoException si no existe en la empresa
+     */
+    public String enviarOrdenAlProveedor(Long id) {
+        OrdenResponse orden = ordenService.obtener(id);
+        ProveedorResponse proveedor = proveedorService.obtener(orden.proveedorId());
+        String para = proveedor.correoContacto();
+        if (para == null || para.isBlank()) {
+            throw new NegocioException("PROVEEDOR_SIN_CORREO",
+                    "El proveedor no tiene correo; agréguelo en su ficha o descargue el PDF y envíelo por otro medio");
+        }
+        EmpresaResponse empresa = empresa();
+        byte[] bytes = ordenPdf.generar(empresa, orden, proveedor, usuario().nombre());
+        String nombre = orden.consecutivo() + "-v" + orden.version() + ".pdf";
+        String detalle = orden.consecutivo() + " v" + orden.version() + "; para=" + para;
+        try {
+            emailClient.enviarConAdjunto(para, "Orden de compra " + orden.consecutivo() + " de " + empresa.razonSocial(),
+                    "Hola " + proveedor.razonSocial() + ", adjunto encontrará la orden de compra " + orden.consecutivo()
+                            + " (versión " + orden.version() + ") de " + empresa.razonSocial()
+                            + ". Para aceptarla o informar el despacho, comuníquese con nuestro equipo de compras.",
+                    new Adjunto(nombre, FormatoExportacion.PDF.contentType(), bytes));
+        } catch (RuntimeException e) {
+            auditoriaService.fallo(usuario().id(), AccionAuditoria.ORDEN_ENVIAR_PROVEEDOR, EntidadAuditada.ORDEN_COMPRA,
+                    id, detalle + "; error=" + e.getClass().getSimpleName());
+            throw new NegocioException("CORREO_NO_ENVIADO", "No se pudo enviar el correo; intente de nuevo más tarde");
+        }
+        auditoriaService.exito(AccionAuditoria.ORDEN_ENVIAR_PROVEEDOR, EntidadAuditada.ORDEN_COMPRA, id, detalle);
+        return para;
+    }
+
     // ----------------------------------------------------------------- apoyo
 
     /**

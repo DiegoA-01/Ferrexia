@@ -5337,4 +5337,159 @@ class AislamientoEmpresasTest {
             borrarDuenoDePrueba(correo);
         }
     }
+
+    // ------------------------------------------------------------------ enlace de cotización (spec 031)
+
+    @Autowired private com.proyecto.supply_core.compra.enlace.service.FirmaEnlace firmaEnlace;
+
+    /**
+     * Inserta por SQL una RFQ ABIERTA de un producto, con el proveedor invitado y su enlace de cotización.
+     *
+     * @return {rfq, línea de la RFQ, enlace}
+     */
+    private Long[] sembrarRfqConEnlace(Long empresa, Long proveedor, Long producto, String consecutivo, int venceEnDias) {
+        return jdbc.execute((ConnectionCallback<Long[]>) con -> {
+            try (Statement st = con.createStatement()) {
+                st.execute("SET FOREIGN_KEY_CHECKS=0");
+                long solicitud;
+                try (PreparedStatement ps = con.prepareStatement("INSERT INTO solicitud_compra (empresa_id, "
+                        + "centro_costo_id, usuario_solicitante_id, consecutivo, fecha_requerida, estado) VALUES (?, 1, 1, ?, "
+                        + "CURRENT_DATE, 'EN_RFQ')", Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setLong(1, empresa);
+                    ps.setString(2, "SOL-" + consecutivo);
+                    ps.executeUpdate();
+                    try (ResultSet rs = ps.getGeneratedKeys()) {
+                        rs.next();
+                        solicitud = rs.getLong(1);
+                    }
+                }
+                long rfq;
+                try (PreparedStatement ps = con.prepareStatement("INSERT INTO rfq (empresa_id, solicitud_compra_id, "
+                        + "usuario_id, consecutivo, fecha_limite, estado, abierta_en) VALUES (?, ?, 1, ?, "
+                        + "DATE_ADD(NOW(), INTERVAL 5 DAY), 'ABIERTA', NOW())", Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setLong(1, empresa);
+                    ps.setLong(2, solicitud);
+                    ps.setString(3, consecutivo);
+                    ps.executeUpdate();
+                    try (ResultSet rs = ps.getGeneratedKeys()) {
+                        rs.next();
+                        rfq = rs.getLong(1);
+                    }
+                }
+                long linea;
+                try (PreparedStatement ps = con.prepareStatement("INSERT INTO rfq_linea (rfq_id, producto_id, "
+                        + "unidad_medida_id, cantidad) SELECT ?, id, unidad_medida_id, 5 FROM producto WHERE id = ?",
+                        Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setLong(1, rfq);
+                    ps.setLong(2, producto);
+                    ps.executeUpdate();
+                    try (ResultSet rs = ps.getGeneratedKeys()) {
+                        rs.next();
+                        linea = rs.getLong(1);
+                    }
+                }
+                try (PreparedStatement ps = con.prepareStatement(
+                        "INSERT INTO rfq_proveedor (rfq_id, proveedor_id, invitado_en) VALUES (?, ?, NOW())")) {
+                    ps.setLong(1, rfq);
+                    ps.setLong(2, proveedor);
+                    ps.executeUpdate();
+                }
+                long enlace;
+                try (PreparedStatement ps = con.prepareStatement("INSERT INTO enlace_cotizacion (empresa_id, rfq_id, "
+                        + "proveedor_id, version, vence_en) VALUES (?, ?, ?, 1, DATE_ADD(NOW(), INTERVAL ? DAY))",
+                        Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setLong(1, empresa);
+                    ps.setLong(2, rfq);
+                    ps.setLong(3, proveedor);
+                    ps.setInt(4, venceEnDias);
+                    ps.executeUpdate();
+                    try (ResultSet rs = ps.getGeneratedKeys()) {
+                        rs.next();
+                        enlace = rs.getLong(1);
+                    }
+                }
+                st.execute("SET FOREIGN_KEY_CHECKS=1");
+                return new Long[] { rfq, linea, enlace };
+            }
+        });
+    }
+
+    private static String cotizacionJson(Long rfqLinea) {
+        return "{\"plazoEntregaDias\":3,\"lineas\":[{\"rfqLineaId\":" + rfqLinea + ",\"cantidadOfertada\":5,"
+                + "\"unidadOfertada\":\"UND\",\"factorConversion\":1,\"precioUnitarioOfertado\":1000,"
+                + "\"impuestoPct\":19}]}";
+    }
+
+    @Test
+    void elEnlaceDeCotizacionDeUnaEmpresaNuncaMuestraNiGuardaDatosDeOtra() throws Exception {
+        MediaType ct = MediaType.APPLICATION_JSON;
+        Long[] a = sembrarRfqConEnlace(empresaA, proveedorA, productoA, "RFQ-ENL-A", 5);
+        Long[] b = sembrarRfqConEnlace(empresaB, proveedorB, productoB, "RFQ-ENL-B", 5);
+        String enlaceA = firmaEnlace.token(a[2], empresaA, 1);
+        String enlaceB = firmaEnlace.token(b[2], empresaB, 1);
+        String firmaDeA = enlaceA.substring(enlaceA.indexOf('.') + 1);
+
+        // el proveedor de A ve solo la RFQ de A, sin cuenta
+        String razonA = jdbc.queryForObject("SELECT razon_social FROM empresa WHERE id = ?", String.class, empresaA);
+        mvc.perform(get("/api/publico/cotizar/" + enlaceA)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.empresa").value(razonA))
+                .andExpect(jsonPath("$.rfq.consecutivo").value("RFQ-ENL-A"))
+                .andExpect(jsonPath("$.rfq.lineas.length()").value(1))
+                .andExpect(jsonPath("$.rfq.lineas[0].productoId").value(productoA));
+
+        // inventado, con la firma de A sobre el id de B o con otra versión: el mismo 404
+        mvc.perform(get("/api/publico/cotizar/" + b[2] + "." + firmaDeA)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/publico/cotizar/" + firmaEnlace.token(a[2], empresaA, 2))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/publico/cotizar/" + firmaEnlace.token(a[2], empresaB, 1))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/publico/cotizar/9999999.abc")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/publico/cotizar/no-es-un-enlace")).andExpect(status().isNotFound());
+
+        // con el enlace de A no se puede cotizar una línea de la RFQ de B
+        mvc.perform(put("/api/publico/cotizar/" + enlaceA).contentType(ct).content(cotizacionJson(b[1])))
+                .andExpect(status().isConflict());
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM cotizacion WHERE rfq_id = ?", Integer.class, b[0]));
+
+        // compras de B no ve ni regenera los enlaces de A
+        String compradorB = token(empresaB, usuarioB, "COMPRADOR");
+        mvc.perform(get("/api/rfqs/" + a[0] + "/enlaces").header(HttpHeaders.AUTHORIZATION, compradorB))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/api/rfqs/" + a[0] + "/enlaces/" + proveedorA + "/regenerar")
+                .header(HttpHeaders.AUTHORIZATION, compradorB)).andExpect(status().isNotFound());
+
+        // compras de A sí ve su enlace pendiente
+        String compradorA = token(empresaA, usuarioA, "COMPRADOR");
+        mvc.perform(get("/api/rfqs/" + a[0] + "/enlaces").header(HttpHeaders.AUTHORIZATION, compradorA))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].estado").value("PENDIENTE"))
+                .andExpect(jsonPath("$[0].url").value(org.hamcrest.Matchers.endsWith("/cotizar/" + enlaceA)));
+
+        // punta a punta: guarda, envía y el enlace queda cerrado
+        mvc.perform(put("/api/publico/cotizar/" + enlaceA).contentType(ct).content(cotizacionJson(a[1])))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("BORRADOR"));
+        mvc.perform(post("/api/publico/cotizar/" + enlaceA + "/enviar").contentType(ct).content("{}"))
+                .andExpect(status().isNoContent());
+        assertEquals("ENVIADA", jdbc.queryForObject("SELECT estado FROM cotizacion WHERE rfq_id = ? AND proveedor_id = ?",
+                String.class, a[0], proveedorA));
+        assertEquals(empresaA, jdbc.queryForObject("SELECT empresa_id FROM cotizacion WHERE rfq_id = ?", Long.class, a[0]));
+        mvc.perform(get("/api/publico/cotizar/" + enlaceA)).andExpect(status().isNotFound());
+        mvc.perform(post("/api/publico/cotizar/" + enlaceA + "/enviar").contentType(ct).content("{}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/rfqs/" + a[0] + "/enlaces").header(HttpHeaders.AUTHORIZATION, compradorA))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].estado").value("USADO"))
+                .andExpect(jsonPath("$[0].url").doesNotExist());
+
+        // el de B sigue sirviendo solo para B
+        mvc.perform(get("/api/publico/cotizar/" + enlaceB)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.rfq.consecutivo").value("RFQ-ENL-B"));
+
+        // regenerar: el enlace anterior deja de servir
+        mvc.perform(post("/api/rfqs/" + b[0] + "/enlaces/" + proveedorB + "/regenerar")
+                .header(HttpHeaders.AUTHORIZATION, compradorB)).andExpect(status().isOk());
+        mvc.perform(get("/api/publico/cotizar/" + enlaceB)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/publico/cotizar/" + firmaEnlace.token(b[2], empresaB, 2))).andExpect(status().isOk());
+
+        // vencido: el mismo 404
+        Long[] vencido = sembrarRfqConEnlace(empresaA, proveedorA, productoA, "RFQ-ENL-V", -1);
+        mvc.perform(get("/api/publico/cotizar/" + firmaEnlace.token(vencido[2], empresaA, 1)))
+                .andExpect(status().isNotFound());
+    }
 }

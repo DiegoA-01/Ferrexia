@@ -1,15 +1,19 @@
 package com.proyecto.supply_core.security.jwt;
 
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import javax.crypto.Mac;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -328,6 +332,36 @@ public class JwtUtil {
             return lista.stream().map(String::valueOf).collect(Collectors.toSet());
         }
         throw invalido();
+    }
+
+    /**
+     * Firma un texto con HMAC-SHA256 y una clave derivada del secreto del JWT para un propósito concreto (por ejemplo,
+     * los enlaces de cotización de la spec 031). La clave derivada no sirve para firmar un JWT, ni al revés.
+     *
+     * @param proposito nombre del uso (separa las claves derivadas)
+     * @param datos     texto a firmar
+     * @return firma en Base64 URL sin relleno (43 caracteres)
+     */
+    public String firmar(String proposito, String datos) {
+        byte[] derivada = hmac(clave.getEncoded(), proposito);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(hmac(derivada, datos));
+    }
+
+    /**
+     * HMAC-SHA256.
+     *
+     * @param clave clave
+     * @param datos texto
+     * @return 32 bytes de firma
+     */
+    private static byte[] hmac(byte[] clave, String datos) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(clave, "HmacSHA256"));
+            return mac.doFinal(datos.getBytes(StandardCharsets.UTF_8));
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("HmacSHA256 no está disponible", e);
+        }
     }
 
     /**

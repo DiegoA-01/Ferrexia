@@ -209,6 +209,22 @@ export class OrdenesService {
     return this.http.post<Orden>(api('/api/ordenes/directa'), datos);
   }
 
+  /**
+   * Compras registra la respuesta del proveedor a la orden (spec 031: el proveedor ya no tiene portal).
+   *
+   * @param id          orden
+   * @param accion      aceptar, rechazar, preparar o despachar
+   * @param observacion motivo (obligatorio al rechazar), guía o comentario
+   */
+  registrarProveedor(id: number, accion: 'aceptar' | 'rechazar' | 'preparar' | 'despachar', observacion?: string): Observable<Orden> {
+    return this.http.post<Orden>(api(`/api/ordenes/${id}/proveedor/${accion}`), { observacion: observacion || undefined });
+  }
+
+  /** @param id orden; envía el PDF de la orden al correo del proveedor */
+  enviarAlProveedor(id: number): Observable<{ para: string }> {
+    return this.http.post<{ para: string }>(api(`/api/ordenes/${id}/enviar-proveedor`), {});
+  }
+
   /** PDF de la orden (descarga). */
   pdf(ordenId: number): Observable<Blob> {
     return this.http.get(api(`/api/exportaciones/ordenes/${ordenId}`), { params: parametros({ formato: 'pdf' }), responseType: 'blob' });

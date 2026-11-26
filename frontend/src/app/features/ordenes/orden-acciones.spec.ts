@@ -50,6 +50,38 @@ describe('Orden: cancelar y nueva versión', () => {
     expect(texto()).not.toContain('Nueva versión');
   });
 
+  it('spec 031: quien gestiona órdenes registra la respuesta del proveedor y le envía la orden', () => {
+    crear(['COMPRADOR']);
+    TestBed.inject(SesionService).permisos.set(new Set(['ORDEN_GESTIONAR']));
+    fixture.detectChanges();
+    expect(texto()).toContain('Respuesta del proveedor');
+    expect(texto()).toContain('Enviar al proveedor');
+
+    c()['registrarProveedor']('rechazar');
+    backend.expectNone('/api/ordenes/9/proveedor/rechazar'); // sin motivo no se manda
+
+    c()['notaProveedor'].set('Guía 55');
+    c()['registrarProveedor']('aceptar');
+    const r = backend.expectOne('/api/ordenes/9/proveedor/aceptar');
+    expect(r.request.body).toEqual({ observacion: 'Guía 55' });
+    r.flush(orden({ estado: 'ACEPTADA_PROVEEDOR' }));
+    backend.expectOne('/api/ordenes/9').flush(orden({ estado: 'ACEPTADA_PROVEEDOR' }));
+    backend.expectOne('/api/ordenes/9/facturas').flush([]);
+    backend.expectOne('/api/ordenes/9/pagos').flush({ pagos: [] });
+    backend.expectOne('/api/ordenes/9/recepciones').flush({ lineas: [], recepciones: [] });
+    fixture.detectChanges();
+    expect(texto()).toContain('Está preparando');
+
+    c()['enviarAlProveedor']();
+    backend.expectOne('/api/ordenes/9/enviar-proveedor').flush({ para: 'ventas@norte.com' });
+  });
+
+  it('sin el permiso no se registra la respuesta del proveedor', () => {
+    crear(['ALMACENISTA']);
+    expect(texto()).not.toContain('Respuesta del proveedor');
+    expect(texto()).not.toContain('Enviar al proveedor');
+  });
+
   it('otro rol no ve los botones de cambio', () => {
     crear(['ALMACENISTA']);
     expect(texto()).not.toContain('Cancelar orden');

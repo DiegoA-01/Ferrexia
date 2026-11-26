@@ -25,6 +25,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import com.proyecto.supply_core.compra.enlace.service.EnlaceCotizacionService;
 import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
 import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
@@ -66,7 +67,7 @@ class RfqServiceTest {
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final NotificacionService notificaciones = mock(NotificacionService.class);
     private final RfqService service = new RfqService(rfqs, solicitudes, proveedores, proveedorService, usuarios,
-            consecutivos, auditoria, notificaciones);
+            consecutivos, auditoria, notificaciones, mock(EnlaceCotizacionService.class));
 
     private MockHttpServletRequest request;
     private SolicitudCompra solicitud;
