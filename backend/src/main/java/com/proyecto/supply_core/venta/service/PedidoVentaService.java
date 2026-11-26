@@ -209,6 +209,7 @@ public class PedidoVentaService {
             if (producto == null) {
                 throw new NoEncontradoException("Producto no encontrado");
             }
+            producto.exigirNoAgrupador();
             if (!producto.isActivo() || !producto.isVendible()) {
                 throw new NegocioException("PRODUCTO_NO_VENDIBLE", "El producto " + producto.getCodigo() + " no se vende");
             }

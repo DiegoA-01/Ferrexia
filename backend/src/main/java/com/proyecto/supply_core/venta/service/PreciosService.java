@@ -253,6 +253,7 @@ public class PreciosService {
         }
         Producto producto = productoRepository.findById(req.productoId())
                 .orElseThrow(() -> new NoEncontradoException("Producto no encontrado"));
+        producto.exigirNoAgrupador();
         if (!producto.isActivo() || !producto.isVendible()) {
             throw new NegocioException("PRODUCTO_NO_VENDIBLE", "El producto " + producto.getCodigo() + " no se vende");
         }
@@ -323,9 +324,15 @@ public class PreciosService {
         exigirEdicion();
         Producto p = productoRepository.findById(productoId)
                 .orElseThrow(() -> new NoEncontradoException("Producto no encontrado"));
+        // spec 028: el agrupador no se vende; la variante hereda el impuesto de su agrupador
+        p.exigirNoAgrupador();
         TarifaImpuesto tarifa = req.tarifaImpuestoId() == null ? null
                 : tarifaRepository.findById(req.tarifaImpuestoId())
                         .orElseThrow(() -> new NoEncontradoException("Impuesto no encontrado"));
+        if (p.getAgrupador() != null && !java.util.Objects.equals(idDe(tarifa), idDe(p.getAgrupador().getTarifaImpuesto()))) {
+            throw new NegocioException("VARIANTE_HEREDA",
+                    "El impuesto de una variante es el de su producto general: cámbielo en el producto general");
+        }
         String codigoBarras = req.codigoBarras() == null || req.codigoBarras().isBlank() ? null : req.codigoBarras().trim();
         if (codigoBarras != null && precioRepository.codigoBarrasEnUso(codigoBarras, productoId)) {
             throw new NegocioException("CODIGO_BARRAS_DUPLICADO", "Otro producto ya usa el código de barras " + codigoBarras);
@@ -341,6 +348,14 @@ public class PreciosService {
                         + ", vendible=" + p.isVendible() + ", incluye=" + p.isPrecioIncluyeImpuesto() + ", barras="
                         + codigoBarras);
         return filaCompleta(p, general().getId());
+    }
+
+    /**
+     * @param t impuesto o {@code null}
+     * @return su id, o {@code null}
+     */
+    private static Long idDe(TarifaImpuesto t) {
+        return t == null ? null : t.getId();
     }
 
     // ----------------------------------------------------------------- cálculo
@@ -511,7 +526,7 @@ public class PreciosService {
     /**
      * @throws AccesoDenegadoException si la sesión no puede fijar precios
      */
-    void exigirEdicion() {
+    public void exigirEdicion() {
         if (!puedeEditar()) {
             throw new AccesoDenegadoException("Solo el dueño fija los precios de venta (o el jefe de compras si se lo delegó)");
         }

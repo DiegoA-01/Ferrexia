@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -13,8 +14,9 @@ import { Avisos, descargar } from '../../core/ui/avisos';
 import { SesionService } from '../../core/sesion/sesion.service';
 
 import { Cifra } from '../../core/ui/cifra';
+import { ProductoVariantes } from './producto-variantes';
 /** Fila de la tabla: viene del reporte de inventario o, si el rol no lo ve, del listado de productos. */
-type Fila = Pick<InventarioItem, 'productoId' | 'codigo' | 'nombre' | 'categoria' | 'unidad' | 'stock' | 'stockMinimo' | 'stockMaximo' | 'valor' | 'bajoMinimo'>;
+type Fila = Pick<InventarioItem, 'productoId' | 'codigo' | 'nombre' | 'categoria' | 'unidad' | 'stock' | 'stockMinimo' | 'stockMaximo' | 'valor' | 'bajoMinimo' | 'esAgrupador' | 'agrupadorId'>;
 
 /**
  * Vista 7 · Productos y stock. El stock no se edita aquí: solo cambia con recepciones, ajustes con motivo y
@@ -22,7 +24,7 @@ type Fila = Pick<InventarioItem, 'productoId' | 'codigo' | 'nombre' | 'categoria
  */
 @Component({
   selector: 'sc-inventario',
-  imports: [Cifra, FormsModule, ReactiveFormsModule, RouterLink, PesosPipe, NumeroPipe],
+  imports: [Cifra, FormsModule, ReactiveFormsModule, RouterLink, PesosPipe, NumeroPipe, ProductoVariantes],
   templateUrl: './inventario.html',
   styleUrl: './inventario.scss',
 })
@@ -49,8 +51,10 @@ export class Inventario implements OnInit {
   protected readonly esAdminCompras = computed(() => this.sesion.tieneRol(['ADMIN_COMPRAS']) && !this.sesion.soloLectura());
   protected readonly esSolicitante = computed(() => this.sesion.tieneRol(['SOLICITANTE']) && !this.sesion.soloLectura());
   protected readonly porReponer = computed(() => this.sugerencias().filter(s => !s.yaCubierto && (s.cantidadSugerida ?? 0) > 0));
-  protected readonly totalBajo = computed(() => this.resumen()?.bajoMinimo ?? this.filas()?.filter(f => f.bajoMinimo).length ?? 0);
-  protected readonly sinExistencias = computed(() => (this.filas() ?? []).filter(f => (f.stock ?? 0) <= 0).length);
+  protected readonly totalBajo = computed(() => this.resumen()?.bajoMinimo ?? this.filas()?.filter(f => f.bajoMinimo && !f.esAgrupador).length ?? 0);
+  /** Productos con stock propio (sin contar los generales que agrupan variantes). */
+  protected readonly totalProductos = computed(() => this.resumen()?.productos ?? this.filas()?.filter(f => !f.esAgrupador).length);
+  protected readonly sinExistencias = computed(() => (this.filas() ?? []).filter(f => !f.esAgrupador && (f.stock ?? 0) <= 0).length);
   protected readonly ejemplo = computed(() => this.porReponer()[0] ?? null);
 
   protected readonly nuevo = inject(FormBuilder).nonNullable.group({
@@ -76,8 +80,55 @@ export class Inventario implements OnInit {
   /** Spec 026 (D17): filtro de productos por encima del máximo. */
   protected readonly soloSobreMaximo = signal(false);
   protected readonly totalSobreMaximo = computed(() => (this.filas() ?? []).filter(f => this.sobreMaximo(f)).length);
-  protected readonly filasVisibles = computed(() => (this.filas() ?? []).filter(f => !this.soloSobreMaximo() || this.sobreMaximo(f)));
+  /**
+   * Spec 028: cada producto general sale con sus variantes debajo, que se despliegan con un clic. Con "sobre el máximo"
+   * el general queda si alguna de sus variantes lo pasa.
+   */
+  protected readonly filasVisibles = computed(() => {
+    const todas = this.filas() ?? [];
+    const pasa = (f: Fila) => !this.soloSobreMaximo() || this.sobreMaximo(f);
+    const generales = new Set(todas.filter(f => f.esAgrupador).map(f => f.productoId));
+    const visibles: Fila[] = [];
+    for (const f of todas) {
+      if (f.agrupadorId && generales.has(f.agrupadorId)) {
+        continue;
+      }
+      if (f.esAgrupador) {
+        const hijas = todas.filter(v => v.agrupadorId === f.productoId && pasa(v));
+        if (hijas.length || !this.soloSobreMaximo()) {
+          visibles.push(f);
+          if (this.abiertos().has(f.productoId!)) {
+            visibles.push(...hijas);
+          }
+        }
+      } else if (pasa(f)) {
+        visibles.push(f);
+      }
+    }
+    return visibles;
+  });
+  /** Productos generales desplegados (spec 028). */
+  protected readonly abiertos = signal<Set<number>>(new Set());
+  /** Cuántas variantes tiene cada producto general en la tabla. */
+  protected readonly variantesPorGeneral = computed(() => {
+    const cuenta = new Map<number, number>();
+    for (const f of this.filas() ?? []) {
+      if (f.agrupadorId) {
+        cuenta.set(f.agrupadorId, (cuenta.get(f.agrupadorId) ?? 0) + 1);
+      }
+    }
+    return cuenta;
+  });
+  /** Spec 028: el producto nuevo tiene variantes (se arma con atributos y combinaciones). */
+  protected readonly conVariantes = signal(false);
+  /** Producto que se está editando, para saber si es un producto general o una variante. */
+  protected readonly editando = signal<Producto | null>(null);
+  protected readonly variantes = viewChild(ProductoVariantes);
+  /** El formulario no pide stock ni costo para un producto general (nuevo con variantes o ya existente). */
+  protected readonly sinStockPropio = computed(() => (this.conVariantes() && !this.editandoId()) || !!this.editando()?.esAgrupador);
   protected readonly hoy = iso(new Date());
+  /** Código escrito, para proponer el de cada variante. */
+  protected readonly codigoActual = toSignal(this.nuevo.controls.codigo.valueChanges, { initialValue: '' });
 
   ngOnInit(): void {
     this.servicio.categorias().subscribe({ next: l => this.categorias.set(l), error: () => undefined });
@@ -108,8 +159,23 @@ export class Inventario implements OnInit {
     return f.stockMaximo != null && (f.stock ?? 0) > f.stockMaximo;
   }
 
+  /** @param f producto general; despliega o recoge sus variantes */
+  protected alternar(f: Fila): void {
+    const id = f.productoId!;
+    this.abiertos.update(s => {
+      const nuevo = new Set(s);
+      if (!nuevo.delete(id)) {
+        nuevo.add(id);
+      }
+      return nuevo;
+    });
+  }
+
   /** @param f fila */
   protected estado(f: Fila): { texto: string; tono: string } {
+    if (f.esAgrupador) {
+      return { texto: `${this.variantesPorGeneral().get(f.productoId!) ?? 0} variantes`, tono: 'gris' };
+    }
     if ((f.stock ?? 0) <= 0) {
       return { texto: 'Sin existencias', tono: 'rojo' };
     }
@@ -162,6 +228,9 @@ export class Inventario implements OnInit {
     this.panel.set(this.panel() === p ? 'ninguno' : p);
     if (p === 'nuevo') {
       this.editandoId.set(null);
+      this.editando.set(null);
+      this.conVariantes.set(false);
+      this.heredados(false);
       this.nuevo.reset({ codigo: '', nombre: '', categoriaId: 0, unidadMedidaId: 0, stockMinimo: 0, stockMaximo: null, costoReferencia: null,
         tarifaImpuestoId: null, proveedorReferenciaId: null, costoReferenciaFecha: null });
       this.alVuelo.set(null);
@@ -181,12 +250,16 @@ export class Inventario implements OnInit {
     this.servicio.producto(f.productoId).subscribe({
       next: p => {
         this.editandoId.set(p.id ?? null);
+        this.editando.set(p);
+        this.conVariantes.set(false);
         this.nuevo.reset({
           codigo: p.codigo ?? '', nombre: p.nombre ?? '', categoriaId: p.categoria?.id ?? 0, unidadMedidaId: p.unidadMedida?.id ?? 0,
           stockMinimo: p.stockMinimo ?? 0, stockMaximo: p.stockMaximo ?? null, costoReferencia: p.costoReferencia ?? null,
           tarifaImpuestoId: p.tarifaImpuestoId ?? null, proveedorReferenciaId: p.proveedorReferenciaId ?? null,
           costoReferenciaFecha: p.costoReferenciaFecha ?? null,
         });
+        // spec 028: una variante hereda nombre, categoría, unidad e impuesto de su producto general
+        this.heredados(!!p.agrupadorId);
         this.alVuelo.set(null);
         this.panel.set('nuevo');
       },
@@ -196,7 +269,8 @@ export class Inventario implements OnInit {
 
   /** @param f fila; desactiva el producto (deja de ofrecerse; su historial y stock se conservan) */
   protected desactivar(f: Fila): void {
-    if (!f.productoId || !window.confirm(`¿Desactivar "${f.nombre}"? Deja de ofrecerse en solicitudes y cotizaciones; su historial se conserva.`)) {
+    const aviso = f.esAgrupador ? ' También se desactivan todas sus variantes.' : '';
+    if (!f.productoId || !window.confirm(`¿Desactivar "${f.nombre}"? Deja de ofrecerse en solicitudes y cotizaciones; su historial se conserva.${aviso}`)) {
       return;
     }
     this.servicio.cambiarEstadoProducto(f.productoId, false).subscribe({
@@ -224,6 +298,53 @@ export class Inventario implements OnInit {
       },
       error: e => this.avisos.error(e),
     });
+  }
+
+  /** @param bloquear {@code true} deja fijos los datos que una variante hereda de su producto general */
+  private heredados(bloquear: boolean): void {
+    for (const c of [this.nuevo.controls.nombre, this.nuevo.controls.categoriaId, this.nuevo.controls.unidadMedidaId, this.nuevo.controls.tarifaImpuestoId]) {
+      if (bloquear) {
+        c.disable();
+      } else {
+        c.enable();
+      }
+    }
+  }
+
+  /** Crea el producto general con sus variantes (spec 028): datos comunes del formulario y combinaciones de la tabla. */
+  protected crearConVariantes(): void {
+    const tabla = this.variantes();
+    const v = this.nuevo.getRawValue();
+    if (this.nuevo.controls.codigo.invalid || this.nuevo.controls.nombre.invalid || !v.categoriaId || !v.unidadMedidaId) {
+      this.nuevo.markAllAsTouched();
+      this.avisos.ok('Completa código, nombre, categoría y unidad del producto.');
+      return;
+    }
+    if (!tabla?.valido()) {
+      this.avisos.ok('Revisa las variantes: cada una necesita su código y su mínimo.');
+      return;
+    }
+    this.trabajando.set(true);
+    this.servicio.crearConVariantes({ codigo: v.codigo, nombre: v.nombre, categoriaId: v.categoriaId, unidadMedidaId: v.unidadMedidaId,
+      tarifaImpuestoId: v.tarifaImpuestoId ?? undefined, ...tabla.datos() }).subscribe({
+      next: r => {
+        this.trabajando.set(false);
+        this.avisos.ok(`Producto ${r.agrupador?.codigo} creado con ${r.variantes?.length ?? 0} variantes.`);
+        this.conVariantes.set(false);
+        this.nuevo.reset();
+        this.panel.set('ninguno');
+        this.cargar();
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
+    });
+  }
+
+  /** Tras guardar las variantes de un producto general, recarga la tabla. */
+  protected alGuardarVariantes(): void {
+    this.cargar();
   }
 
   private cargarUnidades(): void {
@@ -318,7 +439,8 @@ export class Inventario implements OnInit {
         .filter(x => !this.soloBajo() || x.bajoStockMinimo)
         .map(x => ({
           productoId: x.id, codigo: x.codigo, nombre: x.nombre, categoria: x.categoria?.nombre, unidad: x.unidadMedida?.codigo,
-          stock: x.stockTotal, stockMinimo: x.stockMinimo, stockMaximo: x.stockMaximo, bajoMinimo: x.bajoStockMinimo,
+          stock: x.stockTotal, stockMinimo: x.stockMinimo, stockMaximo: x.stockMaximo, bajoMinimo: x.bajoStockMinimo && !x.esAgrupador,
+          esAgrupador: x.esAgrupador, agrupadorId: x.agrupadorId,
         }))),
       error: e => {
         this.filas.set([]);

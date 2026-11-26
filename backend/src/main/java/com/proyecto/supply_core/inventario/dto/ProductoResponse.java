@@ -30,13 +30,17 @@ import com.proyecto.supply_core.inventario.entity.Producto;
  * @param proveedorReferencia   razón social de ese proveedor o {@code null}
  * @param costoReferenciaFecha  fecha del costo de referencia (spec 026) o {@code null}
  * @param sobreStockMaximo {@code true} si tiene máximo y {@code stockTotal > stockMaximo} (D17: avisa, no bloquea)
+ * @param esAgrupador      {@code true} si solo agrupa variantes (spec 028): no tiene stock propio, no se vende ni compra
+ * @param agrupadorId      producto general del que es variante, o {@code null}
+ * @param combinacion      valor de cada atributo si es variante, o {@code null}
  */
 public record ProductoResponse(Long id, String codigo, String nombre, String descripcion,
         CategoriaResponse categoria, UnidadMedidaResponse unidadMedida, BigDecimal stockMinimo,
         BigDecimal stockMaximo, BigDecimal costoReferencia, boolean activo, BigDecimal stockTotal,
         boolean bajoStockMinimo, Integer plazoEntregaDias, Integer diasSeguridad, BigDecimal costoPromedio,
         Long tarifaImpuestoId, String tarifaImpuesto, Long proveedorReferenciaId, String proveedorReferencia,
-        java.time.LocalDate costoReferenciaFecha, boolean sobreStockMaximo) {
+        java.time.LocalDate costoReferenciaFecha, boolean sobreStockMaximo, boolean esAgrupador, Long agrupadorId,
+        java.util.Map<String, String> combinacion) {
 
     /**
      * Convierte la entidad en DTO (requiere categoría y unidad cargadas).
@@ -56,6 +60,8 @@ public record ProductoResponse(Long id, String codigo, String nombre, String des
                 p.getProveedorReferencia() == null ? null : p.getProveedorReferencia().getId(),
                 p.getProveedorReferencia() == null ? null : p.getProveedorReferencia().getRazonSocial(),
                 p.getCostoReferenciaFecha(),
-                p.getStockMaximo() != null && stockTotal.compareTo(p.getStockMaximo()) > 0);
+                p.getStockMaximo() != null && stockTotal.compareTo(p.getStockMaximo()) > 0, p.isEsAgrupador(),
+                p.getAgrupador() == null ? null : p.getAgrupador().getId(),
+                com.proyecto.supply_core.inventario.service.VariantesJson.combinacion(p.getCombinacion()));
     }
 }

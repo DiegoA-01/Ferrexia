@@ -64,6 +64,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
      * @param texto       coincidencia parcial en código o nombre
      * @param categoriaId categoría
      * @param activo      estado
+     * @param agrupadores {@code false} deja fuera los productos generales que agrupan variantes (spec 028)
      * @param pageable    página y orden
      * @return página de productos
      */
@@ -74,9 +75,27 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
                                   or lower(p.nombre) like lower(concat('%', :texto, '%')))
               and (:categoriaId is null or p.categoria.id = :categoriaId)
               and (:activo is null or p.activo = :activo)
+              and (:agrupadores is null or :agrupadores = true or p.esAgrupador = false)
             """)
     Page<Producto> buscar(@Param("texto") String texto, @Param("categoriaId") Long categoriaId,
-            @Param("activo") Boolean activo, Pageable pageable);
+            @Param("activo") Boolean activo, @Param("agrupadores") Boolean agrupadores, Pageable pageable);
+
+    /**
+     * Variantes de un producto general (spec 028), activas e inactivas.
+     *
+     * @param agrupadorId producto general
+     * @return variantes por código, con categoría y unidad
+     */
+    @EntityGraph(attributePaths = { "categoria", "unidadMedida" })
+    List<Producto> findByAgrupadorIdOrderByCodigo(Long agrupadorId);
+
+    /**
+     * Indica si algún producto de la empresa usa el código de barras (spec 028).
+     *
+     * @param codigoBarras código de barras
+     * @return {@code true} si ya está en uso
+     */
+    boolean existsByCodigoBarras(String codigoBarras);
 
     /**
      * Productos activos cuyo stock total (todas las bodegas) es menor que su stock mínimo.

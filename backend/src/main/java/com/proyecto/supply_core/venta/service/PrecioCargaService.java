@@ -115,6 +115,9 @@ public class PrecioCargaService {
                 producto = productoRepository.findByCodigoIgnoreCase(f.codigo()).orElse(null);
                 if (producto == null) {
                     problemas.add("el producto " + f.codigo() + " no existe");
+                } else if (producto.isEsAgrupador()) {
+                    problemas.add("el producto " + f.codigo() + " agrupa variantes: use el código de cada variante");
+                    producto = null;
                 } else if (!producto.isActivo() || !producto.isVendible()) {
                     problemas.add("el producto " + f.codigo() + " no se vende o está inactivo");
                     producto = null;

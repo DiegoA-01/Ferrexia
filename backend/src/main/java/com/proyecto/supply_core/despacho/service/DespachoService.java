@@ -246,6 +246,7 @@ public class DespachoService {
                     .filter(Producto::isActivo)
                     .orElseThrow(() -> new NegocioException("PRODUCTO_INACTIVO",
                             "El producto " + l.productoId() + " no existe o está inactivo"));
+            producto.exigirNoAgrupador();
             UnidadMedida unidad = unidadRepository.findById(l.unidadMedidaId())
                     .orElseThrow(() -> new NoEncontradoException("Unidad de medida", l.unidadMedidaId()));
             // lanza 409 UNIDADES_INCOMPATIBLES si la unidad no mide lo mismo que la del producto

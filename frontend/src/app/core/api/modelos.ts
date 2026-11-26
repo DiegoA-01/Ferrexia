@@ -118,6 +118,12 @@ export type MotivoRechazo = NonNullable<S['LineaRecepcionRequest']['motivoRechaz
 // Inventario y reportes
 export type Producto = S['ProductoResponse'];
 export type ProductoNuevo = S['ProductoRequest'];
+/** Spec 028: atributo de un producto con variantes (Medida, Color...) con sus valores. */
+export type AtributoVariante = S['AtributoVariante'];
+export type VarianteNueva = S['VarianteNuevaRequest'];
+export type ProductoConVariantes = S['ProductoConVariantesRequest'];
+export type CambioVariantes = S['CambioVariantesRequest'];
+export type Variantes = S['VariantesResponse'];
 export type InventarioResumen = S['InventarioResumen'];
 export type InventarioItem = S['InventarioItem'];
 export type SugerenciaReorden = S['SugerenciaReorden'];

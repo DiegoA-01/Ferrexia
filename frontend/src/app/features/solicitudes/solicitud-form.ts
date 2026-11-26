@@ -94,12 +94,12 @@ export class SolicitudForm implements OnInit {
   /** Busca por código o nombre; sin texto trae los primeros del catálogo. Si nada coincide con varias palabras, prueba con la primera. */
   private consultar(texto: string): Observable<{ lista: Producto[]; parecidos: boolean }> {
     this.cargandoLista.set(true);
-    return this.inventario.productos({ texto: texto || null, tamano: 10 }).pipe(
+    return this.inventario.productos({ texto: texto || null, tamano: 10, agrupadores: false }).pipe(
       switchMap(p => {
         const lista = p.contenido ?? [];
         const primera = texto.split(/\s+/)[0];
         if (!lista.length && primera && primera !== texto) {
-          return this.inventario.productos({ texto: primera, tamano: 10 }).pipe(map(q => ({ lista: q.contenido ?? [], parecidos: true })));
+          return this.inventario.productos({ texto: primera, tamano: 10, agrupadores: false }).pipe(map(q => ({ lista: q.contenido ?? [], parecidos: true })));
         }
         return of({ lista, parecidos: false });
       }),

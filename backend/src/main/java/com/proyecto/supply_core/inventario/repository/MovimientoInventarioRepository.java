@@ -16,4 +16,12 @@ public interface MovimientoInventarioRepository
      * @return {@code true} si tiene al menos uno
      */
     boolean existsByProductoId(Long productoId);
+
+    /**
+     * Indica si alguna variante del producto general tiene movimientos (spec 028: la unidad no cambia).
+     *
+     * @param agrupadorId producto general
+     * @return {@code true} si al menos una variante tiene movimientos
+     */
+    boolean existsByProductoAgrupadorId(Long agrupadorId);
 }

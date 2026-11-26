@@ -111,6 +111,37 @@ public class Producto {
     @Column(name = "precio_incluye_impuesto", nullable = false)
     private boolean precioIncluyeImpuesto = true;
 
+    /** {@code true} si solo agrupa variantes: no tiene stock, no se vende ni se compra (spec 028, V50). */
+    @Column(name = "es_agrupador", nullable = false)
+    private boolean esAgrupador;
+
+    /** Agrupador del que esta variante forma parte; {@code null} si no es variante (spec 028). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "agrupador_id")
+    private Producto agrupador;
+
+    /** Atributos del agrupador con sus valores, en JSON: {@code [{"nombre":"Medida","valores":["1\""]}]}. */
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "atributos")
+    private String atributos;
+
+    /** Valores de la variante por atributo, en JSON: {@code {"Medida":"1\""}}. */
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "combinacion")
+    private String combinacion;
+
+    /**
+     * Un agrupador no entra a ninguna operación (inventario, compras, ventas, precios): se usa una de sus variantes.
+     *
+     * @throws com.proyecto.supply_core.common.exception.NegocioException {@code PRODUCTO_AGRUPADOR} si lo es
+     */
+    public void exigirNoAgrupador() {
+        if (esAgrupador) {
+            throw new com.proyecto.supply_core.common.exception.NegocioException("PRODUCTO_AGRUPADOR",
+                    "El producto " + codigo + " agrupa variantes: elija una de sus variantes");
+        }
+    }
+
     /**
      * @return costo con que se mide el margen: el promedio ponderado, o el último de compra si aún no hay promedio
      */

@@ -137,6 +137,7 @@ public class ContratoService {
             Producto producto = productoRepository.findById(pr.productoId()).filter(Producto::isActivo)
                     .orElseThrow(() -> new NegocioException("PRODUCTO_INACTIVO",
                             "El producto " + pr.productoId() + " no existe o está inactivo"));
+            producto.exigirNoAgrupador();
             ContratoPrecio p = new ContratoPrecio();
             p.setProducto(producto);
             p.setPrecioUnitario(pr.precioUnitario().setScale(4, RoundingMode.HALF_UP));

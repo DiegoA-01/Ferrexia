@@ -25,7 +25,11 @@ import com.proyecto.supply_core.inventario.dto.ProductoPlazoRequest;
 import com.proyecto.supply_core.inventario.dto.ProductoRequest;
 import com.proyecto.supply_core.inventario.dto.ProductoResponse;
 import com.proyecto.supply_core.inventario.dto.ProductoUpdateRequest;
+import com.proyecto.supply_core.inventario.dto.CambioVariantesRequest;
+import com.proyecto.supply_core.inventario.dto.ProductoConVariantesRequest;
+import com.proyecto.supply_core.inventario.dto.VariantesResponse;
 import com.proyecto.supply_core.inventario.service.ProductoService;
+import com.proyecto.supply_core.inventario.service.VarianteService;
 import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 
@@ -40,12 +44,15 @@ import jakarta.validation.constraints.Positive;
 public class ProductoController {
 
     private final ProductoService productoService;
+    private final VarianteService varianteService;
 
     /**
      * @param productoService lógica de productos
+     * @param varianteService productos con variantes (spec 028)
      */
-    public ProductoController(ProductoService productoService) {
+    public ProductoController(ProductoService productoService, VarianteService varianteService) {
         this.productoService = productoService;
+        this.varianteService = varianteService;
     }
 
     /**
@@ -54,6 +61,7 @@ public class ProductoController {
      * @param texto       coincidencia en código o nombre
      * @param categoriaId categoría
      * @param activo      estado
+     * @param agrupadores {@code false} deja fuera los productos generales con variantes (selectores, spec 028)
      * @param pageable    página (máximo 100) y orden (codigo, nombre)
      * @return página de productos
      */
@@ -62,8 +70,9 @@ public class ProductoController {
             @RequestParam(required = false) String texto,
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long categoriaId,
             @RequestParam(required = false) Boolean activo,
+            @RequestParam(required = false) Boolean agrupadores,
             @PageableDefault(size = 20, sort = "codigo", direction = Sort.Direction.ASC) Pageable pageable) {
-        return productoService.buscar(texto, categoriaId, activo, pageable);
+        return productoService.buscar(texto, categoriaId, activo, agrupadores, pageable);
     }
 
     /**
@@ -160,5 +169,43 @@ public class ProductoController {
     public ProductoResponse cambiarPlazo(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody ProductoPlazoRequest request) {
         return productoService.cambiarPlazo(id, request);
+    }
+
+    /**
+     * Crea un producto general con una variante por cada combinación de valores (spec 028).
+     *
+     * @param request datos comunes, atributos y una fila por combinación
+     * @return el producto general con sus variantes (HTTP 201)
+     */
+    @PostMapping("/con-variantes")
+    @ResponseStatus(HttpStatus.CREATED)
+    @RequierePermiso(Permisos.PRODUCTO_GESTIONAR)
+    public VariantesResponse crearConVariantes(@Valid @RequestBody ProductoConVariantesRequest request) {
+        return varianteService.crear(request);
+    }
+
+    /**
+     * Variantes de un producto general con su stock (spec 028).
+     *
+     * @param id producto general
+     * @return el producto general, sus atributos y sus variantes
+     */
+    @GetMapping("/{id}/variantes")
+    public VariantesResponse variantes(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
+        return varianteService.variantes(id);
+    }
+
+    /**
+     * Agrega o quita valores de los atributos: crea las combinaciones nuevas y desactiva las que salen (spec 028).
+     *
+     * @param id      producto general
+     * @param request atributos con sus valores nuevos y los datos de las combinaciones nuevas
+     * @return el producto general con sus variantes
+     */
+    @PutMapping("/{id}/variantes")
+    @RequierePermiso(Permisos.PRODUCTO_GESTIONAR)
+    public VariantesResponse cambiarVariantes(@PathVariable @Positive(message = "debe ser un id válido") Long id,
+            @Valid @RequestBody CambioVariantesRequest request) {
+        return varianteService.cambiarValores(id, request);
     }
 }

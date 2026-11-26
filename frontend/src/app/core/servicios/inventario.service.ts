@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Bodega, CargaMasiva, Categoria, CorreoExportacion, Movimiento, MovimientoNuevo, RegistroMovimiento, StockBodega, InventarioResumen, Pagina, Producto, ProductoEnSede, ProductoNuevo, Proveedor, Reabastecimiento, ResumenSede, Solicitud, SugerenciaReorden, UnidadMedida,
+  Bodega, CambioVariantes, CargaMasiva, Categoria, CorreoExportacion, Movimiento, MovimientoNuevo, RegistroMovimiento, StockBodega, InventarioResumen, Pagina, Producto, ProductoConVariantes, ProductoEnSede, ProductoNuevo, Proveedor, Reabastecimiento, ResumenSede, Solicitud, SugerenciaReorden, UnidadMedida, Variantes,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -31,11 +31,30 @@ export class InventarioService {
     return this.http.get<InventarioResumen>(api('/api/reportes/inventario'), { params: parametros({ categoriaId, soloBajoMinimo }) });
   }
 
-  /** @param filtros texto, categoría y estado (por defecto solo los activos) */
-  productos(filtros: { texto?: string | null; categoriaId?: number | null; tamano?: number; activo?: boolean }): Observable<Pagina<Producto>> {
+  /**
+   * @param filtros texto, categoría y estado (por defecto solo los activos); {@code agrupadores: false} deja fuera los
+   *                productos generales con variantes (spec 028), para elegir lo que se compra, mueve o vende
+   */
+  productos(filtros: { texto?: string | null; categoriaId?: number | null; tamano?: number; activo?: boolean; agrupadores?: boolean }): Observable<Pagina<Producto>> {
     return this.http.get<Pagina<Producto>>(api('/api/productos'), {
-      params: parametros({ texto: filtros.texto, categoriaId: filtros.categoriaId, activo: filtros.activo ?? true, size: filtros.tamano ?? 100, sort: 'nombre,asc' }),
+      params: parametros({ texto: filtros.texto, categoriaId: filtros.categoriaId, activo: filtros.activo ?? true, agrupadores: filtros.agrupadores,
+        size: filtros.tamano ?? 100, sort: 'nombre,asc' }),
     });
+  }
+
+  /** @param datos producto general con sus atributos y una fila por combinación (spec 028) */
+  crearConVariantes(datos: ProductoConVariantes): Observable<Variantes> {
+    return this.http.post<Variantes>(api('/api/productos/con-variantes'), datos);
+  }
+
+  /** @param id producto general; sus atributos y sus variantes con su stock (spec 028) */
+  variantes(id: number): Observable<Variantes> {
+    return this.http.get<Variantes>(api(`/api/productos/${id}/variantes`));
+  }
+
+  /** @param id producto general; @param datos valores nuevos y los datos de las combinaciones que faltan (spec 028) */
+  cambiarVariantes(id: number, datos: CambioVariantes): Observable<Variantes> {
+    return this.http.put<Variantes>(api(`/api/productos/${id}/variantes`), datos);
   }
 
   /** @param id producto; detalle para editarlo */

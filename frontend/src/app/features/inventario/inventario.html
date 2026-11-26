@@ -28,6 +28,18 @@
       <form [formGroup]="nuevo" (ngSubmit)="crearProducto()" class="formulario dos">
         <div class="campo"><label for="codigo">Código</label><input id="codigo" class="entrada" formControlName="codigo"></div>
         <div class="campo"><label for="nombre">Nombre</label><input id="nombre" class="entrada" formControlName="nombre"></div>
+        @if (!editandoId()) {
+          <label class="campo completo interruptor">
+            <input type="checkbox" [checked]="conVariantes()" (change)="conVariantes.set(!conVariantes())">
+            <span>Tiene variantes (medida, color, calibre…): cada combinación queda con su código, precio y stock</span>
+          </label>
+        }
+        @if (editando()?.agrupadorId) {
+          <p class="campo completo ayuda">Es una variante: el nombre, la categoría, la unidad y el impuesto vienen de su producto general. Cámbialos allí.</p>
+        }
+        @if (editando()?.esAgrupador) {
+          <p class="campo completo ayuda">Es un producto general: no tiene stock propio ni se vende. Lo que cambies en nombre, categoría, unidad e impuesto pasa a todas sus variantes.</p>
+        }
         <div class="campo"><label for="cat">Categoría</label>
           <div class="con-boton">
             <select id="cat" class="entrada" formControlName="categoriaId">
@@ -41,9 +53,11 @@
             <option [ngValue]="0" disabled>Elige</option>
             @for (u of unidades(); track u.id) { <option [ngValue]="u.id">{{ u.nombre }} ({{ u.codigo }})</option> }
           </select></div>
+        @if (!sinStockPropio()) {
         <div class="campo"><label for="min">Stock mínimo</label><input scCifra [decimales]="4" id="min" min="0" class="entrada num" formControlName="stockMinimo"></div>
         <div class="campo"><label for="max">Stock máximo</label><input scCifra [decimales]="4" id="max" min="0" class="entrada num" formControlName="stockMaximo"></div>
         <div class="campo"><label for="costo">Costo de referencia</label><input scCifra id="costo" min="0" class="entrada num" formControlName="costoReferencia"></div>
+        }
         @if (impuestos().length) {
           <div class="campo"><label for="imp">Impuesto de venta</label>
             <select id="imp" class="entrada" formControlName="tarifaImpuestoId">
@@ -51,6 +65,7 @@
               @for (t of impuestos(); track t.id) { <option [ngValue]="t.id">{{ t.nombre }}</option> }
             </select></div>
         }
+        @if (!sinStockPropio()) {
         <div class="campo"><label for="prov">Proveedor del costo</label>
           <div class="con-boton">
             <select id="prov" class="entrada" formControlName="proveedorReferenciaId">
@@ -62,6 +77,7 @@
         <div class="campo"><label for="fcosto">Fecha del costo</label>
           <input id="fcosto" type="date" class="entrada" [max]="hoy" formControlName="costoReferenciaFecha">
           <span class="ayuda">Si la dejas vacía y hay costo, se toma la de hoy. Las recepciones la actualizan.</span></div>
+        }
         @if (alVuelo(); as tipo) {
           <div class="al-vuelo" role="group" [attr.aria-label]="tipo === 'categoria' ? 'Nueva categoría' : 'Nuevo proveedor'">
             <strong>{{ tipo === 'categoria' ? 'Nueva categoría' : 'Nuevo proveedor' }}</strong>
@@ -79,9 +95,19 @@
             </div>
           </div>
         }
-        <div class="fila fin"><button type="submit" class="boton primario" [disabled]="trabajando()">{{ editandoId() ? 'Guardar cambios' : 'Crear producto' }}</button>
-          <button type="button" class="boton" (click)="panel.set('ninguno')">Cancelar</button></div>
+        @if (!(conVariantes() && !editandoId())) {
+          <div class="fila fin"><button type="submit" class="boton primario" [disabled]="trabajando()">{{ editandoId() ? 'Guardar cambios' : 'Crear producto' }}</button>
+            <button type="button" class="boton" (click)="panel.set('ninguno')">Cancelar</button></div>
+        }
       </form>
+      @if (conVariantes() && !editandoId()) {
+        <sc-producto-variantes [codigoBase]="codigoActual()" />
+        <div class="fila fin"><button type="button" class="boton primario" [disabled]="trabajando()" (click)="crearConVariantes()">Crear producto con variantes</button>
+          <button type="button" class="boton" (click)="panel.set('ninguno')">Cancelar</button></div>
+      }
+      @if (editando()?.esAgrupador && editandoId(); as id) {
+        <sc-producto-variantes [productoId]="id" [codigoBase]="editando()?.codigo ?? ''" (guardado)="alGuardarVariantes()" />
+      }
       <p class="texto-chico texto-2">{{ editandoId() ? 'El stock no se cambia aquí: solo cambia con recepciones, ajustes con motivo y traslados.' : 'El producto nace con stock 0: el stock entra con una recepción o un ajuste con motivo.' }}</p>
     </section>
   }
@@ -109,7 +135,7 @@
   <div class="rejilla kpis">
     <div class="tarjeta kpi">
       <div class="etiqueta">Productos activos</div>
-      <div class="valor">{{ resumen()?.productos ?? filas()?.length ?? '—' }}</div>
+      <div class="valor">{{ totalProductos() ?? '—' }}</div>
       <div class="nota">en {{ categorias().length }} categorías</div>
     </div>
     <div class="tarjeta kpi">
@@ -187,13 +213,20 @@
         </thead>
         <tbody>
           @for (f of filasVisibles(); track f.productoId) {
-            <tr>
-              <td><strong>{{ f.nombre }}</strong><span class="sub">{{ f.codigo }} · {{ f.unidad }}</span></td>
+            <tr [class.variante]="!!f.agrupadorId" [class.general]="f.esAgrupador">
+              <td>
+                @if (f.esAgrupador) {
+                  <button type="button" class="desplegar" [attr.aria-expanded]="abiertos().has(f.productoId!)"
+                    [attr.aria-label]="(abiertos().has(f.productoId!) ? 'Ocultar' : 'Ver') + ' variantes de ' + f.nombre" (click)="alternar(f)">
+                    <span class="material-symbols-outlined">{{ abiertos().has(f.productoId!) ? 'expand_more' : 'chevron_right' }}</span>
+                  </button>
+                }
+                <strong>{{ f.nombre }}</strong><span class="sub">{{ f.codigo }} · {{ f.unidad }}</span></td>
               <td class="oculto-movil">{{ f.categoria }}</td>
-              <td class="oculto-movil"><div class="barra ancha"><span [style.width.%]="ancho(f)"></span></div></td>
+              <td class="oculto-movil">@if (!f.esAgrupador) { <div class="barra ancha"><span [style.width.%]="ancho(f)"></span></div> }</td>
               <td class="num negrita">{{ f.stock | numero }}</td>
-              <td class="num">{{ f.stockMinimo | numero }}</td>
-              @if (resumen()) { <td class="num">{{ f.valor | pesos }}</td> }
+              <td class="num">{{ f.esAgrupador ? '—' : (f.stockMinimo | numero) }}</td>
+              @if (resumen()) { <td class="num">{{ f.esAgrupador ? '—' : (f.valor | pesos) }}</td> }
               <td><span class="chip" [class]="'chip ' + estado(f).tono">{{ estado(f).texto }}</span></td>
               @if (esAdminCompras()) {
                 <td class="num"><div class="fila fin">
