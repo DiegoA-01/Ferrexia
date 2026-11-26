@@ -15,5 +15,7 @@ public enum AccionAutorizada {
     /** Gasto menor. */
     GASTO,
     /** Ingreso de efectivo que no es venta. */
-    INGRESO
+    INGRESO,
+    /** Cambiar el método de pago de una venta del turno (spec 029, D16). */
+    CAMBIAR_PAGO
 }

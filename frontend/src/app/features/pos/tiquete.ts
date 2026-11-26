@@ -76,8 +76,9 @@ export function htmlTiquete(t: Tiquete): string {
   </table>
   <hr>
   <table>${pagos}
-    ${(v.cambio ?? 0) > 0 ? `<tr><td>Cambio</td><td class="d">${pesos(v.cambio)}</td></tr>` : ''}
+    ${(v.cambio ?? 0) > 0 && !(v.cambiosPago ?? []).length ? `<tr><td>Cambio</td><td class="d">${pesos(v.cambio)}</td></tr>` : ''}
   </table>
+  ${(v.cambiosPago ?? []).length ? '<div class="c">Pago corregido</div>' : ''}
   <hr>
   <div class="c">Gracias por su compra</div>
   ${t.copia ? `<div class="c">Reimpreso ${escapar(new Date(t.impresoEn!).toLocaleString('es-CO'))}</div>` : ''}

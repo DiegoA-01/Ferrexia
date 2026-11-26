@@ -17,5 +17,7 @@ public enum TipoMovimientoCaja {
     /** Efectivo que entra a la caja sin ser venta (por ejemplo, sencillo). */
     INGRESO,
     /** Abono de un cliente a su cartera (spec 007). */
-    ABONO_CARTERA
+    ABONO_CARTERA,
+    /** Corrección del medio de pago de una venta: sale del medio viejo y entra al nuevo (spec 029, D16). */
+    AJUSTE_PAGO
 }

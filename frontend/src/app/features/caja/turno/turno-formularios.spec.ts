@@ -144,9 +144,15 @@ describe('Formularios del turno', () => {
     expect(raiz.textContent).toContain('C1-000011');
     expect(raiz.textContent).toContain('Efectivo y Transferencia');
     expect(raiz.textContent).toContain('Página 1 de 2');
-    const editar = [...raiz.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent?.trim() === 'Editar')!;
-    expect(editar.disabled).toBe(true);
+    // spec 029: "Cambiar pago" abre el detalle con el formulario del cambio de pago
+    expect([...raiz.querySelectorAll<HTMLButtonElement>('button')].some(b => b.textContent?.trim() === 'Cambiar pago')).toBe(true);
     const c = f.componentInstance as unknown as Record<string, any>;
+    c['editar']({ id: 11 });
+    backend.expectOne('/api/ventas/11').flush({ id: 11, consecutivo: 'C1-000011', estado: 'CONFIRMADA', totalAPagar: 11950,
+      pagos: [{ medio: 'EFECTIVO', monto: 11950 }], cambiosPago: [{ fecha: '2026-11-20T10:05:00', usuario: 'Ana', motivo: 'Era tarjeta' }] });
+    f.detectChanges();
+    expect(raiz.querySelector('sc-cambio-pago')).not.toBeNull();
+    expect(raiz.textContent).toContain('Pago corregido');
     c['ver']({ id: 11 });
     backend.expectOne('/api/ventas/11').flush({ id: 11, consecutivo: 'C1-000011', cliente: 'Consumidor final', totalAPagar: 11950,
       lineas: [{ nombre: 'Cable 12', cantidad: 1, unidad: 'm', precioUnitario: 11930, totalLinea: 11930 }], pagos: [{ medio: 'EFECTIVO', monto: 11950 }] });

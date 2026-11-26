@@ -340,7 +340,7 @@ class AislamientoEmpresasTest {
             }
         });
         assertEquals(List.of(), diferencias);
-        assertEquals(110, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 de la V47
+        assertEquals(112, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 de la V47 + 2 de la V51
         assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM rol WHERE es_plantilla AND empresa_id IS NULL", Integer.class));
     }
 
@@ -3498,6 +3498,160 @@ class AislamientoEmpresasTest {
             jdbc.update("DELETE FROM caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM precio_producto WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("UPDATE empresa SET bodega_averias_id = NULL WHERE id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("UPDATE stock_producto_bodega SET cantidad = ? WHERE producto_id = ? AND bodega_id = ?", stockAntes,
+                    productoA, bodegaA);
+            jdbc.update("UPDATE producto SET costo_referencia = NULL, costo_promedio = NULL WHERE id = ?", productoA);
+            jdbc.update("UPDATE usuario SET pin_supervisor_hash = NULL, pin_intentos_fallidos = 0, pin_bloqueado_hasta = NULL "
+                    + "WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+        }
+    }
+
+    @Test
+    void elPagoSeCorrigeYLaFacturaDeOtroTurnoSeAnulaConPermisoSinDescuadrarNiCruzarEmpresas() throws Exception {
+        // Spec 029 (D16): cambiar el método de pago y anular una factura de un turno cerrado
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        com.fasterxml.jackson.databind.ObjectMapper lector = new com.fasterxml.jackson.databind.ObjectMapper();
+        String duenoA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        String cajeroA = token(empresaA, usuarioA2, "CAJERO");
+        String duenoB = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+        Long sedeA = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaA);
+        java.math.BigDecimal stockAntes = jdbc.queryForObject("SELECT COALESCE(SUM(cantidad), 0) FROM stock_producto_bodega "
+                + "WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA);
+        java.util.function.Supplier<java.math.BigDecimal> stock = () -> jdbc.queryForObject("SELECT cantidad FROM "
+                + "stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA);
+        java.util.function.BiFunction<Long, String, java.math.BigDecimal> saldo = (turnoId, medio) -> jdbc.queryForObject(
+                "SELECT COALESCE(SUM(monto), 0) FROM movimiento_caja WHERE turno_id = ? AND medio_pago = ?",
+                java.math.BigDecimal.class, turnoId, medio);
+        try {
+            long generalA = lector.readTree(mvc.perform(get("/api/ventas/listas").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andReturn().getResponse().getContentAsString()).get(0).get("id").asLong();
+            jdbc.update("UPDATE producto SET costo_referencia = 6000, costo_promedio = 6000, vendible = 1 WHERE id = ?", productoA);
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA + ",\"precio\":10000}"))
+                    .andExpect(status().isOk());
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 10) "
+                    + "ON DUPLICATE KEY UPDATE cantidad = 10", empresaA, productoA, bodegaA);
+            long caja = lector.readTree(mvc.perform(post("/api/cajas").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"nombre\":\"Caja pagos\",\"sedeId\":" + sedeA + ",\"bodegaId\":" + bodegaA
+                                    + ",\"prefijoConsecutivo\":\"P9\",\"topeEfectivo\":0}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            long turno1 = lector.readTree(mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content("{\"cajaId\":" + caja + ",\"baseApertura\":50000}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(put("/api/autorizaciones/mi-pin").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content("{\"passwordActual\":\"" + CLAVE + "\",\"pin\":\"123456\"}")).andExpect(status().isNoContent());
+            java.util.function.Function<String, Long> vender = cuerpo -> {
+                try {
+                    return lector.readTree(mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                                    .header("Idempotency-Key", "cp-" + cuerpo.hashCode()).contentType(json).content(cuerpo))
+                            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            };
+            String linea = "{\"lineas\":[{\"productoId\":" + productoA + ",\"cantidad\":%d}],\"pagos\":[%s]}";
+            long venta1 = vender.apply(linea.formatted(2, "{\"medio\":\"EFECTIVO\",\"monto\":20000}"));
+            long venta2 = vender.apply(linea.formatted(1, "{\"medio\":\"TARJETA_CREDITO\",\"monto\":10000}"));
+            assertEquals(0, new java.math.BigDecimal("7").compareTo(stock.get()));
+            String cambio = "{\"pagos\":[%s],\"motivo\":\"Marcó efectivo y era tarjeta\"%s}";
+            String debito = "{\"medio\":\"TARJETA_DEBITO\",\"monto\":20000,\"referencia\":\"V77\"}";
+
+            // 1) el cajero cambia el pago de su turno solo con el PIN del supervisor
+            mvc.perform(post("/api/ventas/" + venta1 + "/cambiar-pago").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(cambio.formatted(debito, "")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("AUTORIZACION_REQUERIDA"));
+            mvc.perform(post("/api/ventas/" + venta1 + "/cambiar-pago").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(cambio.formatted("{\"medio\":\"TARJETA_DEBITO\",\"monto\":19000}", "")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PAGOS_NO_CUADRAN"));
+            mvc.perform(post("/api/ventas/" + venta1 + "/cambiar-pago").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(cambio.formatted("{\"medio\":\"EFECTIVO\",\"monto\":20000}", "")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("SIN_CAMBIOS"));
+            mvc.perform(post("/api/ventas/" + venta1 + "/cambiar-pago").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(cambio.formatted("{\"medio\":\"CREDITO\",\"monto\":20000}", "")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PAGO_DE_CARTERA"));
+            mvc.perform(post("/api/ventas/" + venta1 + "/cambiar-pago").header(HttpHeaders.AUTHORIZATION, duenoB)
+                            .contentType(json).content(cambio.formatted(debito, "")))
+                    .andExpect(status().isNotFound());
+            String pin = lector.readTree(mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content("{\"correo\":\"admin@mismo.com\",\"pin\":\"123456\",\"accion\":"
+                                    + "\"CAMBIAR_PAGO\",\"turnoId\":" + turno1 + ",\"referenciaId\":" + venta1 + "}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("token").asText();
+            mvc.perform(post("/api/ventas/" + venta1 + "/cambiar-pago").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(cambio.formatted(debito, ",\"autorizacion\":\"" + pin + "\"")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.total").value(20000.0))
+                    .andExpect(jsonPath("$.pagos.length()").value(1))
+                    .andExpect(jsonPath("$.pagos[0].medio").value("TARJETA_DEBITO"))
+                    .andExpect(jsonPath("$.cambiosPago.length()").value(1))
+                    .andExpect(jsonPath("$.cambiosPago[0].antes.EFECTIVO").value(20000.0))
+                    .andExpect(jsonPath("$.cambiosPago[0].despues.TARJETA_DEBITO").value(20000.0));
+            assertEquals(0, new java.math.BigDecimal("50000").compareTo(saldo.apply(turno1, "EFECTIVO")), "el efectivo sale");
+            assertEquals(0, new java.math.BigDecimal("20000").compareTo(saldo.apply(turno1, "TARJETA_DEBITO")));
+            assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM movimiento_caja WHERE turno_id = ? AND tipo = 'AJUSTE_PAGO'",
+                    Integer.class, turno1));
+            assertEquals(empresaA, jdbc.queryForObject("SELECT empresa_id FROM venta_pago_cambio WHERE venta_id = ?", Long.class, venta1));
+
+            // 2) se cierra el turno: el cajero ya no toca sus facturas
+            mvc.perform(post("/api/turnos/" + turno1 + "/cerrar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                    .content("{\"contadoEfectivo\":50000}")).andExpect(status().isOk());
+            java.math.BigDecimal libroTurno1 = jdbc.queryForObject("SELECT SUM(monto) FROM movimiento_caja WHERE turno_id = ?",
+                    java.math.BigDecimal.class, turno1);
+            mvc.perform(post("/api/ventas/" + venta2 + "/cambiar-pago").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(cambio.formatted("{\"medio\":\"EFECTIVO\",\"monto\":10000}", "")))
+                    .andExpect(status().isForbidden());
+            String anular = "{\"motivo\":\"Factura duplicada de ayer\"}";
+            mvc.perform(post("/api/ventas/" + venta1 + "/anular-otro-turno").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(anular))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("PERMISO_REQUERIDO"));
+
+            // 3) el dueño (con permiso) necesita su propio turno abierto para anular o corregir
+            mvc.perform(post("/api/ventas/" + venta1 + "/anular-otro-turno").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content(anular))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("SIN_TURNO_ABIERTO"));
+            long turno2 = lector.readTree(mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content("{\"cajaId\":" + caja + ",\"baseApertura\":50000}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(post("/api/ventas/" + venta1 + "/anular-otro-turno").header(HttpHeaders.AUTHORIZATION, duenoB)
+                            .contentType(json).content(anular))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/ventas/" + venta1 + "/anular-otro-turno").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content(anular))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("ANULADA"))
+                    .andExpect(jsonPath("$.motivoAnulacion").value("Factura duplicada de ayer"));
+            assertEquals(0, new java.math.BigDecimal("9").compareTo(stock.get()), "la anulación devuelve el stock");
+            assertEquals(0, new java.math.BigDecimal("-20000").compareTo(saldo.apply(turno2, "TARJETA_DEBITO")),
+                    "se revierte el pago vigente (tarjeta débito), no el original en efectivo");
+            assertEquals(0, new java.math.BigDecimal("50000").compareTo(saldo.apply(turno2, "EFECTIVO")));
+            assertEquals(0, libroTurno1.compareTo(jdbc.queryForObject("SELECT SUM(monto) FROM movimiento_caja WHERE turno_id = ?",
+                    java.math.BigDecimal.class, turno1)), "el turno cerrado no cambia");
+
+            // 4) el dueño corrige sin PIN el pago de una factura de un turno cerrado: el ajuste queda en su turno
+            mvc.perform(post("/api/ventas/" + venta2 + "/cambiar-pago").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content(cambio.formatted("{\"medio\":\"EFECTIVO\",\"monto\":10000}", "")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.pagos[0].medio").value("EFECTIVO"))
+                    .andExpect(jsonPath("$.cambiosPago[0].autorizadoPor").doesNotExist());
+            assertEquals(0, new java.math.BigDecimal("60000").compareTo(saldo.apply(turno2, "EFECTIVO")));
+            assertEquals(0, new java.math.BigDecimal("-10000").compareTo(saldo.apply(turno2, "TARJETA_CREDITO")));
+            assertEquals(0, libroTurno1.compareTo(jdbc.queryForObject("SELECT SUM(monto) FROM movimiento_caja WHERE turno_id = ?",
+                    java.math.BigDecimal.class, turno1)));
+            assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE empresa_id = ? AND accion = "
+                    + "'VENTA_CAMBIAR_PAGO'", Integer.class, empresaA));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM venta_pago_cambio WHERE empresa_id = ?", Integer.class,
+                    empresaB));
+        } finally {
+            jdbc.update("DELETE FROM venta_pago_cambio WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE p FROM venta_pago p JOIN venta v ON v.id = p.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE l FROM venta_linea l JOIN venta v ON v.id = l.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM venta WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_inventario WHERE empresa_id IN (?, ?) AND referencia_tipo IN ('VENTA', 'DEVOLUCION_VENTA')",
+                    empresaA, empresaB);
+            jdbc.update("DELETE FROM autorizacion_supervisor WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM turno_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM precio_producto WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("UPDATE stock_producto_bodega SET cantidad = ? WHERE producto_id = ? AND bodega_id = ?", stockAntes,
                     productoA, bodegaA);
             jdbc.update("UPDATE producto SET costo_referencia = NULL, costo_promedio = NULL WHERE id = ?", productoA);

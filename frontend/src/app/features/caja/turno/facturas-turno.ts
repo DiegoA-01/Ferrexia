@@ -5,16 +5,18 @@ import { FechaPipe, NumeroPipe, PesosPipe } from '../../../core/formato/formato'
 import { VentaService } from '../../../core/servicios/venta.service';
 import { Avisos } from '../../../core/ui/avisos';
 import { MEDIOS_VENTA } from '../../pos/pos';
+import { CambioPago } from '../../ventas/cambio-pago';
 import { imprimirTiquete } from '../../pos/tiquete';
 
 /**
  * Facturas del turno abierto (spec 021): lista paginada de 20 con número, hora, cliente, total, medios y estado, y por
- * fila reimprimir (sale como COPIA), ver el detalle con líneas y pagos, y editar (llega con la spec 029). El backend solo
+ * fila reimprimir (sale como COPIA), ver el detalle con líneas y pagos, y cambiar el método de pago (spec 029, con el
+ * PIN del supervisor si no tiene el permiso). El backend solo
  * deja al cajero listar su propio turno abierto; lo esperado de la caja sigue oculto (cierre ciego, D20).
  */
 @Component({
   selector: 'sc-facturas-turno',
-  imports: [PesosPipe, NumeroPipe, FechaPipe],
+  imports: [PesosPipe, NumeroPipe, FechaPipe, CambioPago],
   template: `
     <section class="tarjeta sin-relleno">
       <h2 class="titulo">Facturas del turno</h2>
@@ -32,7 +34,7 @@ import { imprimirTiquete } from '../../pos/tiquete';
               <td class="num acciones">
                 <button type="button" class="boton chico" (click)="reimprimir(v)">Reimprimir</button>
                 <button type="button" class="boton chico" (click)="ver(v)">Detalle</button>
-                <button type="button" class="boton chico" disabled title="Disponible con la spec 029">Editar</button>
+                @if (v.estado !== 'ANULADA') { <button type="button" class="boton chico" (click)="editar(v)">Cambiar pago</button> }
               </td>
             </tr>
           } @empty {
@@ -64,7 +66,13 @@ import { imprimirTiquete } from '../../pos/tiquete';
         <ul class="sin-margen">@for (p of d.pagos ?? []; track $index) {
           <li>{{ textoMedio(p.medio) }}: {{ p.monto | pesos }}</li>
         }</ul>
+        @for (c of d.cambiosPago ?? []; track $index) {
+          <p class="chip ambar sin-margen">Pago corregido {{ c.fecha | fecha: 'hora' }} por {{ c.usuario }}@if (c.autorizadoPor) { (autorizó {{ c.autorizadoPor }}) }: {{ c.motivo }}</p>
+        }
         <p class="sin-margen"><strong>Total pagado: {{ d.totalAPagar | pesos }}</strong></p>
+        @if (editando()) {
+          <sc-cambio-pago [venta]="d" [turnoId]="turnoId()" (cambiado)="alCambiar($event)" (cancelado)="editando.set(false)" />
+        }
       </section>
     }
   `,
@@ -85,6 +93,8 @@ export class FacturasTurno implements OnInit {
 
   protected readonly pagina = signal<Pagina<VentaResumen> | null>(null);
   protected readonly detalle = signal<Venta | null>(null);
+  /** Se está cambiando el método de pago de la factura abierta (spec 029). */
+  protected readonly editando = signal(false);
 
   ngOnInit(): void {
     this.cargar();
@@ -105,7 +115,26 @@ export class FacturasTurno implements OnInit {
 
   /** @param v factura; abre su detalle con líneas y pagos */
   protected ver(v: VentaResumen): void {
+    this.editando.set(false);
     this.ventas.obtener(v.id!).subscribe({ next: d => this.detalle.set(d), error: e => this.avisos.error(e) });
+  }
+
+  /** @param v factura; abre su detalle con el formulario para cambiar el método de pago */
+  protected editar(v: VentaResumen): void {
+    this.ventas.obtener(v.id!).subscribe({
+      next: d => {
+        this.detalle.set(d);
+        this.editando.set(true);
+      },
+      error: e => this.avisos.error(e),
+    });
+  }
+
+  /** @param v factura con los pagos corregidos */
+  protected alCambiar(v: Venta): void {
+    this.detalle.set(v);
+    this.editando.set(false);
+    this.cargar(this.pagina()?.pagina ?? 0);
   }
 
   /** @param medios medios usados @returns texto ("Efectivo y Transferencia") */

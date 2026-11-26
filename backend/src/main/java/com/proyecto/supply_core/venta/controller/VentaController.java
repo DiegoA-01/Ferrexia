@@ -62,19 +62,23 @@ public class VentaController {
     private final LimiteDescuentoService limiteService;
     private final AccesoEmpresaService accesoEmpresa;
     private final AnulacionVentaService anulacionService;
+    private final com.proyecto.supply_core.venta.service.CambioPagoVentaService cambioPagoService;
 
     /**
-     * @param ventaService  lógica de la venta
-     * @param limiteService límites de descuento
-     * @param accesoEmpresa módulo de caja de la empresa
-     * @param anulacionService anulación de ventas del turno (spec 006)
+     * @param ventaService      lógica de la venta
+     * @param limiteService     límites de descuento
+     * @param accesoEmpresa     módulo de caja de la empresa
+     * @param anulacionService  anulación de ventas (spec 006 y 029)
+     * @param cambioPagoService cambio del método de pago (spec 029)
      */
     public VentaController(VentaService ventaService, LimiteDescuentoService limiteService,
-            AccesoEmpresaService accesoEmpresa, AnulacionVentaService anulacionService) {
+            AccesoEmpresaService accesoEmpresa, AnulacionVentaService anulacionService,
+            com.proyecto.supply_core.venta.service.CambioPagoVentaService cambioPagoService) {
         this.ventaService = ventaService;
         this.limiteService = limiteService;
         this.accesoEmpresa = accesoEmpresa;
         this.anulacionService = anulacionService;
+        this.cambioPagoService = cambioPagoService;
     }
 
     /**
@@ -167,6 +171,37 @@ public class VentaController {
             @Valid @RequestBody AnularVentaRequest request) {
         accesoEmpresa.exigirModulo(SesionActual.usuario().empresaId(), Modulos.CAJA);
         return anulacionService.anular(id, request);
+    }
+
+    /**
+     * Anula una venta de un turno ya cerrado (spec 029): el dinero sale del turno abierto de quien anula.
+     *
+     * @param id      venta
+     * @param request motivo
+     * @return la venta anulada
+     */
+    @PostMapping("/{id:\\d+}/anular-otro-turno")
+    @RequierePermiso(Permisos.VENTA_ANULAR_OTRO_TURNO)
+    public VentaResponse anularDeOtroTurno(@PathVariable @Positive(message = "debe ser un id válido") Long id,
+            @Valid @RequestBody com.proyecto.supply_core.venta.dto.AnularOtroTurnoRequest request) {
+        accesoEmpresa.exigirModulo(SesionActual.usuario().empresaId(), Modulos.CAJA);
+        return anulacionService.anularDeOtroTurno(id, request);
+    }
+
+    /**
+     * Cambia el método de pago de una venta (spec 029, D16). Con el permiso no pide PIN; sin él, solo el cajero del
+     * turno abierto de la venta y con la autorización del supervisor (lo decide el servicio).
+     *
+     * @param id      venta
+     * @param request pagos nuevos, motivo y autorización opcional
+     * @return la venta con sus pagos vigentes
+     */
+    @PostMapping("/{id:\\d+}/cambiar-pago")
+    @RequierePermiso(Permisos.VENTA_VER)
+    public VentaResponse cambiarPago(@PathVariable @Positive(message = "debe ser un id válido") Long id,
+            @Valid @RequestBody com.proyecto.supply_core.venta.dto.CambiarPagoRequest request) {
+        accesoEmpresa.exigirModulo(SesionActual.usuario().empresaId(), Modulos.CAJA);
+        return cambioPagoService.cambiar(id, request);
     }
 
     /**

@@ -118,6 +118,8 @@ export type MotivoRechazo = NonNullable<S['LineaRecepcionRequest']['motivoRechaz
 // Inventario y reportes
 export type Producto = S['ProductoResponse'];
 export type ProductoNuevo = S['ProductoRequest'];
+/** Spec 029: pagos nuevos de una factura, motivo y autorización. */
+export type CambiarPago = S['CambiarPagoRequest'];
 /** Spec 028: atributo de un producto con variantes (Medida, Color...) con sus valores. */
 export type AtributoVariante = S['AtributoVariante'];
 export type VarianteNueva = S['VarianteNuevaRequest'];
@@ -160,7 +162,7 @@ export type ConteoDenominacion = S['ConteoDenominacion'];
 /** Persona asignada a una caja (spec 025). */
 export interface UsuarioCaja { usuarioId?: number; nombre?: string; }
 export type TipoDenominacion = ConteoDenominacion['tipo'];
-export type AccionAutorizada = 'ANULAR_VENTA' | 'DESCUENTO' | 'PRECIO_BAJO_MINIMO' | 'DEVOLUCION' | 'RETIRO' | 'GASTO' | 'INGRESO';
+export type AccionAutorizada = 'ANULAR_VENTA' | 'DESCUENTO' | 'PRECIO_BAJO_MINIMO' | 'DEVOLUCION' | 'RETIRO' | 'GASTO' | 'INGRESO' | 'CAMBIAR_PAGO';
 export type Autorizacion = S['AutorizacionResponse'];
 export type LineaVentaRequest = S['LineaVentaRequest'];
 export type PagoVentaRequest = S['PagoVentaRequest'];
