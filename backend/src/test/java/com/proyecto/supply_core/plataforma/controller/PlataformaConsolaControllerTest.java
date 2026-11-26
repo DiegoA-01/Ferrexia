@@ -114,8 +114,9 @@ class PlataformaConsolaControllerTest extends WebTestBase {
                 ALTA.replace("Clave12345", "corta1"),
                 ALTA.replace("Clave12345", "sinnumeroaqui"),
                 ALTA.replace("laura@ferrecentro.co", "no-es-correo"),
-                ALTA.replace("\"planCodigo\":\"BASICO\",", ""),
-                ALTA.replace("\"BASICO\"", "\"BASICO\",\"estadoInicial\":\"INVENTADO\"") };
+                // spec 024: el plan ya es opcional; lo que no se acepta es un estado o un módulo mal escrito
+                ALTA.replace("\"BASICO\"", "\"BASICO\",\"estadoInicial\":\"INVENTADO\""),
+                ALTA.replace("\"BASICO\"", "\"BASICO\",\"modulos\":\"COMPRAS\"") };
         for (String malo : malos) {
             mvc.perform(post("/api/plataforma/empresas").contentType(MediaType.APPLICATION_JSON).content(malo)
                             .header(HttpHeaders.AUTHORIZATION, bearerPlataforma()))

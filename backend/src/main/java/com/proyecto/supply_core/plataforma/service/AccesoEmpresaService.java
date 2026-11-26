@@ -13,17 +13,18 @@ import com.proyecto.supply_core.plataforma.entity.EmpresaModulo;
 import com.proyecto.supply_core.plataforma.entity.Suscripcion;
 import com.proyecto.supply_core.plataforma.enums.EstadoSuscripcion;
 import com.proyecto.supply_core.plataforma.repository.EmpresaModuloRepository;
+import com.proyecto.supply_core.plataforma.repository.ModuloRepository;
 import com.proyecto.supply_core.plataforma.repository.SuscripcionRepository;
 
 /**
- * Lo que una empresa puede usar hoy: el estado de su suscripción y sus módulos (los de su plan más o menos sus
- * excepciones). Lo consulta el interceptor en cada petición de una empresa, por eso el resultado se recuerda unos
+ * Lo que una empresa puede usar hoy: el estado de su suscripción y sus módulos (desde la spec 024, todos los del
+ * catálogo menos los que la plataforma le apagó; el plan ya no cuenta). Lo consulta el interceptor en cada petición de una empresa, por eso el resultado se recuerda unos
  * segundos ({@code app.plataforma.cache-segundos}). Cuando la plataforma cambia algo en esta misma instancia, la
  * memoria se limpia al instante; con varias instancias el cambio llega al vencer el tiempo.
  * <ul>
  *   <li>SUSPENDIDA o CANCELADA: 403 {@code SUSCRIPCION_SUSPENDIDA} en todo.</li>
  *   <li>MOROSA: 403 {@code SUSCRIPCION_MOROSA} en todo lo que no sea consultar.</li>
- *   <li>Módulo fuera del plan: 403 {@code MODULO_NO_CONTRATADO}.</li>
+ *   <li>Módulo apagado para la empresa: 403 {@code MODULO_NO_CONTRATADO}.</li>
  *   <li>Una empresa sin suscripción no entra: es un dato incompleto, no una empresa gratis.</li>
  * </ul>
  */
@@ -34,6 +35,7 @@ public class AccesoEmpresaService {
 
     private final SuscripcionRepository suscripcionRepository;
     private final EmpresaModuloRepository empresaModuloRepository;
+    private final ModuloRepository moduloRepository;
     private final long vigenciaMs;
     private final Map<Long, Entrada> memoria = new ConcurrentHashMap<>();
 
@@ -60,14 +62,16 @@ public class AccesoEmpresaService {
 
     /**
      * @param suscripcionRepository   suscripciones
-     * @param empresaModuloRepository excepciones de módulo por empresa
+     * @param empresaModuloRepository módulos apagados por empresa
+     * @param moduloRepository        catálogo de módulos
      * @param cacheSegundos           segundos que se recuerda el acceso de una empresa
      */
     public AccesoEmpresaService(SuscripcionRepository suscripcionRepository,
-            EmpresaModuloRepository empresaModuloRepository,
+            EmpresaModuloRepository empresaModuloRepository, ModuloRepository moduloRepository,
             @Value("${app.plataforma.cache-segundos:30}") long cacheSegundos) {
         this.suscripcionRepository = suscripcionRepository;
         this.empresaModuloRepository = empresaModuloRepository;
+        this.moduloRepository = moduloRepository;
         this.vigenciaMs = cacheSegundos * 1000;
     }
 
@@ -103,7 +107,7 @@ public class AccesoEmpresaService {
      *
      * @param empresaId empresa del usuario
      * @param modulo    código de módulo (constante de {@code Modulos})
-     * @throws AccesoDenegadoException si el módulo no está en su plan ni en sus excepciones
+     * @throws AccesoDenegadoException si la plataforma le apagó el módulo
      */
     public void exigirModulo(Long empresaId, String modulo) {
         if (!entrada(empresaId).modulos().contains(modulo)) {
@@ -185,14 +189,14 @@ public class AccesoEmpresaService {
         if (s == null) {
             return new Entrada(null, Set.of(), vence, null);
         }
-        Set<String> modulos = new HashSet<>(s.getPlan().getModulos());
+        // Spec 024 (D11): sin planes. Todos los módulos del catálogo menos los que la plataforma le apagó.
+        Set<String> modulos = new HashSet<>();
+        moduloRepository.findAllByOrderByCodigoAsc().forEach(m -> modulos.add(m.getCodigo()));
         for (EmpresaModulo ex : empresaModuloRepository.findByEmpresaId(empresaId)) {
-            if (ex.isHabilitado()) {
-                modulos.add(ex.getModuloCodigo());
-            } else {
+            if (!ex.isHabilitado()) {
                 modulos.remove(ex.getModuloCodigo());
             }
         }
-        return new Entrada(s.getEstado(), Set.copyOf(modulos), vence, s.getPlan().getCodigo());
+        return new Entrada(s.getEstado(), Set.copyOf(modulos), vence, s.getPlan() == null ? null : s.getPlan().getCodigo());
     }
 }

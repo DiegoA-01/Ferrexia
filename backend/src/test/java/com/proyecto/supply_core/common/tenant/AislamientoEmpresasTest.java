@@ -4301,15 +4301,18 @@ class AislamientoEmpresasTest {
         try {
             String plataforma = entrarALaPlataforma(correo);
 
-            // alta: plan Básico, activa, con su administrador
+            // alta: activa, con su administrador; spec 024: los módulos se eligen en el alta (todos menos Reportes)
             String alta = mvc.perform(post("/api/plataforma/empresas").header(HttpHeaders.AUTHORIZATION, plataforma)
                             .contentType(contentType).content("{\"razonSocial\":\"Empresa C S.A.S.\",\"nit\":\"901777888-1\","
                                     + "\"codigoPublico\":\"empresa-c-fuga\",\"planCodigo\":\"BASICO\",\"estadoInicial\":\"ACTIVA\","
-                                    + "\"adminNombre\":\"Admin de C\",\"adminCorreo\":\"Admin@C.com\",\"adminPassword\":\"ClaveDeC2026\"}"))
+                                    + "\"adminNombre\":\"Admin de C\",\"adminCorreo\":\"Admin@C.com\",\"adminPassword\":\"ClaveDeC2026\","
+                                    + "\"modulos\":[\"INVENTARIO\",\"PROVEEDORES\",\"COMPRAS\",\"RFQ_COTIZACIONES\",\"IA\","
+                                    + "\"ORDENES_PAGOS\",\"RECEPCION\",\"DESPACHOS\",\"AUDITORIA\",\"VENTAS\",\"CAJA\",\"CARTERA\"]}"))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.empresa.plan").value("BASICO"))
                     .andExpect(jsonPath("$.empresa.estado").value("ACTIVA"))
                     .andExpect(jsonPath("$.modulos[?(@.codigo=='COMPRAS')].activo").value(true))
+                    .andExpect(jsonPath("$.modulos[?(@.codigo=='VENTAS')].activo").value(true))
                     .andExpect(jsonPath("$.modulos[?(@.codigo=='REPORTES')].activo").value(false))
                     .andReturn().getResponse().getContentAsString();
             empresaC = json.readTree(alta).get("empresa").get("id").asLong();
@@ -4341,6 +4344,7 @@ class AislamientoEmpresasTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.plan").value("BASICO"))
                     .andExpect(jsonPath("$.modulos[?(@=='COMPRAS')]").isNotEmpty())
+                    .andExpect(jsonPath("$.modulos[?(@=='VENTAS')]").isNotEmpty())
                     .andExpect(jsonPath("$.modulos[?(@=='REPORTES')]").isEmpty());
 
             // doble permiso: el módulo lo decide el dueño, el rol lo decide la empresa
@@ -4352,20 +4356,28 @@ class AislamientoEmpresasTest {
             // con el módulo pero sin el rol, tampoco
             mvc.perform(put(base + "/modulos/REPORTES").header(HttpHeaders.AUTHORIZATION, plataforma)
                             .contentType(contentType).content("{\"habilitado\":true}"))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.modulos[?(@.codigo=='REPORTES')].excepcion").value(true));
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.modulos[?(@.codigo=='REPORTES')].activo").value(true));
             mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC)).andExpect(status().isOk());
             mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, token(empresaC, adminC, "SOLICITANTE")))
                     .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("PERMISO_REQUERIDO"));
-            // quitar la excepción vuelve a mandar el plan; cambiar de plan da el módulo
+            // spec 024: el plan ya no decide nada. Apagado, ni el plan PROFESIONAL lo devuelve; "{}" lo vuelve a prender
             mvc.perform(put(base + "/modulos/REPORTES").header(HttpHeaders.AUTHORIZATION, plataforma)
-                            .contentType(contentType).content("{}"))
+                            .contentType(contentType).content("{\"habilitado\":false}"))
                     .andExpect(status().isOk());
             mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC)).andExpect(status().isForbidden());
             mvc.perform(put(base + "/plan").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(contentType)
                             .content("{\"planCodigo\":\"PROFESIONAL\"}"))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.empresa.plan").value("PROFESIONAL"));
+            mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC)).andExpect(status().isForbidden());
+            mvc.perform(put(base + "/modulos/REPORTES").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(contentType).content("{}"))
+                    .andExpect(status().isOk());
             mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC)).andExpect(status().isOk());
-            // quitarle a la empresa un módulo que su plan sí trae
+            // ya no se crean ni se editan planes
+            mvc.perform(post("/api/plataforma/planes").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(contentType)
+                            .content("{\"codigo\":\"NUEVO\",\"nombre\":\"Nuevo\",\"modulos\":[\"COMPRAS\"]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PLANES_RETIRADOS"));
+            // quitarle a la empresa un módulo
             mvc.perform(put(base + "/modulos/COMPRAS").header(HttpHeaders.AUTHORIZATION, plataforma)
                             .contentType(contentType).content("{\"habilitado\":false}"))
                     .andExpect(status().isOk());

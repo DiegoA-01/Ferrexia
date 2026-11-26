@@ -5376,13 +5376,14 @@ export interface components {
             razonSocial: string;
             nit: string;
             codigoPublico?: string;
-            planCodigo: string;
+            planCodigo?: string;
             /** @enum {string} */
             estadoInicial?: "PRUEBA" | "ACTIVA" | "MOROSA" | "SUSPENDIDA" | "CANCELADA";
             adminNombre: string;
             /** Format: email */
             adminCorreo: string;
             adminPassword: string;
+            modulos?: string[];
         };
         MfaRequest: {
             desafio: string;

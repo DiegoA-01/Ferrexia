@@ -141,20 +141,52 @@ class EmpresaPlataformaServiceTest {
         assertEquals("el-tornillo", lista.get(0).codigoPublico());
     }
 
+    /** Spec 024: sin planes, todo módulo está habilitado salvo los que la plataforma apagó (el plan BASICO no cuenta). */
     @Test
-    void elDetalleMuestraQueModulosVienenDelPlanYCualesTienenExcepcion() {
+    void elDetalleMuestraTodosLosModulosHabilitadosMenosLosApagados() {
         when(excepciones.findByEmpresaId(8L)).thenReturn(List.of(excepcion("REPORTES", true), excepcion("COMPRAS", false)));
 
         var d = service.obtener(8L);
 
         var porCodigo = d.modulos().stream().collect(java.util.stream.Collectors.toMap(m -> m.codigo(), m -> m));
         assertTrue(porCodigo.get("INVENTARIO").activo());
-        assertFalse(porCodigo.get("COMPRAS").activo());     // el plan lo trae pero se lo quitaron
-        assertTrue(porCodigo.get("COMPRAS").enPlan());
-        assertTrue(porCodigo.get("REPORTES").activo());     // el plan no lo trae pero se lo dieron
-        assertFalse(porCodigo.get("REPORTES").enPlan());
-        assertEquals(null, porCodigo.get("INVENTARIO").excepcion());
+        assertFalse(porCodigo.get("COMPRAS").activo());     // apagado por la plataforma
+        assertEquals(Boolean.FALSE, porCodigo.get("COMPRAS").excepcion());
+        assertTrue(porCodigo.get("REPORTES").activo());     // el plan BASICO no lo traía: ya no importa
+        assertEquals(null, porCodigo.get("REPORTES").excepcion());
         assertThrows(NoEncontradoException.class, () -> service.obtener(99L));
+    }
+
+    /** Spec 024: en el alta se eligen los módulos; los demás quedan apagados. Sin plan, se guarda el de por defecto. */
+    @Test
+    void elAltaApagaLosModulosQueNoSeEligieronYSinPlanUsaElDePorDefecto() {
+        Plan empresarial = plan(3L, "EMPRESARIAL", "INVENTARIO");
+        when(planes.findByCodigoIgnoreCase("EMPRESARIAL")).thenReturn(Optional.of(empresarial));
+        Empresa nueva = nuevaEmpresa();
+        when(empresas.idPorCodigoPublico(anyString())).thenReturn(Optional.empty());
+        when(alta.crearEmpresa(any(), any(), eq(empresarial), any())).thenReturn(nueva);
+
+        service.crear(conModulos(null, List.of("compras", " INVENTARIO ")));
+
+        var guardadas = org.mockito.ArgumentCaptor.forClass(EmpresaModulo.class);
+        verify(excepciones).save(guardadas.capture());
+        assertEquals("REPORTES", guardadas.getValue().getModuloCodigo());
+        assertFalse(guardadas.getValue().isHabilitado());
+        assertEquals(9L, guardadas.getValue().getEmpresaId());
+    }
+
+    /** Sin lista de módulos (como antes) quedan todos; una lista vacía o con un módulo inventado se rechaza. */
+    @Test
+    void elAltaSinListaHabilitaTodoYConListaVaciaOInventadaSeRechaza() {
+        Empresa nueva = nuevaEmpresa();
+        when(empresas.idPorCodigoPublico(anyString())).thenReturn(Optional.empty());
+        when(alta.crearEmpresa(any(), any(), eq(basico), any())).thenReturn(nueva);
+
+        service.crear(solicitud("901223114-5", null, "BASICO", null));
+        verify(excepciones, never()).save(any());
+
+        assertEquals("SIN_MODULOS", codigo(() -> service.crear(conModulos("BASICO", List.of()))));
+        assertEquals("MODULO_INEXISTENTE", codigo(() -> service.crear(conModulos("BASICO", List.of("COMPRAS", "NADA")))));
     }
 
     @Test
@@ -298,17 +330,21 @@ class EmpresaPlataformaServiceTest {
         assertEquals("PLAN_INVALIDO", codigo(() -> service.cambiarPlan(8L, "NOEXISTE")));
     }
 
+    /** Spec 024: apagar guarda una fila en {@code false}; prender la borra (sin fila = habilitado). */
     @Test
-    void laExcepcionDeModuloSeCreaSeCambiaYSeBorra() {
-        service.excepcionDeModulo(8L, "reportes", true);
-        verify(excepciones).save(any(EmpresaModulo.class));
+    void apagarGuardaElModuloYPrenderloBorraLaFila() {
+        service.excepcionDeModulo(8L, "reportes", true);   // ya estaba habilitado: no guarda nada
+        verify(excepciones, never()).save(any(EmpresaModulo.class));
 
-        EmpresaModulo existente = excepcion("REPORTES", true);
+        service.excepcionDeModulo(8L, "reportes", false);
+        var guardada = org.mockito.ArgumentCaptor.forClass(EmpresaModulo.class);
+        verify(excepciones).save(guardada.capture());
+        assertEquals("REPORTES", guardada.getValue().getModuloCodigo());
+        assertFalse(guardada.getValue().isHabilitado());
+
+        EmpresaModulo existente = excepcion("REPORTES", false);
         when(excepciones.findByEmpresaIdAndModuloCodigo(8L, "REPORTES")).thenReturn(Optional.of(existente));
-        service.excepcionDeModulo(8L, "REPORTES", false);
-        assertFalse(existente.isHabilitado());
-
-        service.excepcionDeModulo(8L, "REPORTES", null);
+        service.excepcionDeModulo(8L, "REPORTES", true);
         verify(excepciones).delete(existente);
         verify(acceso, org.mockito.Mockito.times(3)).invalidar(8L);
         assertEquals("MODULO_INEXISTENTE", codigo(() -> service.excepcionDeModulo(8L, "NOEXISTE", true)));
@@ -350,6 +386,11 @@ class EmpresaPlataformaServiceTest {
 
     private String codigo(Runnable accion) {
         return assertThrows(NegocioException.class, accion::run).getCodigo();
+    }
+
+    private static EmpresaCrearRequest conModulos(String plan, List<String> habilitados) {
+        return new EmpresaCrearRequest("Ferrecentro S.A.S.", "901223114-5", null, plan, null, "Laura Gómez",
+                "Laura@Ferrecentro.co", "Clave12345", habilitados);
     }
 
     private static EmpresaCrearRequest solicitud(String nit, String codigo, String plan, EstadoSuscripcion estado) {

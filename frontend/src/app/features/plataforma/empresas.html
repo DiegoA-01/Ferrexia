@@ -1,6 +1,6 @@
 <div class="pagina">
   <div class="encabezado">
-    <div><h1>Empresas clientes</h1><p>Tú activas la empresa, su plan y sus módulos. Sus datos de compra no los ves.</p></div>
+    <div><h1>Empresas clientes</h1><p>Tú activas la empresa y eliges sus módulos. Sus datos de compra no los ves.</p></div>
     <div class="acciones">
       <input type="search" class="entrada buscar" placeholder="Buscar por nombre, NIT o código" aria-label="Buscar empresa"
              [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)">
@@ -23,11 +23,6 @@
             <span class="ayuda">El código de ingreso se arma solo con la razón social (por ejemplo "ferreteria-centro") y te lo mostramos al crear la empresa.</span>
           }
         </div>
-        <div class="campo"><label for="plan">Plan</label>
-          <select id="plan" class="entrada" formControlName="planCodigo">
-            <option value="" disabled>Elige</option>
-            @for (p of planes(); track p.id) { <option [value]="p.codigo">{{ p.nombre }}</option> }
-          </select></div>
         <div class="campo"><label for="est">Estado inicial</label>
           <select id="est" class="entrada" formControlName="estadoInicial"><option value="PRUEBA">En prueba</option><option value="ACTIVA">Activa</option></select></div>
         <div class="campo"><label for="an">Nombre del administrador</label><input id="an" class="entrada" formControlName="adminNombre"></div>
@@ -40,7 +35,25 @@
               <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span>
             </button>
           </div></div>
-        <div class="fila"><button type="submit" class="boton primario" [disabled]="trabajando()">Crear empresa</button>
+        <fieldset class="panel-modulos ancho">
+          <legend>Módulos que va a usar</legend>
+          <p class="ayuda">Marca lo que esta empresa necesita. Lo que no marques queda apagado; lo puedes prender después
+            desde su detalle.</p>
+          <div class="fila">
+            <button type="button" class="boton chico" (click)="marcarTodos(true)">Marcar todos</button>
+            <button type="button" class="boton chico" (click)="marcarTodos(false)">Quitar todos</button>
+            <span class="texto-chico texto-2">{{ modulosAlta().length }} de {{ catalogo().length }} marcados</span>
+          </div>
+          <div class="lista-modulos">
+            @for (m of catalogo(); track m.codigo) {
+              <label class="opcion-modulo">
+                <input type="checkbox" [checked]="modulosAlta().includes(m.codigo!)" (change)="marcarModulo(m.codigo!)">
+                <span><strong>{{ m.nombre }}</strong>@if (m.descripcion) { <span class="texto-chico texto-2">{{ m.descripcion }}</span> }</span>
+              </label>
+            }
+          </div>
+        </fieldset>
+        <div class="fila"><button type="submit" class="boton primario" [disabled]="trabajando() || !modulosAlta().length">Crear empresa</button>
           <button type="button" class="boton" (click)="creando.set(false)">Cancelar</button></div>
       </form>
     </section>
@@ -67,17 +80,16 @@
     <section class="tarjeta sin-relleno">
       <div class="tabla-contenedor">
         <table class="tabla">
-          <thead><tr><th>Empresa</th><th>Plan</th><th>Estado</th><th class="oculto-movil">Cliente desde</th></tr></thead>
+          <thead><tr><th>Empresa</th><th>Estado</th><th class="oculto-movil">Cliente desde</th></tr></thead>
           <tbody>
             @for (e of filtradas(); track e.id) {
               <tr class="seleccionable" [class.seleccionada]="detalle()?.empresa?.id === e.id" (click)="abrir(e)">
                 <td><strong>{{ e.razonSocial }}</strong></td>
-                <td>{{ e.planNombre ?? e.plan }}</td>
                 <td><sc-estado [valor]="e.estado" /></td>
                 <td class="oculto-movil">{{ e.creadoEn | fecha }}</td>
               </tr>
             } @empty {
-              <tr><td colspan="4" class="vacio">{{ empresas() ? 'No hay empresas con esa búsqueda.' : 'Cargando…' }}</td></tr>
+              <tr><td colspan="3" class="vacio">{{ empresas() ? 'No hay empresas con esa búsqueda.' : 'Cargando…' }}</td></tr>
             }
           </tbody>
         </table>
@@ -91,15 +103,6 @@
           <div class="par"><span>Razón social</span><span>{{ d.empresa?.razonSocial }}</span></div>
           <div class="par"><span>NIT</span><span>{{ d.empresa?.nit }}</span></div>
           <div class="par"><span>Código de ingreso</span><span>{{ d.empresa?.codigoPublico }}</span></div>
-          <div class="par"><span>Plan</span>
-            <span class="cambio-plan">
-              <select class="entrada chica" aria-label="Plan de la empresa" [ngModel]="planElegido() ?? d.empresa?.plan" (ngModelChange)="planElegido.set($event)">
-                @for (p of planes(); track p.id) { <option [value]="p.codigo">{{ p.nombre }}</option> }
-              </select>
-              @if (planElegido() && planElegido() !== d.empresa?.plan) {
-                <button type="button" class="boton chico primario" [disabled]="trabajando()" (click)="cambiarPlan()">Cambiar</button>
-              }
-            </span></div>
           <div class="par"><span>Cliente desde</span><span>{{ d.empresa?.creadoEn | fecha }}</span></div>
           @if (d.administrador; as a) {
             <div class="par"><span>Administrador</span><span>{{ a.nombre }}</span></div>
@@ -112,7 +115,7 @@
         @for (m of d.modulos ?? []; track m.codigo) {
           <div class="modulo">
             <div><strong>{{ m.nombre }}</strong>
-              <span class="texto-chico texto-2">{{ m.enPlan ? 'Incluido en el plan' : 'Fuera del plan' }}@if (m.excepcion) { · excepción }</span></div>
+              <span class="texto-chico texto-2">{{ m.activo ? 'Habilitado' : 'Apagado' }}</span></div>
             <button type="button" class="interruptor" role="switch" [attr.aria-checked]="activo(m.codigo!, m.activo)"
                     [attr.aria-label]="m.nombre" [class.encendido]="activo(m.codigo!, m.activo)" (click)="alternar(m.codigo!, m.activo)">
               <span></span>

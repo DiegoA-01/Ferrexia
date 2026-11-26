@@ -1,6 +1,14 @@
 .buscar { width: 280px; }
-.cambio-plan { display: flex; align-items: center; gap: 8px; }
-.entrada.chica { min-height: 36px; padding: 6px 10px; width: auto; }
+
+// Spec 024: panel de módulos del alta (sin planes)
+.panel-modulos { grid-column: 1 / -1; border: 1px solid var(--sc-borde); border-radius: 10px; padding: 12px 14px; margin: 0;
+  legend { font-weight: 600; padding: 0 6px; }
+  .ayuda { margin: 0 0 8px; font-size: 13px; color: var(--sc-texto-2); }
+  .fila { flex-wrap: wrap; align-items: center; gap: 8px; } }
+.lista-modulos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-top: 10px; }
+.opcion-modulo { display: flex; gap: 8px; align-items: flex-start; padding: 8px; border: 1px solid #f0f0f0; border-radius: 8px; cursor: pointer;
+  input { margin-top: 3px; }
+  > span { display: flex; flex-direction: column; min-width: 0; } }
 .titulo { justify-content: space-between; margin-bottom: 8px; h2 { margin: 0; } }
 h3 { margin-top: 18px; }
 .modulo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid #f0f0f0;

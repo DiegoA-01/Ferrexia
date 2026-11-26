@@ -390,7 +390,8 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'empresas' },
       { path: 'empresas', title: 'Empresas · Plataforma', loadComponent: () => import('./features/plataforma/empresas').then(m => m.Empresas) },
-      { path: 'planes', title: 'Planes y módulos · Plataforma', loadComponent: () => import('./features/plataforma/planes').then(m => m.Planes) },
+      // spec 024: sin planes; los módulos se eligen en cada empresa. La dirección vieja lleva a Empresas.
+      { path: 'planes', redirectTo: 'empresas', pathMatch: 'full' },
       { path: 'auditoria', title: 'Auditoría global · Plataforma', loadComponent: () => import('./features/plataforma/auditoria-global').then(m => m.AuditoriaGlobal) },
     ],
   },
