@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
 import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
+import com.proyecto.supply_core.caja.dto.CajaAsignadaResponse;
 import com.proyecto.supply_core.caja.dto.CajaResponse;
 import com.proyecto.supply_core.caja.dto.UsuarioCajaResponse;
 import com.proyecto.supply_core.caja.entity.CajaUsuario;
@@ -113,6 +114,25 @@ public class CajaAsignacionService {
     @Transactional(readOnly = true)
     public Set<Long> cajasDe(Long usuarioId) {
         return asignaciones.findByUsuarioId(usuarioId).stream().map(CajaUsuario::getCajaId).collect(Collectors.toSet());
+    }
+
+    /**
+     * Cajas asignadas a una persona, para su ficha (solo consulta).
+     *
+     * @param usuarioId persona de la empresa
+     * @return sus cajas por nombre; vacío = no tiene asignadas y puede usar todas
+     * @throws NoEncontradoException si la persona no es de la empresa
+     */
+    @Transactional(readOnly = true)
+    public List<CajaAsignadaResponse> cajasAsignadas(Long usuarioId) {
+        if (usuarioRepository.findById(usuarioId).isEmpty()) {
+            throw new NoEncontradoException("Usuario no encontrado");
+        }
+        Set<Long> ids = cajasDe(usuarioId);
+        return cajaRepository.findAllById(ids).stream()
+                .map(c -> new CajaAsignadaResponse(c.getId(), c.getNombre()))
+                .sorted(java.util.Comparator.comparing(CajaAsignadaResponse::nombre, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     /**

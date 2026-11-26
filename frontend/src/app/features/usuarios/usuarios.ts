@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { CentroCosto, PermisoUsuario, Rol, Usuario } from '../../core/api/modelos';
 import { nombreRol } from '../../core/formato/etiquetas';
 import { FechaPipe } from '../../core/formato/formato';
+import { CajaService } from '../../core/servicios/caja.service';
 import { ComprasService } from '../../core/servicios/compras.service';
 import { UsuariosService } from '../../core/servicios/usuarios.service';
 import { Avisos } from '../../core/ui/avisos';
@@ -39,10 +40,15 @@ const LARGO_MINIMO = 6;
 export class Usuarios implements OnInit {
   private readonly servicio = inject(UsuariosService);
   private readonly compras = inject(ComprasService);
+  private readonly caja = inject(CajaService);
   private readonly avisos = inject(Avisos);
   protected readonly sesion = inject(SesionService);
 
   protected readonly lista = signal<Usuario[] | null>(null);
+  /** Spec 025: cajas asignadas a la persona en edición (null = no se muestran o cargando). */
+  protected readonly cajasDelUsuario = signal<string[] | null>(null);
+  /** Quien edita ve las cajas si la empresa tiene el módulo de caja y puede ver las cajas. */
+  protected readonly veCajas = computed(() => this.sesion.tieneModulo('CAJA') && this.sesion.tienePermiso('CAJA_VER'));
   protected readonly roles = signal<Rol[]>([]);
   protected readonly centros = signal<CentroCosto[]>([]);
   protected readonly texto = signal('');
@@ -131,6 +137,14 @@ export class Usuarios implements OnInit {
     this.form.controls.password.setValidators([Validators.minLength(LARGO_MINIMO), Validators.maxLength(72)]);
     this.form.controls.password.updateValueAndValidity();
     this.panel.set({ tipo: 'editar', usuario: u });
+    // spec 025: sus cajas asignadas, solo para consultar (se cambian desde la caja)
+    this.cajasDelUsuario.set(null);
+    if (u.id && this.veCajas()) {
+      this.caja.cajasDeUsuario(u.id).subscribe({
+        next: l => this.cajasDelUsuario.set(l.map(c => c.nombre ?? '')),
+        error: () => this.cajasDelUsuario.set(null),
+      });
+    }
   }
 
   /** @param u usuario al que se le pone una contraseña nueva */

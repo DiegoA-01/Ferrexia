@@ -168,6 +168,13 @@
                 <span class="ayuda">Obligatorio para quien hace solicitudes: el gasto se carga a ese centro.</span>
               }
             </div>
+            @if (editando() && cajasDelUsuario(); as cajas) {
+              <div class="campo cajas-usuario">
+                <span class="etiqueta">Cajas que puede usar</span>
+                <span>{{ cajas.length ? cajas.join(', ') : 'Todas (no tiene cajas asignadas)' }}</span>
+                <span class="ayuda">Se cambian en <a routerLink="/app/caja">Cajas y turnos</a>, editando cada caja.</span>
+              </div>
+            }
             <div class="fila">
               <button type="submit" class="boton primario" [disabled]="trabajando()">{{ editando() ? 'Guardar cambios' : 'Crear usuario' }}</button>
               <button type="button" class="boton" (click)="panel.set({ tipo: 'ninguno' })">Cancelar</button>

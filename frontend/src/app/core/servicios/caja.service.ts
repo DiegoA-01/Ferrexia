@@ -28,6 +28,11 @@ export class CajaService {
     return this.http.get<UsuarioCaja[]>(api(`/api/cajas/${cajaId}/usuarios`));
   }
 
+  /** @param usuarioId persona @returns sus cajas asignadas (vacío = puede usar todas) */
+  cajasDeUsuario(usuarioId: number): Observable<{ cajaId?: number; nombre?: string }[]> {
+    return this.http.get<{ cajaId?: number; nombre?: string }[]>(api(`/api/cajas/de-usuario/${usuarioId}`));
+  }
+
   /** @param cajaId caja; @param usuarioIds personas que la pueden usar (reemplaza la lista) */
   asignarUsuarios(cajaId: number, usuarioIds: number[]): Observable<UsuarioCaja[]> {
     return this.http.put<UsuarioCaja[]>(api(`/api/cajas/${cajaId}/usuarios`), { usuarioIds });

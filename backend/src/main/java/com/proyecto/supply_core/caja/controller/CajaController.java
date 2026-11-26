@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.caja.dto.CajaAsignadaResponse;
 import com.proyecto.supply_core.caja.dto.CajaRequest;
 import com.proyecto.supply_core.caja.dto.CajaResponse;
 import com.proyecto.supply_core.caja.dto.ConfiguracionCaja;
@@ -72,6 +73,19 @@ public class CajaController {
     @RequierePermiso(Permisos.CAJA_VER)
     public List<UsuarioCajaResponse> usuarios(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return asignacionService.usuariosDe(id);
+    }
+
+    /**
+     * Cajas asignadas a una persona, para su ficha (spec 025).
+     *
+     * @param usuarioId persona
+     * @return sus cajas; vacío = puede usar todas
+     */
+    @GetMapping("/de-usuario/{usuarioId}")
+    @RequierePermiso(Permisos.CAJA_VER)
+    public List<CajaAsignadaResponse> cajasDeUsuario(
+            @PathVariable @Positive(message = "debe ser un id válido") Long usuarioId) {
+        return asignacionService.cajasAsignadas(usuarioId);
     }
 
     /**

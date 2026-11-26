@@ -26,6 +26,7 @@ Notas (2026-11-25):
 - El permiso sin PIN es uno por tipo de movimiento, para que el dueño pueda dar, por ejemplo, retiros sin PIN pero no
   gastos. Por defecto lo tienen Dueño, Administrador y Supervisor de ventas; a un cajero de confianza se le da como
   permiso suelto en su ficha (spec 022).
-- La ficha del trabajador todavía no muestra sus cajas (el plan lo pedía en solo lectura); se asignan desde la caja.
+- La ficha del trabajador (Editar usuario) muestra sus cajas en solo lectura, con `GET /api/cajas/de-usuario/{id}`
+  (`usuarios-cajas.spec.ts` y prueba de fuga); se asignan desde la caja.
 - Limitación conocida: nadie aprueba la diferencia de su propio turno, así que si el dueño es el único que aprueba, la
   diferencia de su turno queda pendiente.
