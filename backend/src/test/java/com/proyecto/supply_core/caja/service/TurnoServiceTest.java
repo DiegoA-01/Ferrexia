@@ -31,6 +31,7 @@ import com.proyecto.supply_core.caja.dto.ConteoDenominacion;
 import com.proyecto.supply_core.caja.dto.MovimientoCajaRequest;
 import com.proyecto.supply_core.caja.dto.TurnoResponse;
 import com.proyecto.supply_core.caja.entity.Caja;
+import com.proyecto.supply_core.caja.entity.CajaUsuario;
 import com.proyecto.supply_core.caja.entity.MovimientoCaja;
 import com.proyecto.supply_core.caja.entity.TurnoCaja;
 import com.proyecto.supply_core.caja.enums.EstadoTurno;
@@ -39,6 +40,7 @@ import com.proyecto.supply_core.caja.enums.TipoCategoriaMovimiento;
 import com.proyecto.supply_core.caja.enums.TipoDenominacion;
 import com.proyecto.supply_core.caja.enums.TipoMovimientoCaja;
 import com.proyecto.supply_core.caja.repository.CajaRepository;
+import com.proyecto.supply_core.caja.repository.CajaUsuarioRepository;
 import com.proyecto.supply_core.caja.repository.CategoriaMovimientoCajaRepository;
 import com.proyecto.supply_core.caja.repository.MovimientoCajaRepository;
 import com.proyecto.supply_core.caja.repository.TurnoCajaRepository;
@@ -65,6 +67,7 @@ class TurnoServiceTest {
     @Mock private AuditoriaService auditoriaService;
     @Mock private CategoriaMovimientoCajaService categoriaService;
     @Mock private CategoriaMovimientoCajaRepository categoriaRepository;
+    @Mock private CajaUsuarioRepository cajaUsuarioRepository;
 
     private TurnoService servicio;
 
@@ -73,11 +76,104 @@ class TurnoServiceTest {
     void crear() {
         servicio = new TurnoService(turnoRepository, cajaRepository, movimientoRepository, empresaRepository,
                 usuarioRepository, autorizacionService, notificacionService, auditoriaService, categoriaService,
-                categoriaRepository);
+                categoriaRepository, cajaUsuarioRepository);
+        sesion("CAJERO");
+    }
+
+    /** @param rol rol de la persona 7 en la sesión */
+    private static void sesion(String rol) {
         MockHttpServletRequest req = new MockHttpServletRequest();
         req.setAttribute(SesionActual.ATRIBUTO,
-                new UsuarioAutenticado(7L, "cajero@x.com", "Cajero", Set.of("CAJERO"), null, 1L));
+                new UsuarioAutenticado(7L, "persona@x.com", "Persona", Set.of(rol), null, 1L));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(req));
+    }
+
+    // ------------------------------------------------------------------ caja con permisos (spec 025)
+
+    /** Quien tiene cajas asignadas no abre turno en otra. */
+    @Test
+    void conCajasAsignadasNoAbreEnUnaQueNoEsSuya() {
+        Caja caja = new Caja();
+        caja.setId(3L);
+        caja.setNombre("Caja 1");
+        caja.setActiva(true);
+        when(cajaRepository.conDetalle(3L)).thenReturn(Optional.of(caja));
+        CajaUsuario otra = new CajaUsuario();
+        otra.setCajaId(4L);
+        otra.setUsuarioId(7L);
+        when(cajaUsuarioRepository.findByUsuarioId(7L)).thenReturn(List.of(otra));
+
+        var e = catchThrowableOfType(com.proyecto.supply_core.common.exception.AccesoDenegadoException.class,
+                () -> servicio.abrir(new AbrirTurnoRequest(3L, BigDecimal.ZERO)));
+
+        assertThat(e).isNotNull();
+        assertThat(e.getCodigo()).isEqualTo("CAJA_NO_ASIGNADA");
+        verify(turnoRepository, never()).saveAndFlush(any());
+    }
+
+    /** Sin cajas asignadas puede abrir en cualquiera (regla de transición). */
+    @Test
+    void sinCajasAsignadasAbreEnCualquiera() {
+        cajaLibre();
+        when(cajaUsuarioRepository.findByUsuarioId(7L)).thenReturn(List.of());
+
+        servicio.abrir(new AbrirTurnoRequest(3L, BigDecimal.ZERO));
+
+        verify(turnoRepository).saveAndFlush(any());
+    }
+
+    /** Deja el turno 5 abierto, con su caja y efectivo de sobra para retirar. */
+    private void turnoConEfectivo() {
+        Caja caja = new Caja();
+        caja.setId(3L);
+        caja.setNombre("Caja 1");
+        caja.setTopeEfectivo(BigDecimal.ZERO);
+        TurnoCaja t = new TurnoCaja();
+        t.setId(5L);
+        t.setCaja(caja);
+        t.setCajeroUsuarioId(7L);
+        t.setEstado(EstadoTurno.ABIERTO);
+        when(turnoRepository.bloquear(5L)).thenReturn(Optional.of(t));
+        when(movimientoRepository.saldo(5L, MedioPago.EFECTIVO)).thenReturn(new BigDecimal("100000"));
+    }
+
+    /** D15: con el permiso, el retiro no pide PIN y queda sin quién autorizó. */
+    @Test
+    void conPermisoElRetiroNoPidePin() {
+        sesion("SUPERVISOR_VENTAS");
+        turnoConEfectivo();
+
+        servicio.registrarMovimiento(5L, new MovimientoCajaRequest(TipoMovimientoCaja.RETIRO, new BigDecimal("20000"),
+                "A la bóveda", null, null, null));
+
+        verify(autorizacionService, never()).consumir(any(), any(), any(), any());
+        var guardado = org.mockito.ArgumentCaptor.forClass(MovimientoCaja.class);
+        verify(movimientoRepository).save(guardado.capture());
+        assertThat(guardado.getValue().getAutorizadoPorUsuarioId()).isNull();
+        assertThat(guardado.getValue().getMonto()).isEqualByComparingTo("-20000");
+    }
+
+    /** D15: sin el permiso, el retiro sigue pidiendo la autorización del supervisor. */
+    @Test
+    void sinPermisoElRetiroSiguePidiendoPin() {
+        turnoConEfectivo();
+        when(autorizacionService.consumir(any(), any(), any(), any()))
+                .thenThrow(new NegocioException("AUTORIZACION_REQUERIDA", "Esta acción necesita la autorización"));
+
+        NegocioException e = catchThrowableOfType(NegocioException.class, () -> servicio.registrarMovimiento(5L,
+                new MovimientoCajaRequest(TipoMovimientoCaja.RETIRO, new BigDecimal("20000"), "A la bóveda", null,
+                        null, null)));
+
+        assertThat(e.getCodigo()).isEqualTo("AUTORIZACION_REQUERIDA");
+        verify(movimientoRepository, never()).save(any());
+    }
+
+    /** Cada tipo tiene su permiso para hacerlo sin PIN. */
+    @Test
+    void cadaMovimientoTieneSuPermisoSinPin() {
+        assertThat(TurnoService.permisoSinPin(TipoMovimientoCaja.RETIRO)).isEqualTo("CAJA_RETIRO_SIN_PIN");
+        assertThat(TurnoService.permisoSinPin(TipoMovimientoCaja.GASTO)).isEqualTo("CAJA_GASTO_SIN_PIN");
+        assertThat(TurnoService.permisoSinPin(TipoMovimientoCaja.INGRESO)).isEqualTo("CAJA_INGRESO_SIN_PIN");
     }
 
     /** Limpia la sesión del hilo. */

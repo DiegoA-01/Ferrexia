@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import {
   AccionAutorizada, Autorizacion, Caja, CajaRequest, CategoriaMovimientoCaja, ConfiguracionCaja, ConteoDenominacion, EsperadoTurno, EstadoTurno, MedioPago,
-  Pagina, TipoCategoriaMovimiento, Turno,
+  Pagina, TipoCategoriaMovimiento, Turno, UsuarioCaja,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -16,6 +16,21 @@ export class CajaService {
   /** @param activa filtro por estado (null = todas) */
   cajas(activa: boolean | null = null): Observable<Caja[]> {
     return this.http.get<Caja[]>(api('/api/cajas'), { params: parametros({ activa }) });
+  }
+
+  /** Spec 025: cajas activas en las que la sesión puede abrir turno (las asignadas o, sin ninguna, todas). */
+  misCajas(): Observable<Caja[]> {
+    return this.http.get<Caja[]>(api('/api/cajas/mias'));
+  }
+
+  /** @param cajaId caja @returns quiénes la pueden usar (spec 025) */
+  usuariosDeCaja(cajaId: number): Observable<UsuarioCaja[]> {
+    return this.http.get<UsuarioCaja[]>(api(`/api/cajas/${cajaId}/usuarios`));
+  }
+
+  /** @param cajaId caja; @param usuarioIds personas que la pueden usar (reemplaza la lista) */
+  asignarUsuarios(cajaId: number, usuarioIds: number[]): Observable<UsuarioCaja[]> {
+    return this.http.put<UsuarioCaja[]>(api(`/api/cajas/${cajaId}/usuarios`), { usuarioIds });
   }
 
   /** @param datos caja nueva */
@@ -78,7 +93,7 @@ export class CajaService {
    * @param datos   tipo, monto, motivo, soporte, token de autorización y categoría (spec 021)
    */
   movimiento(turnoId: number, datos: { tipo: 'RETIRO' | 'GASTO' | 'INGRESO'; monto: number; motivo: string; soporte?: string | null;
-    autorizacion: string; categoriaId?: number | null }): Observable<Turno> {
+    autorizacion?: string; categoriaId?: number | null }): Observable<Turno> {
     return this.http.post<Turno>(api(`/api/turnos/${turnoId}/movimientos`), datos);
   }
 

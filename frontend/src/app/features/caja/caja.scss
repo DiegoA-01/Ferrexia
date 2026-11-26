@@ -19,3 +19,6 @@ h3 { margin: 16px 0 8px; font-size: 15px; }
 .caja-form { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 12px; }
 .tolerancia { gap: 10px; input { max-width: 200px; } }
 .pin .formulario { max-width: 420px; }
+
+// Spec 025: personas que pueden usar la caja
+.personas-caja { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; margin: 8px 0 12px; }

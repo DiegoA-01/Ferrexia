@@ -151,6 +151,8 @@ export type CategoriaMovimientoCaja = S['CategoriaMovimientoCajaResponse'];
 export type TipoCategoriaMovimiento = NonNullable<CategoriaMovimientoCaja['tipo']>;
 export type EsperadoTurno = S['EsperadoTurnoResponse'];
 export type ConteoDenominacion = S['ConteoDenominacion'];
+/** Persona asignada a una caja (spec 025). */
+export interface UsuarioCaja { usuarioId?: number; nombre?: string; }
 export type TipoDenominacion = ConteoDenominacion['tipo'];
 export type AccionAutorizada = 'ANULAR_VENTA' | 'DESCUENTO' | 'PRECIO_BAJO_MINIMO' | 'DEVOLUCION' | 'RETIRO' | 'GASTO' | 'INGRESO';
 export type Autorizacion = S['AutorizacionResponse'];

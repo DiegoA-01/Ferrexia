@@ -100,6 +100,27 @@ describe('Cajas y turnos', () => {
     expect(texto()).not.toContain('Conteo del efectivo');
   });
 
+  it('spec 025: al editar una caja el dueño elige quién la usa (sin el usuario del proveedor) y lo guarda', () => {
+    crear(['ADMIN_SISTEMA']);
+    c()['editarCaja']({ id: 1, nombre: 'Caja 1', bodegaId: 9, prefijoConsecutivo: 'C1', topeEfectivo: 0, activa: true });
+    backend.expectOne(r => r.url === '/api/bodegas').flush([]);
+    backend.expectOne(r => r.url === '/api/usuarios').flush({ contenido: [{ id: 3, nombreCompleto: 'Pedro Cajero' },
+      { id: 4, nombreCompleto: 'Ana Supervisora' }, { id: 8, nombreCompleto: 'Marta Proveedor', proveedorId: 2 }],
+    pagina: 0, tamano: 20, totalElementos: 3, totalPaginas: 1 });
+    backend.expectOne('/api/cajas/1/usuarios').flush([{ usuarioId: 3, nombre: 'Pedro Cajero' }]);
+    c()['pestana'].set('cajas');
+    fixture.detectChanges();
+    backend.match(r => r.url === '/api/cajas/categorias-movimiento').forEach(r => r.flush([]));
+    expect(texto()).toContain('Quién puede usarla');
+    expect(texto()).toContain('Ana Supervisora');
+    expect(texto()).not.toContain('Marta Proveedor');
+    c()['marcarPersona'](4);
+    c()['guardarAsignados']();
+    const r = backend.expectOne(x => x.url === '/api/cajas/1/usuarios' && x.method === 'PUT');
+    expect(r.request.body).toEqual({ usuarioIds: [3, 4] });
+    r.flush([{ usuarioId: 3, nombre: 'Pedro Cajero' }, { usuarioId: 4, nombre: 'Ana Supervisora' }]);
+  });
+
   it('el auditor consulta pero no aprueba ni edita cajas', () => {
     crear(['AUDITOR']);
     c()['ver'](pendiente);

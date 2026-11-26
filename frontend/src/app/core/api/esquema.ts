@@ -5067,7 +5067,7 @@ export interface components {
             monto: number;
             motivo: string;
             soporte?: string;
-            autorizacion: string;
+            autorizacion?: string;
             /** Format: int64 */
             categoriaId?: number;
         };

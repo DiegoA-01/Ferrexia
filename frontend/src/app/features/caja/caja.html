@@ -158,6 +158,20 @@
             <button type="button" class="boton primario" [disabled]="guardando()" (click)="guardarCaja()">Guardar</button>
             <button type="button" class="boton" (click)="edicion.set(null)">Cancelar</button>
           </div>
+          @if (e.id) {
+            <h3>Quién puede usarla</h3>
+            <p class="texto-chico texto-2">Marca a las personas que pueden abrir turno en esta caja. Quien no tenga ninguna caja
+              asignada puede usar todas.</p>
+            @if (asignados(); as marcados) {
+              <div class="personas-caja">
+                @for (p of personas(); track p.id) {
+                  <label class="opcion"><input type="checkbox" [checked]="marcados.includes(p.id!)" (change)="marcarPersona(p.id!)">
+                    {{ p.nombreCompleto }}</label>
+                }
+              </div>
+              <button type="button" class="boton" (click)="guardarAsignados()">Guardar quién la usa</button>
+            } @else { <p class="cargando">Cargando…</p> }
+          }
         </section>
       }
 

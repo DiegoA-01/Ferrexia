@@ -28,6 +28,7 @@ import com.proyecto.supply_core.caja.dto.MovimientoCajaRequest;
 import com.proyecto.supply_core.caja.dto.MovimientoCajaResponse;
 import com.proyecto.supply_core.caja.dto.TurnoResponse;
 import com.proyecto.supply_core.caja.entity.Caja;
+import com.proyecto.supply_core.caja.entity.CajaUsuario;
 import com.proyecto.supply_core.caja.entity.CategoriaMovimientoCaja;
 import com.proyecto.supply_core.caja.entity.MovimientoCaja;
 import com.proyecto.supply_core.caja.entity.TurnoCaja;
@@ -37,6 +38,7 @@ import com.proyecto.supply_core.caja.enums.MedioPago;
 import com.proyecto.supply_core.caja.enums.TipoCategoriaMovimiento;
 import com.proyecto.supply_core.caja.enums.TipoMovimientoCaja;
 import com.proyecto.supply_core.caja.repository.CajaRepository;
+import com.proyecto.supply_core.caja.repository.CajaUsuarioRepository;
 import com.proyecto.supply_core.caja.repository.CategoriaMovimientoCajaRepository;
 import com.proyecto.supply_core.caja.repository.MovimientoCajaRepository;
 import com.proyecto.supply_core.caja.repository.TurnoCajaRepository;
@@ -84,6 +86,7 @@ public class TurnoService {
     private final AuditoriaService auditoriaService;
     private final CategoriaMovimientoCajaService categoriaService;
     private final CategoriaMovimientoCajaRepository categoriaRepository;
+    private final CajaUsuarioRepository cajaUsuarioRepository;
     private final JsonMapper json = JsonMapper.builder().build();
 
     /**
@@ -97,12 +100,15 @@ public class TurnoService {
      * @param auditoriaService     registro de cada acción
      * @param categoriaService     validación de la categoría de un ingreso o egreso (spec 021)
      * @param categoriaRepository  nombres de las categorías en el libro de caja
+     * @param cajaUsuarioRepository cajas asignadas a cada persona (spec 025)
      */
     public TurnoService(TurnoCajaRepository turnoRepository, CajaRepository cajaRepository,
             MovimientoCajaRepository movimientoRepository, EmpresaRepository empresaRepository,
             UsuarioRepository usuarioRepository, AutorizacionService autorizacionService,
             NotificacionService notificacionService, AuditoriaService auditoriaService,
-            CategoriaMovimientoCajaService categoriaService, CategoriaMovimientoCajaRepository categoriaRepository) {
+            CategoriaMovimientoCajaService categoriaService, CategoriaMovimientoCajaRepository categoriaRepository,
+            CajaUsuarioRepository cajaUsuarioRepository) {
+        this.cajaUsuarioRepository = cajaUsuarioRepository;
         this.turnoRepository = turnoRepository;
         this.cajaRepository = cajaRepository;
         this.movimientoRepository = movimientoRepository;
@@ -129,6 +135,12 @@ public class TurnoService {
         Caja caja = cajaRepository.conDetalle(req.cajaId()).orElseThrow(() -> new NoEncontradoException("Caja no encontrada"));
         if (!caja.isActiva()) {
             throw new NegocioException("CAJA_INACTIVA", "La caja " + caja.getNombre() + " está inactiva");
+        }
+        // Spec 025: quien tiene cajas asignadas solo abre en ellas; sin ninguna asignada puede usar todas.
+        Set<Long> asignadas = cajaUsuarioRepository.findByUsuarioId(cajero).stream().map(CajaUsuario::getCajaId)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!asignadas.isEmpty() && !asignadas.contains(caja.getId())) {
+            throw new AccesoDenegadoException("CAJA_NO_ASIGNADA", "No tiene asignada la caja " + caja.getNombre());
         }
         turnoRepository.abiertoDe(cajero).ifPresent(t -> {
             throw new NegocioException("TURNO_ABIERTO", "Ya tienes un turno abierto en " + t.getCaja().getNombre());
@@ -194,15 +206,30 @@ public class TurnoService {
         if (sale && movimientoRepository.saldo(t.getId(), MedioPago.EFECTIVO).compareTo(monto) < 0) {
             throw new NegocioException("EFECTIVO_INSUFICIENTE", "No hay suficiente efectivo en la caja para ese monto");
         }
-        Long supervisor = autorizacionService.consumir(req.autorizacion(), accion, t.getId(), null);
+        // Spec 025 (D15): con el permiso de hacerlo sin PIN no se pide autorización; sin él, el PIN como siempre.
+        boolean sinPin = SesionActual.usuario().tienePermiso(permisoSinPin(req.tipo()));
+        Long supervisor = sinPin ? null : autorizacionService.consumir(req.autorizacion(), accion, t.getId(), null);
         MovimientoCaja m = movimiento(t, req.tipo(), sale ? monto.negate() : monto, req.motivo().trim(),
                 req.soporte() == null || req.soporte().isBlank() ? null : req.soporte().trim(), supervisor);
         m.setCategoriaId(categoria == null ? null : categoria.getId());
         movimientoRepository.save(m);
         auditoriaService.exito(AccionAuditoria.TURNO_MOVIMIENTO, EntidadAuditada.TURNO_CAJA, t.getId(),
-                req.tipo() + " " + monto + "; movimiento=" + m.getId() + "; autorizó=" + supervisor
+                req.tipo() + " " + monto + "; movimiento=" + m.getId()
+                        + (sinPin ? "; sinPin=true" : "; autorizó=" + supervisor)
                         + (categoria == null ? "" : "; categoría=" + categoria.getNombre()));
         return respuesta(t);
+    }
+
+    /**
+     * @param tipo retiro, gasto o ingreso
+     * @return el permiso que deja registrarlo sin el PIN del supervisor (spec 025)
+     */
+    static String permisoSinPin(TipoMovimientoCaja tipo) {
+        return switch (tipo) {
+            case RETIRO -> Permisos.CAJA_RETIRO_SIN_PIN;
+            case GASTO -> Permisos.CAJA_GASTO_SIN_PIN;
+            default -> Permisos.CAJA_INGRESO_SIN_PIN;
+        };
     }
 
     /**

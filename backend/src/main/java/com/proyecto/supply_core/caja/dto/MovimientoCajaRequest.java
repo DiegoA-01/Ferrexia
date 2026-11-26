@@ -18,7 +18,8 @@ import jakarta.validation.constraints.Size;
  * @param monto        monto en positivo; el sistema lo guarda en negativo si sale
  * @param motivo       para qué
  * @param soporte      número del recibo o factura (gastos), opcional
- * @param autorizacion token de un solo uso que devolvió {@code POST /api/autorizaciones}
+ * @param autorizacion token de un solo uso que devolvió {@code POST /api/autorizaciones}; no hace falta si quien
+ *                     registra tiene el permiso de hacerlo sin PIN (spec 025, D15)
  * @param categoriaId  categoría (spec 021): de egreso para el gasto (obligatoria) y el retiro (opcional), de ingreso
  *                     para el ingreso (obligatoria)
  */
@@ -30,7 +31,7 @@ public record MovimientoCajaRequest(
         BigDecimal monto,
         @NotBlank(message = "es obligatorio") @Size(max = 300, message = "máximo 300 caracteres") String motivo,
         @Size(max = 100, message = "máximo 100 caracteres") String soporte,
-        @NotBlank(message = "pida la autorización del supervisor") @Size(max = 100, message = "no es válida")
+        @Size(max = 100, message = "no es válida")
         String autorizacion,
         @Positive(message = "debe ser un id válido") Long categoriaId) {
 }

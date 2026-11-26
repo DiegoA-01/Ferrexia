@@ -1,7 +1,7 @@
 # 025 - Caja con permisos: el dueño vende, cajas por persona y gastos sin PIN
 
-**Estado:** Propuesta · **Rama:** `feature/caja-con-permisos` · **Depende de:** 022 · **Responsable:** Persona 1 ·
-**Puntos de la reunión 2:** 18, 51, 54 · **Migración:** sí (se reserva al empezar) · **Decisión:** D15
+**Estado:** En construcción (2026-11-25) · **Rama:** `feature/cierre-por-denominacion` · **Depende de:** 022 ·
+**Responsable:** Persona 1 · **Puntos de la reunión 2:** 18, 51, 54 · **Migración:** V47 · **Decisión:** D15 (tomada)
 
 ## Objetivo
 Con los permisos de la spec 022, ajustar la caja a cómo trabaja el negocio: el dueño también vende, cada persona usa

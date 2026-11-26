@@ -274,6 +274,13 @@ class AislamientoEmpresasTest {
 
     @Autowired private com.proyecto.supply_core.security.service.PermisosService permisosService;
 
+    /**
+     * Accesos que se dieron a propósito después de la foto de la 022 ({@code rol:permiso}). Spec 025: el Dueño abre su
+     * turno y cobra (V47).
+     */
+    private static final Set<String> CONCEDIDOS_DESPUES_022 = Set.of("ADMIN_SISTEMA:TURNO_OPERAR",
+            "ADMIN_SISTEMA:VENTA_COBRAR", "ADMIN_SISTEMA:VENTA_COTIZAR");
+
     /** Los 12 roles de siempre. */
     private static final List<String> ROLES = List.of("ADMIN_SISTEMA", "ADMIN_COMPRAS", "SOLICITANTE", "COMPRADOR",
             "APROBADOR", "ALMACENISTA", "ADMINISTRATIVO", "PROVEEDOR", "AUDITOR", "CAJERO", "SUPERVISOR_VENTAS", "VENDEDOR");
@@ -324,13 +331,16 @@ class AislamientoEmpresasTest {
             for (String rol : ROLES) {
                 boolean podia = rolesAntes.contains(rol);
                 boolean puede = porRol.getOrDefault(rol, Set.of()).contains(d[0]);
+                if (!podia && puede && CONCEDIDOS_DESPUES_022.contains(rol + ":" + d[0])) {
+                    continue; // cambio decidido después de la 022 (ver la constante)
+                }
                 if (podia != puede) {
                     diferencias.add(endpoint + " · " + rol + ": antes " + podia + ", ahora " + puede + " (" + d[0] + ")");
                 }
             }
         });
         assertEquals(List.of(), diferencias);
-        assertEquals(107, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class));
+        assertEquals(110, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 de la V47
         assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM rol WHERE es_plantilla AND empresa_id IS NULL", Integer.class));
     }
 
@@ -2568,6 +2578,43 @@ class AislamientoEmpresasTest {
                             .contentType(json).content(abrir))
                     .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CAJA_OCUPADA"));
 
+            // spec 025: cajas por persona. Una segunda caja; el cajero queda asignado solo a la primera
+            long caja2 = lector.readTree(mvc.perform(post("/api/cajas").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content("{\"nombre\":\"Caja 2\",\"sedeId\":" + sedeA + ",\"bodegaId\":" + bodegaA
+                                    + ",\"prefijoConsecutivo\":\"C2\",\"topeEfectivo\":0}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(get("/api/cajas/mias").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2)); // sin asignar: todas
+            mvc.perform(put("/api/cajas/" + cajaId + "/usuarios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"usuarioIds\":[" + usuarioB + "]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("USUARIO_INVALIDO"));
+            mvc.perform(put("/api/cajas/" + cajaId + "/usuarios").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"usuarioIds\":[" + usuarioA2 + "]}"))
+                    .andExpect(status().isForbidden());
+            mvc.perform(put("/api/cajas/" + cajaId + "/usuarios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"usuarioIds\":[" + usuarioA2 + "]}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$[0].usuarioId").value(usuarioA2));
+            mvc.perform(get("/api/cajas/mias").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].id").value(cajaId));
+            mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA2, "CAJERO"))
+                            .contentType(json).content("{\"cajaId\":" + caja2 + ",\"baseApertura\":0}"))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("CAJA_NO_ASIGNADA"));
+            // el dueño (sin cajas asignadas) también abre turno y vende: ve todas sus cajas
+            mvc.perform(get("/api/cajas/mias").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
+            // nada cruza: B no ve la asignación de A ni la puede cambiar
+            String duenoB2 = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+            mvc.perform(get("/api/cajas/" + cajaId + "/usuarios").header(HttpHeaders.AUTHORIZATION, duenoB2))
+                    .andExpect(status().isNotFound());
+            mvc.perform(put("/api/cajas/" + cajaId + "/usuarios").header(HttpHeaders.AUTHORIZATION, duenoB2).contentType(json)
+                            .content("{\"usuarioIds\":[" + usuarioB + "]}"))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/cajas/mias").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "CAJERO")))
+                    .andExpect(jsonPath("$[?(@.id==" + cajaId + ")]").isEmpty());
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM caja_usuario WHERE empresa_id = ?", Integer.class, empresaA));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM caja_usuario WHERE empresa_id = ?", Integer.class, empresaB));
+            jdbc.update("UPDATE caja SET activa = FALSE WHERE id = ?", caja2);
+
             // spec 015: el listado dice quién tiene la caja ocupada y desde cuándo, sin montos del turno
             mvc.perform(get("/api/cajas?activa=true").header(HttpHeaders.AUTHORIZATION, cajeroA))
                     .andExpect(status().isOk())
@@ -2801,6 +2848,7 @@ class AislamientoEmpresasTest {
             jdbc.update("DELETE FROM movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM categoria_movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM turno_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM caja_usuario WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("UPDATE usuario SET pin_supervisor_hash = NULL, pin_intentos_fallidos = 0, pin_bloqueado_hasta = NULL "
                     + "WHERE empresa_id IN (?, ?)", empresaA, empresaB);

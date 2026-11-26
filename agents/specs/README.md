@@ -54,7 +54,7 @@ decisiones y se aprueban antes de escribir el plan.
 | [022-permisos-plantillas-rol](022-permisos-plantillas-rol/spec.md) | 2 | Permisos por acción, plantillas de rol, permisos sueltos y clave corta del personal | `feature/permisos-plantillas-rol` | SaaS 3 | Persona 2 | Hecha (V43, PR #27; V44, PR pendiente) |
 | [023-cierre-por-denominacion](023-cierre-por-denominacion/spec.md) | 2 | Cierre contando billetes y monedas, vista de ventas por turno | `feature/cierre-por-denominacion` | 021 | Persona 1 | En construcción (V45; falta revisión en Docker) |
 | [024-planes-simbolicos](024-planes-simbolicos/spec.md) | 2 | Sin planes: los módulos se eligen al crear la empresa; las existentes con todos | `feature/cierre-por-denominacion` (con la 023 y la 027) | SaaS 2 | Persona 2 | En construcción (V46; falta revisión en Docker) |
-| [025-caja-con-permisos](025-caja-con-permisos/spec.md) | 3 | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | `feature/caja-con-permisos` | 022 | Persona 1 | Propuesta (D15) |
+| [025-caja-con-permisos](025-caja-con-permisos/spec.md) | 3 | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | `feature/cierre-por-denominacion` (con la 023, 024 y 027) | 022 | Persona 1 | En construcción (V47 y V48; revisada en Docker, falta aprobación) |
 | [026-producto-completo](026-producto-completo/spec.md) | 3 | Categoría y proveedor al vuelo, impuesto, unidad ajustable, stock máximo, proveedor y fecha del costo | `feature/producto-completo` | 001 | Persona 2 | Propuesta (D17) |
 | [027-venta-agil](027-venta-agil/spec.md) | 3 | Categorías en el pedido y el POS, cliente y pago en un paso | `feature/cierre-por-denominacion` (con la 023) | 005, 016 | Persona 1 | En construcción (falta revisión en Docker) |
 | [028-variantes-producto](028-variantes-producto/spec.md) | 3 | Atributos y variantes con código, precio y stock propios | `feature/variantes-producto` | 026 | Persona 2 | Propuesta |
@@ -123,7 +123,9 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V44 | `feature/permisos-parte-b` | Clave corta del personal y roles propios por empresa (spec 022, Parte B) |
 | V45 | `feature/cierre-por-denominacion` | `turno_caja.conteo_denominaciones`: conteo del efectivo por billete y moneda (spec 023) |
 | V46 | `feature/cierre-por-denominacion` | Sin planes: se borran las excepciones de `empresa_modulo` y todas las empresas quedan con todos los módulos (spec 024) |
-| V47 en adelante | libre | Se reserva al empezar cada spec |
+| V47 | `feature/cierre-por-denominacion` | Caja con permisos: el Dueño opera el turno y cobra, permisos de retiro, gasto e ingreso sin PIN y `caja_usuario` (spec 025) |
+| V48 | `feature/cierre-por-denominacion` | El Dueño y el Administrador cotizan el carrito para entrar al Punto de venta (spec 025) |
+| V49 en adelante | libre | Se reserva al empezar cada spec |
 
 **Numeración propuesta en los planes 018 a 035 (no es reserva):** V41 (020), V42 (021), V43 y V44 (022), V45 (023),
 V46 (025), V47 (026), V48 (028), V49 (029), V50 (030), V51 (031), V52 (032), V53 (033), V54 (035). Las specs 018, 019,

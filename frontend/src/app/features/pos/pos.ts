@@ -11,6 +11,7 @@ import { CajaService } from '../../core/servicios/caja.service';
 import { ClientesService } from '../../core/servicios/clientes.service';
 import { VentaService } from '../../core/servicios/venta.service';
 import { VentasService } from '../../core/servicios/ventas.service';
+import { conPermiso } from '../../core/sesion/acceso';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 import { AutorizacionPin } from '../caja/autorizacion-pin';
@@ -49,6 +50,9 @@ export const MEDIOS_VENTA: Record<MedioPagoVenta, string> = {
   EFECTIVO: 'Efectivo', TARJETA_DEBITO: 'Tarjeta débito', TARJETA_CREDITO: 'Tarjeta crédito',
   TRANSFERENCIA: 'Transferencia', BILLETERA: 'Billetera digital', CREDITO: 'Crédito del cliente', SALDO_FAVOR: 'Saldo a favor',
 };
+
+/** Quién cobra: con permisos cargados decide {@code VENTA_COBRAR} (spec 025); si no, los roles de siempre. */
+export const ROLES_COBRAR = conPermiso(['CAJERO', 'SUPERVISOR_VENTAS'], 'VENTA_COBRAR');
 
 /** Acción que espera el PIN del supervisor. */
 type PinPendiente = 'DESCUENTO' | 'PRECIO_BAJO_MINIMO' | null;
@@ -91,8 +95,8 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
   protected readonly ordenMedios = computed(() => (Object.keys(MEDIOS_VENTA) as MedioPagoVenta[]).filter(m =>
     (m !== 'CREDITO' || (!!this.cliente() && this.sesion.tieneModulo('CARTERA'))) && (m !== 'SALDO_FAVOR' || !!this.cliente())));
 
-  /** Cobra quien tiene caja; el vendedor solo arma pedidos. */
-  protected readonly cobra = computed(() => this.sesion.tieneRol(['CAJERO', 'SUPERVISOR_VENTAS']) && !this.sesion.soloLectura());
+  /** Cobra quien tiene el permiso (spec 025: también el dueño); el vendedor solo arma pedidos. */
+  protected readonly cobra = computed(() => this.sesion.tieneRol(ROLES_COBRAR) && !this.sesion.soloLectura());
   protected readonly turno = signal<Turno | null>(null);
   protected readonly bodegaId = signal<number | null>(null);
   protected readonly listo = signal(false);

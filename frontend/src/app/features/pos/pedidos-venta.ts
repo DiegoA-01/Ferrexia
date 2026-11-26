@@ -7,6 +7,7 @@ import { FechaPipe, NumeroPipe } from '../../core/formato/formato';
 import { VentaService } from '../../core/servicios/venta.service';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
+import { ROLES_COBRAR } from './pos';
 
 /** Texto del estado, texto del filtro y color. "Descartado" se muestra como eliminado (spec 016). */
 const ESTADOS: Record<EstadoPedidoVenta, { texto: string; filtro: string; tono: string }> = {
@@ -99,7 +100,7 @@ export class PedidosVenta implements OnInit {
   protected readonly estados = Object.keys(ESTADOS) as EstadoPedidoVenta[];
   protected readonly estado = signal<EstadoPedidoVenta | null>('PENDIENTE_COBRO');
   protected readonly pagina = signal<Pagina<PedidoVenta> | null>(null);
-  protected readonly cobra = computed(() => this.sesion.tieneRol(['CAJERO', 'SUPERVISOR_VENTAS']) && !this.sesion.soloLectura());
+  protected readonly cobra = computed(() => this.sesion.tieneRol(ROLES_COBRAR) && !this.sesion.soloLectura());
   /** Filtro "Eliminados": muestra quién, cuándo y por qué (spec 016). */
   protected readonly verEliminados = computed(() => this.estado() === 'DESCARTADO');
   /** Pedido que se está por descartar (pide el motivo). */

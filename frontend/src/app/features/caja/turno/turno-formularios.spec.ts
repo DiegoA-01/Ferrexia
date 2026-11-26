@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { Turno } from '../../../core/api/modelos';
+import { SesionService } from '../../../core/sesion/sesion.service';
 import { AbonoTurno } from './abono-turno';
 import { CierreTurno } from './cierre-turno';
 import { FacturasTurno } from './facturas-turno';
@@ -47,6 +48,39 @@ describe('Formularios del turno', () => {
     r.flush({ ...abierto, debeRetirar: false });
     expect(recibido).not.toBeNull();
     expect(c['monto']()).toBeNull();
+  });
+
+  it('spec 025: con el permiso, el retiro se registra sin PIN y sin autorización', () => {
+    preparar();
+    TestBed.inject(SesionService).permisos.set(new Set(['CAJA_RETIRO_SIN_PIN']));
+    const f = TestBed.createComponent(MovimientoCaja);
+    f.componentRef.setInput('turnoId', 4);
+    f.componentRef.setInput('tipo', 'RETIRO');
+    f.detectChanges();
+    backend.expectOne(r => r.url === '/api/cajas/categorias-movimiento').flush([]);
+    const raiz = f.nativeElement as HTMLElement;
+    expect(raiz.textContent).not.toContain('pide PIN');
+    expect(raiz.textContent).toContain('sin el PIN del supervisor');
+    const c = f.componentInstance as unknown as Record<string, any>;
+    c['monto'].set(30000);
+    c['motivo'].set('A la bóveda');
+    f.detectChanges();
+    const boton = [...raiz.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent?.trim() === 'Registrar')!;
+    boton.click();
+    const r = backend.expectOne('/api/turnos/4/movimientos');
+    expect(r.request.body.autorizacion).toBeUndefined();
+    r.flush({ ...abierto });
+  });
+
+  it('spec 025: el permiso sin PIN es por tipo; sin el del gasto, el gasto sigue pidiendo PIN', () => {
+    preparar();
+    TestBed.inject(SesionService).permisos.set(new Set(['CAJA_RETIRO_SIN_PIN']));
+    const f = TestBed.createComponent(MovimientoCaja);
+    f.componentRef.setInput('turnoId', 4);
+    f.componentRef.setInput('tipo', 'GASTO');
+    f.detectChanges();
+    backend.expectOne(r => r.url === '/api/cajas/categorias-movimiento').flush([]);
+    expect((f.nativeElement as HTMLElement).textContent).toContain('Registrar (pide PIN)');
   });
 
   it('sin monto o sin motivo no deja pedir el PIN', () => {
