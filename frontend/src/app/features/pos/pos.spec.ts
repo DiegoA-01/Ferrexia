@@ -161,6 +161,28 @@ describe('Punto de venta', () => {
     expect(c()['motivoSinExistencia']()).toBeNull();
   });
 
+  it('domicilio (spec 032): agrega el envío, ofrece contraentrega y manda la dirección', () => {
+    crear(['CAJERO']);
+    escanear();
+    cotizar(cotizacion({ cambio: 0 }));
+    expect(c()['ordenMedios']()).not.toContain('CONTRAENTREGA');
+    c()['alternarDomicilio']();
+    backend.expectOne('/api/domicilios/envio').flush({ productoId: 30, codigo: 'ENVIO', nombre: 'Envío a domicilio', precio: 5000 });
+    expect(c()['carrito']().map((x: { productoId: number }) => x.productoId)).toEqual([7, 30]);
+    cotizar(cotizacion({ cambio: 0 }));
+    expect(c()['ordenMedios']()).toContain('CONTRAENTREGA');
+    c()['domDireccion'].set('Calle 10 # 4-21');
+    c()['domTelefono'].set('3001234567');
+    c()['pagos'].set([{ medio: 'CONTRAENTREGA', monto: 3700, referencia: '' }]);
+    c()['confirmar']();
+    const r = backend.expectOne('/api/ventas');
+    expect(r.request.body.domicilio).toEqual({ direccion: 'Calle 10 # 4-21', telefono: '3001234567', referencia: undefined });
+    r.flush({ id: 52, consecutivo: 'C1-000003', totalAPagar: 3700, cambio: 0 });
+    backend.expectOne('/api/ventas/52/tiquete').flush({ copia: false, venta: { consecutivo: 'C1-000003', lineas: [], pagos: [] } });
+    backend.expectOne('/api/turnos/actual').flush(turno);
+    expect(c()['domicilio']()).toBe(false);
+  });
+
   it('sin existencia: sin el permiso solo se ve el error', () => {
     crear(['CAJERO']);
     escanear();

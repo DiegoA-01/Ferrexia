@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import {
-  Caja, CategoriaParaVender, Cliente, CotizacionVenta, LineaVentaRequest, MedioPagoVenta, PagoVentaRequest, ProductoParaVender, Turno, Venta,
+  Caja, CategoriaParaVender, Cliente, CotizacionVenta, LineaVentaRequest, MedioPagoVenta, PagoVentaRequest, ProductoParaVender, Turno, Venta, EnvioDomicilio,
 } from '../../core/api/modelos';
 import { NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { CajaService } from '../../core/servicios/caja.service';
@@ -13,6 +13,7 @@ import { VentaService } from '../../core/servicios/venta.service';
 import { VentasService } from '../../core/servicios/ventas.service';
 import { conPermiso } from '../../core/sesion/acceso';
 import { SesionService } from '../../core/sesion/sesion.service';
+import { DomiciliosService } from '../../core/servicios/domicilios.service';
 import { Avisos } from '../../core/ui/avisos';
 import { AutorizacionPin } from '../caja/autorizacion-pin';
 import { ClienteFormulario } from '../clientes/cliente-formulario';
@@ -49,6 +50,7 @@ export interface PagoEscrito {
 export const MEDIOS_VENTA: Record<MedioPagoVenta, string> = {
   EFECTIVO: 'Efectivo', TARJETA_DEBITO: 'Tarjeta débito', TARJETA_CREDITO: 'Tarjeta crédito',
   TRANSFERENCIA: 'Transferencia', BILLETERA: 'Billetera digital', CREDITO: 'Crédito del cliente', SALDO_FAVOR: 'Saldo a favor',
+  CONTRAENTREGA: 'Contraentrega (domicilio)',
 };
 
 /** Quién cobra: con permisos cargados decide {@code VENTA_COBRAR} (spec 025); si no, los roles de siempre. */
@@ -93,7 +95,19 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
   protected readonly medios = MEDIOS_VENTA;
   /** Medios que se ofrecen: el crédito (con módulo de cartera) y el saldo a favor solo con un cliente registrado. */
   protected readonly ordenMedios = computed(() => (Object.keys(MEDIOS_VENTA) as MedioPagoVenta[]).filter(m =>
-    (m !== 'CREDITO' || (!!this.cliente() && this.sesion.tieneModulo('CARTERA'))) && (m !== 'SALDO_FAVOR' || !!this.cliente())));
+    (m !== 'CREDITO' || (!!this.cliente() && this.sesion.tieneModulo('CARTERA'))) && (m !== 'SALDO_FAVOR' || !!this.cliente())
+    && (m !== 'CONTRAENTREGA' || this.domicilio())));
+
+  /** Spec 032: la venta es a domicilio (dirección, teléfono, referencia y la línea del envío si está configurado). */
+  protected readonly domicilio = signal(false);
+  protected readonly domDireccion = signal('');
+  protected readonly domTelefono = signal('');
+  protected readonly domReferencia = signal('');
+  /** Producto servicio del envío y su precio, si la empresa lo configuró. */
+  protected readonly envio = signal<EnvioDomicilio | null>(null);
+  private readonly domicilios = inject(DomiciliosService);
+  protected readonly domicilioValido = computed(() => !this.domicilio()
+    || (this.domDireccion().trim().length > 3 && this.domTelefono().trim().length >= 7));
 
   /** Cobra quien tiene el permiso (spec 025: también el dueño); el vendedor solo arma pedidos. */
   protected readonly cobra = computed(() => this.sesion.tieneRol(ROLES_COBRAR) && !this.sesion.soloLectura());
@@ -602,10 +616,42 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     this.confirmar();
   }
 
+  /** Activa o quita el domicilio (spec 032): propone la dirección y el teléfono del cliente y agrega el envío. */
+  protected alternarDomicilio(): void {
+    if (this.domicilio()) {
+      this.domicilio.set(false);
+      this.pagos.update(l => l.map(p => (p.medio === 'CONTRAENTREGA' ? { ...p, medio: null } : p)));
+      return;
+    }
+    this.domicilio.set(true);
+    const c = this.cliente();
+    if (c && !this.domDireccion()) {
+      this.domDireccion.set(c.direccion ?? '');
+    }
+    if (c && !this.domTelefono()) {
+      this.domTelefono.set(c.telefono ?? '');
+    }
+    const agregarEnvio = (e: EnvioDomicilio) => {
+      if (e.productoId && e.precio != null && !this.carrito().some(x => x.productoId === e.productoId)) {
+        this.agregar({ productoId: e.productoId, codigo: e.codigo, nombre: e.nombre, precio: e.precio, unidad: 'UND' });
+      }
+    };
+    const e = this.envio();
+    if (e) {
+      agregarEnvio(e);
+    } else {
+      this.domicilios.envio().subscribe({ next: r => { this.envio.set(r); agregarEnvio(r); }, error: () => this.envio.set({}) });
+    }
+  }
+
   /** Confirma la venta; antes pide el PIN si el servidor dijo que hace falta. */
   protected confirmar(): void {
     const c = this.cotizacion();
     if (!c || !this.puedeConfirmar()) {
+      return;
+    }
+    if (!this.domicilioValido()) {
+      this.avisos.ok('Escribe la dirección y el teléfono del domicilio.');
       return;
     }
     if (c.requiereAutorizacionDescuento && !this.tokenDescuento()) {
@@ -621,6 +667,8 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
       clienteId: this.cliente()?.id, pedidoVentaId: this.pedidoVentaId() ?? undefined, lineas: this.lineas(this.motivoSinExistencia()),
       pagos: this.pagosEnviados(),
       autorizacionDescuento: this.tokenDescuento() ?? undefined, autorizacionPrecio: this.tokenPrecio() ?? undefined,
+      domicilio: this.domicilio() ? { direccion: this.domDireccion().trim(), telefono: this.domTelefono().trim(),
+        referencia: this.domReferencia().trim() || undefined } : undefined,
     }, this.clave()).subscribe({
       next: v => {
         this.enviando.set(false);
@@ -816,6 +864,10 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     this.reintento.set(false);
     this.sinExistencia.set(null);
     this.motivoSinExistencia.set(null);
+    this.domicilio.set(false);
+    this.domDireccion.set('');
+    this.domTelefono.set('');
+    this.domReferencia.set('');
     this.clave.set(this.nuevaClave());
     this.enfocar();
   }

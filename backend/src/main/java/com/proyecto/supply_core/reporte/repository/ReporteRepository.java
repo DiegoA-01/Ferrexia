@@ -149,7 +149,7 @@ public interface ReporteRepository extends Repository<OrdenCompra, Long> {
             from Producto p join p.categoria c join p.unidadMedida u left join p.agrupador ag
                  left join StockProductoBodega s on s.producto = p
                  left join s.bodega b left join b.sede se
-            where p.activo = true
+            where p.activo = true and p.esServicio = false
               and (:categoriaId is null or c.id = :categoriaId)
             group by p.id, p.codigo, p.nombre, c.nombre, u.codigo, p.stockMinimo, p.stockMaximo, p.costoReferencia,
                      p.esAgrupador, ag.id

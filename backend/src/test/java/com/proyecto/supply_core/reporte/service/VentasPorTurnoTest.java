@@ -100,6 +100,21 @@ class VentasPorTurnoTest {
         assertThat(t.esperado()).isEqualByComparingTo("70000");
     }
 
+    /** Spec 032: el cobro de un domicilio contraentrega es venta del turno que lo recibe, por su medio. */
+    @Test
+    void elCobroDeDomicilioCuentaComoVentaDeSuMedio() {
+        BaseTurno abierto = new BaseTurno(5L, "Caja 1", "Ana", "ABIERTO", ABRIO, null, null);
+        List<SumaLibro> sumas = List.of(suma(5, "BASE", "EFECTIVO", "50000"), suma(5, "COBRO_DOMICILIO", "EFECTIVO", "25000"),
+                suma(5, "COBRO_DOMICILIO", "TRANSFERENCIA", "10000"));
+
+        VentasTurnoReporte.Turno t = CajaReporteService.ventasPorTurno(HOY, HOY, List.of(abierto), sumas).turnos().getFirst();
+
+        assertThat(t.ventas().get("EFECTIVO")).isEqualByComparingTo("25000");
+        assertThat(t.ventas().get("TRANSFERENCIA")).isEqualByComparingTo("10000");
+        assertThat(t.totalVentas()).isEqualByComparingTo("35000");
+        assertThat(t.esperado()).isEqualByComparingTo("85000");
+    }
+
     /** Un turno sin movimientos sale en cero. */
     @Test
     void unTurnoSinMovimientosSaleEnCero() {

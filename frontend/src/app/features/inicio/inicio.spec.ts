@@ -55,7 +55,7 @@ describe('Inicio: categorías del menú (specs 012 y 013)', () => {
   it('el destino depende del rol: el cajero entra a Ventas por el punto de venta y no ve Gestión', () => {
     const html = crear(['CAJERO']);
     expect(tarjeta(html, 'Ventas').getAttribute('href')).toBe('/app/pos');
-    expect(tarjeta(html, 'Ventas').querySelector('.categoria-cuenta')?.textContent?.trim()).toBe('6 pantallas');
+    expect(tarjeta(html, 'Ventas').querySelector('.categoria-cuenta')?.textContent?.trim()).toBe('7 pantallas');
     expect(tarjetas(html).map(titulo)).not.toContain('Gestión');
   });
 

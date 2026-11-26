@@ -271,6 +271,10 @@ public enum AccionAuditoria {
     VENTA_ANULAR,
     /** Cambio del método de pago de una venta (spec 029, D16). */
     VENTA_CAMBIAR_PAGO,
+    /** Cambio de estado o asignación de un domicilio (spec 032). */
+    DOMICILIO_ESTADO,
+    /** Cobro de un domicilio contraentrega en la caja (spec 032). */
+    DOMICILIO_COBRAR,
     /** Un cliente devolvió mercancía de una venta (spec 006). */
     VENTA_DEVOLVER,
     /** Se habilitó o se retiró la excepción de crédito de un cliente en mora (spec 007). */

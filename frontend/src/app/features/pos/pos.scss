@@ -68,3 +68,7 @@ tr.alerta td { background: #fff8eb; }
 
 /* spec 030: vender sin existencia con motivo */
 .sin-existencia { display: grid; gap: 8px; }
+
+/* spec 032: datos del domicilio en el cobro */
+.domicilio { display: grid; gap: 6px; }
+.campos-domicilio { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }

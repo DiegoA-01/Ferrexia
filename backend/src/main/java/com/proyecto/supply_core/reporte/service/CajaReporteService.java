@@ -232,7 +232,8 @@ public class CajaReporteService {
                 esperado = esperado.add(monto);
                 switch (s.tipo()) {
                     // spec 029: el ajuste de pago mueve la venta de un medio a otro (suma cero en la venta original)
-                    case "VENTA", "AJUSTE_PAGO" -> ventas.merge(s.medio(), monto, BigDecimal::add);
+                    // spec 032: el cobro de un domicilio contraentrega es venta del turno que lo recibe
+                    case "VENTA", "AJUSTE_PAGO", "COBRO_DOMICILIO" -> ventas.merge(s.medio(), monto, BigDecimal::add);
                     case "ANULACION" -> {
                         ventas.merge(s.medio(), monto, BigDecimal::add);
                         anulaciones = anulaciones.add(monto.abs());

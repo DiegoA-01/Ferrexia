@@ -340,7 +340,7 @@ class AislamientoEmpresasTest {
             }
         });
         assertEquals(List.of(), diferencias);
-        assertEquals(113, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 (V47) + 2 (V51) + 1 (V52)
+        assertEquals(115, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 (V47) + 2 (V51) + 1 (V52) + 2 (V53)
         assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM rol WHERE es_plantilla AND empresa_id IS NULL", Integer.class));
     }
 
@@ -3810,6 +3810,161 @@ class AislamientoEmpresasTest {
             jdbc.update("UPDATE producto SET costo_referencia = NULL, costo_promedio = NULL WHERE id = ?", productoA);
             jdbc.update("UPDATE usuario SET pin_supervisor_hash = NULL, pin_intentos_fallidos = 0, pin_bloqueado_hasta = NULL "
                     + "WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+        }
+    }
+
+    @Test
+    void elDomicilioContraentregaSaleVendidoSeCobraEnElTurnoDeQuienLoRecibeYNoCruzaEmpresas() throws Exception {
+        // Spec 032 (D19): venta a domicilio, envío como servicio, estados, cobro contraentrega y devolución
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        com.fasterxml.jackson.databind.ObjectMapper lector = new com.fasterxml.jackson.databind.ObjectMapper();
+        String duenoA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        String cajeroA = token(empresaA, usuarioA2, "CAJERO");
+        String repartidorA = token(empresaA, usuarioA2, "ALMACENISTA");
+        String duenoB = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+        Long sedeA = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaA);
+        Long repartir = jdbc.queryForObject("SELECT id FROM permiso WHERE codigo = 'DOMICILIO_REPARTIR'", Long.class);
+        java.math.BigDecimal stockAntes = jdbc.queryForObject("SELECT COALESCE(SUM(cantidad), 0) FROM stock_producto_bodega "
+                + "WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA);
+        java.util.function.Supplier<java.math.BigDecimal> stock = () -> jdbc.queryForObject("SELECT cantidad FROM "
+                + "stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA);
+        try {
+            long generalA = lector.readTree(mvc.perform(get("/api/ventas/listas").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andReturn().getResponse().getContentAsString()).get(0).get("id").asLong();
+            jdbc.update("UPDATE producto SET costo_referencia = 6000, costo_promedio = 6000, vendible = 1 WHERE id = ?", productoA);
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA + ",\"precio\":10000}"))
+                    .andExpect(status().isOk());
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 10) "
+                    + "ON DUPLICATE KEY UPDATE cantidad = 10", empresaA, productoA, bodegaA);
+            long caja = lector.readTree(mvc.perform(post("/api/cajas").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"nombre\":\"Caja domicilios\",\"sedeId\":" + sedeA + ",\"bodegaId\":" + bodegaA
+                                    + ",\"prefijoConsecutivo\":\"D7\",\"topeEfectivo\":0}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            long turno = lector.readTree(mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content("{\"cajaId\":" + caja + ",\"baseApertura\":50000}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            java.util.function.Supplier<java.math.BigDecimal> efectivo = () -> jdbc.queryForObject("SELECT SUM(monto) FROM "
+                    + "movimiento_caja WHERE turno_id = ? AND medio_pago = 'EFECTIVO'", java.math.BigDecimal.class, turno);
+
+            // 1) el envío es un producto servicio con su precio en la General
+            long envio = lector.readTree(mvc.perform(put("/api/domicilios/envio").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content("{\"precio\":5000}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.precio").value(5000.0))
+                    .andReturn().getResponse().getContentAsString()).get("productoId").asLong();
+            assertTrue(jdbc.queryForObject("SELECT es_servicio FROM producto WHERE id = ?", Boolean.class, envio));
+
+            // 2) venta a domicilio contraentrega: sale vendida, el stock baja (el envío no) y la caja no recibe nada aún
+            String venta = "{\"lineas\":[{\"productoId\":" + productoA + ",\"cantidad\":%d},{\"productoId\":" + envio
+                    + ",\"cantidad\":1}],\"pagos\":[{\"medio\":\"%s\",\"monto\":%d}]%s}";
+            String domicilio = ",\"domicilio\":{\"direccion\":\"Calle 10 # 4-21\",\"telefono\":\"3001234567\",\"referencia\":\"Portería\"}";
+            java.util.function.Function<String, org.springframework.test.web.servlet.ResultActions> vender = cuerpo -> {
+                try {
+                    return mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .header("Idempotency-Key", "dm-" + java.util.UUID.randomUUID()).contentType(json).content(cuerpo));
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            };
+            vender.apply(venta.formatted(2, "CONTRAENTREGA", 25000, "")).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("CONTRAENTREGA_INVALIDA"));
+            long venta1 = lector.readTree(vender.apply(venta.formatted(2, "CONTRAENTREGA", 25000, domicilio))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            assertEquals(0, new java.math.BigDecimal("8").compareTo(stock.get()), "el envío no mueve stock");
+            assertEquals("DOMICILIO", jdbc.queryForObject("SELECT tipo_servicio FROM venta WHERE id = ?", String.class, venta1));
+            assertEquals(0, new java.math.BigDecimal("50000").compareTo(efectivo.get()), "la contraentrega no entra aún");
+            long dom1 = jdbc.queryForObject("SELECT id FROM domicilio WHERE venta_id = ?", Long.class, venta1);
+
+            // 3) domiciliario interno: con el permiso suelto de repartir; solo ve lo suyo
+            jdbc.update("INSERT INTO usuario_permiso (usuario_id, permiso_id, empresa_id, concedido) VALUES (?, ?, ?, TRUE)",
+                    usuarioA2, repartir, empresaA);
+            permisosService.limpiar();
+            mvc.perform(get("/api/domicilios/domiciliarios").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$[?(@.id == " + usuarioA2 + ")]").isNotEmpty());
+            mvc.perform(get("/api/domicilios").header(HttpHeaders.AUTHORIZATION, repartidorA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+            mvc.perform(post("/api/domicilios/" + dom1 + "/asignar").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"domiciliarioUsuarioId\":" + usuarioA2 + "}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("ASIGNADO"));
+            String estado = "{\"estado\":\"%s\",\"nota\":\"%s\"}";
+            mvc.perform(get("/api/domicilios").header(HttpHeaders.AUTHORIZATION, repartidorA)).andExpect(jsonPath("$.length()").value(1));
+            mvc.perform(post("/api/domicilios/" + dom1 + "/estado").header(HttpHeaders.AUTHORIZATION, repartidorA).contentType(json)
+                    .content(estado.formatted("EN_CAMINO", ""))).andExpect(status().isOk());
+            mvc.perform(post("/api/domicilios/" + dom1 + "/estado").header(HttpHeaders.AUTHORIZATION, repartidorA).contentType(json)
+                    .content(estado.formatted("DEVUELTO", "No estaba el cliente"))).andExpect(status().isForbidden());
+            mvc.perform(post("/api/domicilios/" + dom1 + "/estado").header(HttpHeaders.AUTHORIZATION, repartidorA).contentType(json)
+                    .content(estado.formatted("ENTREGADO", "Recibió el portero"))).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.porCobrar").value(true));
+            mvc.perform(post("/api/domicilios/" + dom1 + "/estado").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content(estado.formatted("EN_CAMINO", ""))).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("TRANSICION_INVALIDA"));
+
+            // 4) el cajero cobra la contraentrega en su turno: la caja cuadra y la venta queda con el pago real
+            String cobro = "{\"pagos\":[{\"medio\":\"EFECTIVO\",\"monto\":%d}]}";
+            mvc.perform(post("/api/domicilios/" + dom1 + "/cobrar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                    .content(cobro.formatted(20000))).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("PAGOS_NO_CUADRAN"));
+            mvc.perform(post("/api/domicilios/" + dom1 + "/cobrar").header(HttpHeaders.AUTHORIZATION, duenoB).contentType(json)
+                    .content(cobro.formatted(25000))).andExpect(status().isNotFound());
+            mvc.perform(post("/api/domicilios/" + dom1 + "/cobrar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                    .content(cobro.formatted(25000))).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.porCobrar").value(false))
+                    .andExpect(jsonPath("$.eventos.length()").value(5));
+            assertEquals(0, new java.math.BigDecimal("75000").compareTo(efectivo.get()));
+            assertEquals("EFECTIVO", jdbc.queryForObject("SELECT medio FROM venta_pago WHERE venta_id = ?", String.class, venta1));
+            mvc.perform(post("/api/domicilios/" + dom1 + "/cobrar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                    .content(cobro.formatted(25000))).andExpect(status().isConflict());
+
+            // 5) un domicilio devuelto anula la venta y el stock vuelve; uno cancelado antes de salir, también
+            long venta2 = lector.readTree(vender.apply(venta.formatted(1, "CONTRAENTREGA", 15000, domicilio))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            long dom2 = jdbc.queryForObject("SELECT id FROM domicilio WHERE venta_id = ?", Long.class, venta2);
+            assertEquals(0, new java.math.BigDecimal("7").compareTo(stock.get()));
+            mvc.perform(post("/api/domicilios/" + dom2 + "/asignar").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content("{\"nombre\":\"Mensajería Rápida\",\"telefono\":\"3100000000\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.domiciliario").value("Mensajería Rápida"));
+            mvc.perform(post("/api/domicilios/" + dom2 + "/estado").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content(estado.formatted("EN_CAMINO", ""))).andExpect(status().isOk());
+            mvc.perform(post("/api/domicilios/" + dom2 + "/estado").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content(estado.formatted("DEVUELTO", "No estaba el cliente"))).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("DEVUELTO"));
+            assertEquals("ANULADA", jdbc.queryForObject("SELECT estado FROM venta WHERE id = ?", String.class, venta2));
+            assertEquals(0, new java.math.BigDecimal("8").compareTo(stock.get()), "el devuelto regresa al stock");
+            long venta3 = lector.readTree(vender.apply(venta.formatted(1, "CONTRAENTREGA", 15000, domicilio))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            long dom3 = jdbc.queryForObject("SELECT id FROM domicilio WHERE venta_id = ?", Long.class, venta3);
+            mvc.perform(post("/api/domicilios/" + dom3 + "/estado").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content(estado.formatted("CANCELADO", ""))).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("MOTIVO_OBLIGATORIO"));
+            mvc.perform(post("/api/domicilios/" + dom3 + "/estado").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content(estado.formatted("CANCELADO", "El cliente ya no lo quiere"))).andExpect(status().isOk());
+            assertEquals(0, new java.math.BigDecimal("8").compareTo(stock.get()));
+
+            // 6) nada cruza a B
+            mvc.perform(get("/api/domicilios/" + dom1).header(HttpHeaders.AUTHORIZATION, duenoB)).andExpect(status().isNotFound());
+            mvc.perform(get("/api/domicilios").header(HttpHeaders.AUTHORIZATION, duenoB)).andExpect(jsonPath("$.length()").value(0));
+            mvc.perform(get("/api/domicilios/envio").header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(jsonPath("$.productoId").doesNotExist());
+            mvc.perform(get("/api/domicilios").header(HttpHeaders.AUTHORIZATION, duenoA)).andExpect(jsonPath("$.length()").value(3));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM domicilio_evento WHERE empresa_id = ?", Integer.class, empresaB));
+        } finally {
+            jdbc.update("DELETE FROM usuario_permiso WHERE usuario_id = ? AND permiso_id = ?", usuarioA2, repartir);
+            permisosService.limpiar();
+            jdbc.update("DELETE FROM domicilio_evento WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM domicilio WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE p FROM venta_pago p JOIN venta v ON v.id = p.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE l FROM venta_linea l JOIN venta v ON v.id = l.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM venta WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_inventario WHERE empresa_id IN (?, ?) AND referencia_tipo = 'VENTA'", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM turno_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM precio_producto WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM producto WHERE empresa_id IN (?, ?) AND codigo = 'ENVIO'", empresaA, empresaB);
+            jdbc.update("DELETE FROM categoria_producto WHERE empresa_id IN (?, ?) AND nombre = 'Servicios'", empresaA, empresaB);
+            jdbc.update("UPDATE stock_producto_bodega SET cantidad = ? WHERE producto_id = ? AND bodega_id = ?", stockAntes,
+                    productoA, bodegaA);
+            jdbc.update("UPDATE producto SET costo_referencia = NULL, costo_promedio = NULL WHERE id = ?", productoA);
         }
     }
 

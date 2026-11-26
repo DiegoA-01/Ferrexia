@@ -64,7 +64,8 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
      * @param texto       coincidencia parcial en código o nombre
      * @param categoriaId categoría
      * @param activo      estado
-     * @param agrupadores {@code false} deja fuera los productos generales que agrupan variantes (spec 028)
+     * @param agrupadores {@code false} deja fuera los productos generales que agrupan variantes (spec 028) y los servicios
+     *                    (spec 032): lo que se compra o se mueve
      * @param pageable    página y orden
      * @return página de productos
      */
@@ -75,7 +76,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
                                   or lower(p.nombre) like lower(concat('%', :texto, '%')))
               and (:categoriaId is null or p.categoria.id = :categoriaId)
               and (:activo is null or p.activo = :activo)
-              and (:agrupadores is null or :agrupadores = true or p.esAgrupador = false)
+              and (:agrupadores is null or :agrupadores = true or (p.esAgrupador = false and p.esServicio = false))
             """)
     Page<Producto> buscar(@Param("texto") String texto, @Param("categoriaId") Long categoriaId,
             @Param("activo") Boolean activo, @Param("agrupadores") Boolean agrupadores, Pageable pageable);

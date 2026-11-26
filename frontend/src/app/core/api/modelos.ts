@@ -122,6 +122,11 @@ export type ProductoNuevo = S['ProductoRequest'];
 export type CambiarPago = S['CambiarPagoRequest'];
 /** Spec 030: una venta sin existencia con su faltante pendiente. */
 export type VentaSinExistencia = S['VentaSinExistenciaFila'];
+/** Spec 032: domicilios. */
+export type Domicilio = S['DomicilioResponse'];
+export type EstadoDomicilio = NonNullable<S['DomicilioResponse']['estado']>;
+export type EnvioDomicilio = S['EnvioDomicilioResponse'];
+export type Domiciliario = S['DomiciliarioResponse'];
 /** Spec 028: atributo de un producto con variantes (Medida, Color...) con sus valores. */
 export type AtributoVariante = S['AtributoVariante'];
 export type VarianteNueva = S['VarianteNuevaRequest'];

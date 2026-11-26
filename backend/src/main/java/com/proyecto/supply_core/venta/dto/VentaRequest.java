@@ -16,6 +16,7 @@ import jakarta.validation.constraints.Size;
  * @param pagos                  pagos (1 a 10)
  * @param autorizacionDescuento  token del supervisor si algún descuento pasa el límite del rol
  * @param autorizacionPrecio     token del supervisor si algún precio queda bajo el mínimo
+ * @param domicilio              dirección, teléfono y referencia si es una venta a domicilio (spec 032), o {@code null}
  */
 public record VentaRequest(
         @Positive(message = "debe ser un id válido") Long clienteId,
@@ -25,5 +26,6 @@ public record VentaRequest(
         @NotEmpty(message = "agregue al menos un pago") @Size(max = 10, message = "admite hasta 10 pagos")
         List<@Valid PagoVentaRequest> pagos,
         @Size(max = 100, message = "no es una autorización válida") String autorizacionDescuento,
-        @Size(max = 100, message = "no es una autorización válida") String autorizacionPrecio) {
+        @Size(max = 100, message = "no es una autorización válida") String autorizacionPrecio,
+        @jakarta.validation.Valid com.proyecto.supply_core.domicilio.dto.DomicilioVentaRequest domicilio) {
 }
