@@ -1,5 +1,6 @@
 package com.proyecto.supply_core.exportacion.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -54,6 +55,7 @@ import com.proyecto.supply_core.proveedor.dto.ProveedorResponse;
 import com.proyecto.supply_core.proveedor.service.ProveedorService;
 import com.proyecto.supply_core.reporte.dto.CajaReporte;
 import com.proyecto.supply_core.reporte.dto.VentaReporte;
+import com.proyecto.supply_core.reporte.dto.VentasTurnoReporte;
 import com.proyecto.supply_core.reporte.enums.AgrupacionVenta;
 import com.proyecto.supply_core.reporte.service.CajaReporteService;
 import com.proyecto.supply_core.reporte.service.VentaReporteService;
@@ -252,6 +254,53 @@ public class ExportacionService {
         }
         ArchivoExportado archivo = new ArchivoExportado(nombre("reporte-caja", f), f, bytes, turnos.size());
         return entregar(archivo, destino, null, "REPORTE_CAJA; desde=" + r.desde() + "; hasta=" + r.hasta());
+    }
+
+    /**
+     * Ventas por turno en Excel (spec 023), con los mismos datos que la pantalla.
+     *
+     * @param formato {@code xlsx}
+     * @param desde   primer día (vacío = primer día del mes)
+     * @param hasta   último día (vacío = hoy)
+     * @param cajaId  solo esa caja ({@code null} = todas)
+     * @param destino descarga o correo
+     * @return archivo generado
+     * @throws FormatoNoSoportadoException si el formato no es xlsx
+     * @throws ParametroInvalidoException  si supera {@link #MAX_FILAS}
+     */
+    public ArchivoExportado ventasPorTurno(String formato, LocalDate desde, LocalDate hasta, Long cajaId,
+            DestinoExportacion destino) {
+        FormatoExportacion f = exigir(formato, SOLO_EXCEL, "Las ventas por turno");
+        VentasTurnoReporte r = cajaReporte.ventasPorTurno(desde, hasta, cajaId);
+        exigirTope(r.turnos().size());
+        List<List<Object>> filas = new ArrayList<>(r.turnos().stream().<List<Object>>map(x -> Arrays.asList(x.id(),
+                x.caja(), x.cajero(), x.estado(), x.abiertoEn(), x.cerradoEn(), venta(x.ventas(), "EFECTIVO"),
+                venta(x.ventas(), "TARJETA_DEBITO"), venta(x.ventas(), "TARJETA_CREDITO"),
+                venta(x.ventas(), "TRANSFERENCIA"), venta(x.ventas(), "BILLETERA"), x.totalVentas(), x.devoluciones(),
+                x.ingresos().add(x.abonos()), x.gastos().add(x.retiros()), x.esperado(), x.contado(), x.diferencia()))
+                .toList());
+        VentasTurnoReporte.Totales tt = r.totales();
+        filas.add(Arrays.asList("Total", null, null, null, null, null, venta(tt.ventas(), "EFECTIVO"),
+                venta(tt.ventas(), "TARJETA_DEBITO"), venta(tt.ventas(), "TARJETA_CREDITO"),
+                venta(tt.ventas(), "TRANSFERENCIA"), venta(tt.ventas(), "BILLETERA"), tt.totalVentas(), tt.devoluciones(),
+                tt.ingresos(), tt.egresos(), null, null, tt.diferencia()));
+        byte[] bytes = excel.generar("Ventas por turno " + r.desde() + " a " + r.hasta(), empresa(), usuario().nombre(),
+                List.of("Turno", "Caja", "Cajero", "Estado", "Abierto", "Cerrado", "Efectivo", "Tarjeta débito",
+                        "Tarjeta crédito", "Transferencia", "Billetera", "Total ventas", "Devoluciones", "Ingresos",
+                        "Egresos", "Esperado", "Contado", "Diferencia"),
+                filas);
+        ArchivoExportado archivo = new ArchivoExportado(nombre("ventas-por-turno", f), f, bytes, r.turnos().size());
+        return entregar(archivo, destino, cajaId, "VENTAS_POR_TURNO; desde=" + r.desde() + "; hasta=" + r.hasta()
+                + "; cajaId=" + cajaId);
+    }
+
+    /**
+     * @param ventas ventas por medio
+     * @param medio  medio de pago
+     * @return la venta del medio o 0
+     */
+    private static BigDecimal venta(Map<String, BigDecimal> ventas, String medio) {
+        return ventas.getOrDefault(medio, BigDecimal.ZERO);
     }
 
     /**

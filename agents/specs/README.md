@@ -52,11 +52,11 @@ decisiones y se aprueban antes de escribir el plan.
 | [020-empresa-sedes-simples](020-empresa-sedes-simples/spec.md) | 1 | Código de ingreso automático y sede con enlace de Google Maps | `feature/empresa-sedes-simples` | SaaS 2 | Persona 2 | Hecha (V41, PR #24) |
 | [021-mi-turno-movimientos](021-mi-turno-movimientos/spec.md) | 2 | Facturas del turno con paginación, ingresos y egresos con categoría, esperado antes de cerrar | `feature/mi-turno-movimientos` | 018 | Persona 1 | Hecha (V42, PR #26) |
 | [022-permisos-plantillas-rol](022-permisos-plantillas-rol/spec.md) | 2 | Permisos por acción, plantillas de rol, permisos sueltos y clave corta del personal | `feature/permisos-plantillas-rol` | SaaS 3 | Persona 2 | Hecha (V43, PR #27; V44, PR pendiente) |
-| [023-cierre-por-denominacion](023-cierre-por-denominacion/spec.md) | 2 | Cierre contando billetes y monedas, vista de ventas por turno | `feature/cierre-por-denominacion` | 021 | Persona 1 | Propuesta |
-| [024-planes-simbolicos](024-planes-simbolicos/spec.md) | 2 | Todos los módulos para todos los planes; planes solo como etiqueta | `feature/planes-simbolicos` | SaaS 2 | Persona 2 | Propuesta (D11) |
-| [025-caja-con-permisos](025-caja-con-permisos/spec.md) | 3 | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | `feature/caja-con-permisos` | 022 | Persona 1 | Propuesta (D15) |
-| [026-producto-completo](026-producto-completo/spec.md) | 3 | Categoría y proveedor al vuelo, impuesto, unidad ajustable, stock máximo, proveedor y fecha del costo | `feature/producto-completo` | 001 | Persona 2 | Propuesta (D17) |
-| [027-venta-agil](027-venta-agil/spec.md) | 3 | Categorías en el pedido y el POS, cliente y pago en un paso | `feature/venta-agil` | 005, 016 | Persona 1 | Propuesta |
+| [023-cierre-por-denominacion](023-cierre-por-denominacion/spec.md) | 2 | Cierre contando billetes y monedas, vista de ventas por turno | `feature/cierre-por-denominacion` | 021 | Persona 1 | En construcción (V45; falta revisión en Docker) |
+| [024-planes-simbolicos](024-planes-simbolicos/spec.md) | 2 | Sin planes: los módulos se eligen al crear la empresa; las existentes con todos | `feature/cierre-por-denominacion` (con la 023 y la 027) | SaaS 2 | Persona 2 | En construcción (V46; falta revisión en Docker) |
+| [025-caja-con-permisos](025-caja-con-permisos/spec.md) | 3 | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | `feature/cierre-por-denominacion` (con la 023, 024 y 027) | 022 | Persona 1 | En construcción (V47 y V48; revisada en Docker, falta aprobación) |
+| [026-producto-completo](026-producto-completo/spec.md) | 3 | Categoría y proveedor al vuelo, impuesto, unidad ajustable, stock máximo, proveedor y fecha del costo | `feature/cierre-por-denominacion` | 001 | Persona 2 | En construcción (V49; falta decidir la unidad con movimientos) |
+| [027-venta-agil](027-venta-agil/spec.md) | 3 | Categorías en el pedido y el POS, cliente y pago en un paso | `feature/cierre-por-denominacion` (con la 023) | 005, 016 | Persona 1 | En construcción (falta revisión en Docker) |
 | [028-variantes-producto](028-variantes-producto/spec.md) | 3 | Atributos y variantes con código, precio y stock propios | `feature/variantes-producto` | 026 | Persona 2 | Propuesta |
 | [029-anular-factura-metodo-pago](029-anular-factura-metodo-pago/spec.md) | 3 | Anular factura de un turno cerrado y cambiar el método de pago | `feature/anular-factura-metodo-pago` | 006, 022 | Persona 1 | Propuesta (D16) |
 | [030-venta-sin-stock](030-venta-sin-stock/spec.md) | 4 | Vender sin existencia con permiso, aviso y reporte | `feature/venta-sin-stock` | 004, 022 | Persona 1 | Propuesta (D13) |
@@ -86,13 +86,13 @@ referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real
 | D8 | ¿Quién fija precios: solo el dueño o también el jefe de compras? | El dueño, con opción de delegarlo a `ADMIN_COMPRAS`. | **Tomada** (construida en V29) | 001 |
 | D9 | ¿Precio distinto por caja y por unidad del mismo producto? | **Sí**, como pedía la spec original; hoy el precio se guarda solo en la unidad del producto. | **Tomada** (2026-11-19) | 001 |
 | D10 | ¿Cómo son las contraseñas del personal y quién las ve? | Dueño y administradores: clave fuerte (12+, mayúscula, número, símbolo) y MFA. Personal: clave corta o PIN de 6 dígitos que asigna el jefe. Nadie **ve** una clave (se guardan cifradas): se **restablece** y queda auditado. | Tomada (2026-11-25, tal como está; se construye en la Parte B de la 022) | 022 |
-| D11 | ¿Qué pasa con los planes? | Solo etiqueta: todas las empresas con todos los módulos (incluido Ventas); se quitan crear y eliminar planes; se conservan las tablas para SaaS 4. Falta decidir si quedan las excepciones de módulo por empresa. | Recomendada | 024 |
+| D11 | ¿Qué pasa con los planes? | Se quitan los planes. Al crear una empresa, el dueño de la plataforma marca en un panel los módulos que necesita; después los prende o apaga uno por uno. Las empresas que ya existían quedan con todos los módulos. Las tablas de planes se conservan sin uso. | Tomada (2026-11-25, por el equipo: sin planes, módulos por empresa) | 024 |
 | D12 | ¿Las sedes pasan a ser empresas separadas con un super administrador? | Grupo de empresas aisladas con un super administrador que cambia de empresa sin volver a ingresar. Faltan las tres preguntas de la spec 035. | **Pendiente: aclarar** | 035 |
 | D13 | ¿Se permite vender sin existencia? (revisa D1) | Sí, solo con permiso y motivo, con aviso y reporte. Falta elegir: stock negativo marcado o faltante pendiente sin bajar de cero. | Recomendada | 030 |
 | D14 | ¿El proveedor deja de tener cuenta? | Sí: cotiza con un enlace de un solo uso, solo el nombre obligatorio, límite de peticiones y anti-bot. El portal se deja de usar. | Recomendada | 031 |
-| D15 | ¿Retiros y gastos sin PIN? | Con el permiso, sin PIN; sin el permiso, PIN del supervisor como hoy. | Recomendada | 025 |
+| D15 | ¿Retiros y gastos sin PIN? | Con el permiso, sin PIN; sin el permiso, PIN del supervisor como hoy. | Tomada (2026-11-25, tal como está) | 025 |
 | D16 | ¿Se puede cambiar el método de pago de una factura? | Sí en facturas POS, con permiso y motivo, ajustando la caja; nunca en facturas electrónicas DIAN. | Recomendada | 029 |
-| D17 | ¿Se puede superar el stock máximo? | Sí, con alerta; no bloquea. | Recomendada | 026 |
+| D17 | ¿Se puede superar el stock máximo? | Sí, con alerta; no bloquea. | Tomada (2026-11-25, tal como está) | 026 |
 | D18 | ¿Qué roles quedan? | Permisos por acción con plantillas: Dueño, Administrador, Cajero, Vendedor, Supervisor de ventas, Bodega, Compras y Contador/Auditor; cada usuario migra sin ganar ni perder acceso. | Tomada (2026-11-25, tal como está) | 022 |
 | D19 | ¿Qué alcance tiene domicilios? | Venta tipo domicilio con dirección y envío, domiciliario, estados y pago contraentrega en la caja; sin mapa en vivo ni app. | Recomendada | 032 |
 | D20 | ¿El cajero ve lo esperado antes de cerrar? (revisa el cierre ciego de la 003) | Cuenta primero y después ve lo esperado y la diferencia; quien tenga el permiso "ver esperado" lo ve siempre. | Tomada (2026-11-25, opción A: cierre ciego; mientras llega la 022 ven lo esperado SUPERVISOR_VENTAS y ADMIN_SISTEMA) | 021 |
@@ -121,7 +121,12 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V42 | `feature/mi-turno-movimientos` | Categorías de ingresos y egresos de caja y `movimiento_caja.categoria_id` (spec 021) |
 | V43 | `feature/permisos-plantillas-rol` | Catálogo de permisos, roles como plantillas, `rol_permiso` de los 12 roles y `usuario_permiso` (spec 022, Parte A) |
 | V44 | `feature/permisos-parte-b` | Clave corta del personal y roles propios por empresa (spec 022, Parte B) |
-| V45 en adelante | libre | Se reserva al empezar cada spec |
+| V45 | `feature/cierre-por-denominacion` | `turno_caja.conteo_denominaciones`: conteo del efectivo por billete y moneda (spec 023) |
+| V46 | `feature/cierre-por-denominacion` | Sin planes: se borran las excepciones de `empresa_modulo` y todas las empresas quedan con todos los módulos (spec 024) |
+| V47 | `feature/cierre-por-denominacion` | Caja con permisos: el Dueño opera el turno y cobra, permisos de retiro, gasto e ingreso sin PIN y `caja_usuario` (spec 025) |
+| V48 | `feature/cierre-por-denominacion` | El Dueño y el Administrador cotizan el carrito para entrar al Punto de venta (spec 025) |
+| V49 | `feature/cierre-por-denominacion` | Producto completo: proveedor y fecha del costo de referencia, NIT de proveedor opcional y evento `STOCK_SOBRE_MAXIMO` (spec 026) |
+| V50 en adelante | libre | Se reserva al empezar cada spec |
 
 **Numeración propuesta en los planes 018 a 035 (no es reserva):** V41 (020), V42 (021), V43 y V44 (022), V45 (023),
 V46 (025), V47 (026), V48 (028), V49 (029), V50 (030), V51 (031), V52 (032), V53 (033), V54 (035). Las specs 018, 019,

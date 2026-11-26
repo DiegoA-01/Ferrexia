@@ -1,7 +1,13 @@
 # 024 - Planes simbólicos
 
-**Estado:** Propuesta · **Rama:** `feature/planes-simbolicos` · **Depende de:** SaaS 2 · **Responsable:** Persona 2 ·
-**Puntos de la reunión 2:** 1, 4, 7 · **Decisión:** D11
+**Estado:** En construcción (2026-11-25, V46) · **Rama:** `feature/cierre-por-denominacion` · **Depende de:** SaaS 2 ·
+**Responsable:** Persona 2 · **Puntos de la reunión 2:** 1, 4, 7 · **Decisión:** D11 (tomada: sin planes, módulos por
+empresa)
+
+> **Cambio por la decisión D11 (2026-11-25):** el equipo decidió quitar los planes del todo, no dejarlos como etiqueta.
+> Al crear una empresa, el dueño de la plataforma marca en un panel los módulos que esa empresa necesita; después los
+> prende o apaga uno por uno en su detalle. Las empresas que ya existían quedan con todos los módulos. Donde abajo dice
+> "etiqueta" o "excepciones", manda esta nota.
 
 ## Objetivo
 En la reunión se decidió que los planes no deben limitar lo que una empresa puede usar: ventas entra también en el

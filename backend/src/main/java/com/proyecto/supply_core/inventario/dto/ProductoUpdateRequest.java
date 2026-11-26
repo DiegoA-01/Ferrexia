@@ -26,6 +26,9 @@ import jakarta.validation.constraints.Size;
  * @param stockMinimo     total mínimo entre bodegas (≥ 0)
  * @param stockMaximo     total máximo opcional (≥ mínimo)
  * @param costoReferencia precio de referencia opcional (≥ 0)
+ * @param tarifaImpuestoId      impuesto de venta (spec 026); vacío = no cambia
+ * @param proveedorReferenciaId proveedor del costo de referencia (spec 026); vacío = no cambia
+ * @param costoReferenciaFecha  fecha del costo de referencia (spec 026); vacío = no cambia
  */
 public record ProductoUpdateRequest(
         @NotBlank(message = "es obligatorio")
@@ -60,7 +63,32 @@ public record ProductoUpdateRequest(
 
         @PositiveOrZero(message = "no puede ser negativo")
         @Digits(integer = 14, fraction = 4, message = "máximo 14 enteros y 4 decimales")
-        BigDecimal costoReferencia) {
+        BigDecimal costoReferencia,
+
+        @Positive(message = "debe ser un id válido") Long tarifaImpuestoId,
+
+        @Positive(message = "debe ser un id válido") Long proveedorReferenciaId,
+
+        @jakarta.validation.constraints.PastOrPresent(message = "no puede ser una fecha futura")
+        java.time.LocalDate costoReferenciaFecha) {
+
+    /**
+     * Edición sin los datos de la spec 026 (como antes): impuesto, proveedor y fecha no cambian.
+     *
+     * @param codigo          código
+     * @param nombre          nombre
+     * @param descripcion     descripción
+     * @param categoriaId     categoría
+     * @param unidadMedidaId  unidad
+     * @param stockMinimo     mínimo
+     * @param stockMaximo     máximo
+     * @param costoReferencia costo de referencia
+     */
+    public ProductoUpdateRequest(String codigo, String nombre, String descripcion, Long categoriaId,
+            Long unidadMedidaId, BigDecimal stockMinimo, BigDecimal stockMaximo, BigDecimal costoReferencia) {
+        this(codigo, nombre, descripcion, categoriaId, unidadMedidaId, stockMinimo, stockMaximo, costoReferencia, null,
+                null, null);
+    }
 
     /**
      * Regla entre campos: el máximo no puede ser menor que el mínimo.

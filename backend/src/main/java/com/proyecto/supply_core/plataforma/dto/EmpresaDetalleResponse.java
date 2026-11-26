@@ -36,8 +36,9 @@ public record EmpresaDetalleResponse(EmpresaPlataformaResponse empresa, List<Mod
      *
      * @param codigo    código del módulo
      * @param nombre    nombre
-     * @param enPlan    si el plan de la empresa lo incluye
-     * @param excepcion {@code true} si se le dio aparte, {@code false} si se le quitó, {@code null} si sigue el plan
+     * @param enPlan    siempre {@code true} desde la spec 024 (sin planes, todo módulo se puede habilitar); se
+     *                  conserva por compatibilidad
+     * @param excepcion {@code false} si la plataforma lo apagó; {@code null} si está habilitado
      * @param activo    si la empresa lo puede usar hoy
      */
     public record ModuloEmpresa(String codigo, String nombre, boolean enPlan, Boolean excepcion, boolean activo) {

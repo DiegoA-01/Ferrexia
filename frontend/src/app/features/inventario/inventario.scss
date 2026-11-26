@@ -9,3 +9,7 @@ h2 { display: flex; align-items: center; gap: 8px; }
 @media (max-width: 720px) {
   .categoria { width: 100%; min-width: 0; }
 }
+
+// Spec 026: campo con botón al lado y alta corta encima del formulario
+.con-boton { display: flex; gap: 6px; align-items: center; select { flex: 1 1 auto; min-width: 0; } }
+.al-vuelo { grid-column: 1 / -1; display: grid; gap: 8px; padding: 12px; border: 1px dashed var(--sc-borde); border-radius: 10px; background: #fafafa; }

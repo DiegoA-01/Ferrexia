@@ -153,6 +153,12 @@ public final class Permisos {
     public static final String CAJA_CONFIGURACION_VER = "CAJA_CONFIGURACION_VER";
     /** Crear y configurar cajas. */
     public static final String CAJA_GESTIONAR = "CAJA_GESTIONAR";
+    /** Registrar retiros a la bóveda sin el PIN del supervisor (spec 025, D15). */
+    public static final String CAJA_RETIRO_SIN_PIN = "CAJA_RETIRO_SIN_PIN";
+    /** Registrar gastos de la caja sin el PIN del supervisor (spec 025, D15). */
+    public static final String CAJA_GASTO_SIN_PIN = "CAJA_GASTO_SIN_PIN";
+    /** Registrar ingresos de efectivo sin el PIN del supervisor (spec 025, D15). */
+    public static final String CAJA_INGRESO_SIN_PIN = "CAJA_INGRESO_SIN_PIN";
     /** Ver las cajas. */
     public static final String CAJA_VER = "CAJA_VER";
     /** Buscar turnos de todas las cajas. */

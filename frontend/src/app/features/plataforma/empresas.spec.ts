@@ -21,20 +21,56 @@ describe('Consola: alta de empresa con código automático (spec 020)', () => {
     fixture = TestBed.createComponent(Empresas);
     fixture.detectChanges();
     backend.expectOne('/api/plataforma/empresas').flush([]);
-    backend.expectOne('/api/plataforma/planes').flush([{ id: 1, codigo: 'BASICO', nombre: 'Básico', activo: true }]);
+    backend.expectOne('/api/plataforma/modulos').flush([
+      { codigo: 'COMPRAS', nombre: 'Compras', descripcion: 'Solicitudes y órdenes' },
+      { codigo: 'INVENTARIO', nombre: 'Inventario' }, { codigo: 'VENTAS', nombre: 'Ventas' },
+    ]);
     c()['creando'].set(true);
     fixture.detectChanges();
   });
 
   afterEach(() => backend.verify());
 
-  /** Llena el formulario con datos válidos, sin código. */
+  /** Llena el formulario con datos válidos, sin código, y marca Ventas. */
   const llenar = () => {
     c()['nueva'].setValue({
-      razonSocial: 'Ferrecentro S.A.S.', nit: '901223114-5', codigoPublico: '', planCodigo: 'BASICO',
+      razonSocial: 'Ferrecentro S.A.S.', nit: '901223114-5', codigoPublico: '',
       estadoInicial: 'PRUEBA', adminNombre: 'Laura Gómez', adminCorreo: 'laura@ferrecentro.co', adminPassword: 'Clave12345',
     });
+    c()['marcarModulo']('VENTAS');
   };
+
+  it('spec 024: no pide plan; muestra el panel de módulos y envía solo los marcados', () => {
+    expect(raiz().querySelector('#plan')).toBeNull();
+    expect(raiz().textContent).toContain('Módulos que va a usar');
+    const casillas = raiz().querySelectorAll<HTMLInputElement>('.opcion-modulo input[type=checkbox]');
+    expect(casillas.length).toBe(3);
+    expect([...casillas].every(x => !x.checked)).toBe(true);
+    llenar();
+    casillas[0].click(); // Compras
+    fixture.detectChanges();
+    expect(raiz().textContent).toContain('2 de 3 marcados');
+    c()['crear']();
+    const r = backend.expectOne(q => q.url === '/api/plataforma/empresas' && q.method === 'POST');
+    expect([...r.request.body.modulos].sort()).toEqual(['COMPRAS', 'VENTAS']);
+    expect(r.request.body.planCodigo).toBeUndefined();
+    r.flush(creada);
+    backend.expectOne('/api/plataforma/empresas').flush([]);
+    expect(c()['modulosAlta']()).toEqual([]);
+  });
+
+  it('sin módulos marcados no se crea la empresa; "Marcar todos" los marca', () => {
+    c()['nueva'].setValue({
+      razonSocial: 'Ferrecentro S.A.S.', nit: '901223114-5', codigoPublico: '',
+      estadoInicial: 'PRUEBA', adminNombre: 'Laura Gómez', adminCorreo: 'laura@ferrecentro.co', adminPassword: 'Clave12345',
+    });
+    c()['crear']();
+    backend.expectNone(q => q.method === 'POST');
+    c()['marcarTodos'](true);
+    expect(c()['modulosAlta']()).toEqual(['COMPRAS', 'INVENTARIO', 'VENTAS']);
+    c()['marcarTodos'](false);
+    expect(c()['modulosAlta']()).toEqual([]);
+  });
 
   it('el formulario ya no pide el código de ingreso', () => {
     expect(raiz().querySelector('#cod')).toBeNull();

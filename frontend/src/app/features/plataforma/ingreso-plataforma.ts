@@ -16,7 +16,7 @@ import { PlataformaSesionService } from '../../core/sesion/plataforma-sesion.ser
         <div class="marca"><span class="escudo material-symbols-outlined">shield</span><strong>Consola del dueño</strong></div>
         @if (!desafio()) {
           <h1>Ingresa a la plataforma</h1>
-          <p class="texto-2">Desde aquí activas empresas, planes y módulos. No ves los datos de compra de ninguna empresa.</p>
+          <p class="texto-2">Desde aquí activas empresas y eliges sus módulos. No ves los datos de compra de ninguna empresa.</p>
           <div class="campo"><label for="correo">Correo</label>
             <input id="correo" class="entrada" type="email" name="correo" autocomplete="username" [(ngModel)]="correo" required></div>
           <div class="campo"><label for="clave">Contraseña</label>

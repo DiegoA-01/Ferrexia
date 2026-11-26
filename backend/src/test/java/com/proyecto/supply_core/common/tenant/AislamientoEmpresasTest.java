@@ -274,6 +274,13 @@ class AislamientoEmpresasTest {
 
     @Autowired private com.proyecto.supply_core.security.service.PermisosService permisosService;
 
+    /**
+     * Accesos que se dieron a propósito después de la foto de la 022 ({@code rol:permiso}). Spec 025: el Dueño abre su
+     * turno y cobra (V47).
+     */
+    private static final Set<String> CONCEDIDOS_DESPUES_022 = Set.of("ADMIN_SISTEMA:TURNO_OPERAR",
+            "ADMIN_SISTEMA:VENTA_COBRAR", "ADMIN_SISTEMA:VENTA_COTIZAR");
+
     /** Los 12 roles de siempre. */
     private static final List<String> ROLES = List.of("ADMIN_SISTEMA", "ADMIN_COMPRAS", "SOLICITANTE", "COMPRADOR",
             "APROBADOR", "ALMACENISTA", "ADMINISTRATIVO", "PROVEEDOR", "AUDITOR", "CAJERO", "SUPERVISOR_VENTAS", "VENDEDOR");
@@ -324,13 +331,16 @@ class AislamientoEmpresasTest {
             for (String rol : ROLES) {
                 boolean podia = rolesAntes.contains(rol);
                 boolean puede = porRol.getOrDefault(rol, Set.of()).contains(d[0]);
+                if (!podia && puede && CONCEDIDOS_DESPUES_022.contains(rol + ":" + d[0])) {
+                    continue; // cambio decidido después de la 022 (ver la constante)
+                }
                 if (podia != puede) {
                     diferencias.add(endpoint + " · " + rol + ": antes " + podia + ", ahora " + puede + " (" + d[0] + ")");
                 }
             }
         });
         assertEquals(List.of(), diferencias);
-        assertEquals(107, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class));
+        assertEquals(110, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 de la V47
         assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM rol WHERE es_plantilla AND empresa_id IS NULL", Integer.class));
     }
 
@@ -2364,6 +2374,61 @@ class AislamientoEmpresasTest {
                             .header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "CAJERO")))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.length()").value(0));
+            // spec 027: categorías para vender con su conteo y productos por categoría, sin cruzar empresas
+            Long categoriaA = jdbc.queryForObject("SELECT categoria_producto_id FROM producto WHERE id = ?", Long.class,
+                    productoA);
+            mvc.perform(get("/api/ventas/categorias").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.id==" + categoriaA + ")].productos").value(org.hamcrest.Matchers.hasItem(
+                            org.hamcrest.Matchers.greaterThanOrEqualTo(1))));
+            mvc.perform(get("/api/ventas/productos?categoriaId=" + categoriaA).header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.productoId==" + productoA + ")].precio").value(org.hamcrest.Matchers.hasItem(1500.0)));
+            mvc.perform(get("/api/ventas/productos?q=" + codigoProducto + "&categoriaId=" + categoriaA)
+                            .header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(jsonPath("$[0].productoId").value(productoA));
+            mvc.perform(get("/api/ventas/productos").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isBadRequest());
+            String cajeroB = token(empresaB, usuarioB, "CAJERO");
+            mvc.perform(get("/api/ventas/categorias").header(HttpHeaders.AUTHORIZATION, cajeroB))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.id==" + categoriaA + ")]").isEmpty());
+            mvc.perform(get("/api/ventas/productos?categoriaId=" + categoriaA).header(HttpHeaders.AUTHORIZATION, cajeroB))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(0));
+            // spec 026: proveedor al vuelo (solo el nombre) y producto completo; un proveedor de B no sirve en A
+            String comprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+            String comprasB = token(empresaB, usuarioB, "ADMIN_COMPRAS");
+            long proveedorA026 = new com.fasterxml.jackson.databind.ObjectMapper().readTree(mvc.perform(post("/api/proveedores")
+                            .header(HttpHeaders.AUTHORIZATION, comprasA).contentType(json).content("{\"razonSocial\":\"Fuga 026 A\"}"))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.estado").value("HABILITADO"))
+                    .andReturn().getResponse().getContentAsString()).get("id").asLong();
+            long proveedorB026 = new com.fasterxml.jackson.databind.ObjectMapper().readTree(mvc.perform(post("/api/proveedores")
+                            .header(HttpHeaders.AUTHORIZATION, comprasB).contentType(json).content("{\"razonSocial\":\"Fuga 026 B\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            Long unidadA = jdbc.queryForObject("SELECT unidad_medida_id FROM producto WHERE id = ?", Long.class, productoA);
+            String nuevo026 = "{\"codigo\":\"FUGA-026\",\"nombre\":\"Producto 026\",\"categoriaId\":" + categoriaA
+                    + ",\"unidadMedidaId\":" + unidadA + ",\"stockMinimo\":1,\"stockMaximo\":5,\"costoReferencia\":1000,"
+                    + "\"proveedorReferenciaId\":%d}";
+            mvc.perform(post("/api/productos").header(HttpHeaders.AUTHORIZATION, comprasA).contentType(json)
+                            .content(nuevo026.formatted(proveedorB026)))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PROVEEDOR_INVALIDO"));
+            long producto026 = new com.fasterxml.jackson.databind.ObjectMapper().readTree(mvc.perform(post("/api/productos")
+                            .header(HttpHeaders.AUTHORIZATION, comprasA).contentType(json).content(nuevo026.formatted(proveedorA026)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.proveedorReferencia").value("Fuga 026 A"))
+                    .andExpect(jsonPath("$.costoReferenciaFecha").exists())
+                    .andReturn().getResponse().getContentAsString()).get("id").asLong();
+            // D17: con más stock que el máximo, el producto sale en "sobre el máximo" de A y nunca en B
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 9)",
+                    empresaA, producto026, bodegaA);
+            mvc.perform(get("/api/productos/sobre-maximo").header(HttpHeaders.AUTHORIZATION, comprasA))
+                    .andExpect(jsonPath("$[?(@.id==" + producto026 + ")].sobreStockMaximo").value(org.hamcrest.Matchers.hasItem(true)));
+            mvc.perform(get("/api/productos/sobre-maximo").header(HttpHeaders.AUTHORIZATION, comprasB))
+                    .andExpect(jsonPath("$[?(@.id==" + producto026 + ")]").isEmpty());
+            jdbc.update("DELETE FROM stock_producto_bodega WHERE producto_id = ?", producto026);
+            jdbc.update("DELETE FROM producto WHERE id = ?", producto026);
+            jdbc.update("DELETE FROM proveedor WHERE id IN (?, ?)", proveedorA026, proveedorB026);
             // el cajero busca, pero no ve márgenes ni fija precios
             mvc.perform(get("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, cajeroA))
                     .andExpect(status().isForbidden());
@@ -2545,6 +2610,49 @@ class AislamientoEmpresasTest {
             mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "CAJERO"))
                             .contentType(json).content(abrir))
                     .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CAJA_OCUPADA"));
+
+            // spec 025: cajas por persona. Una segunda caja; el cajero queda asignado solo a la primera
+            long caja2 = lector.readTree(mvc.perform(post("/api/cajas").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content("{\"nombre\":\"Caja 2\",\"sedeId\":" + sedeA + ",\"bodegaId\":" + bodegaA
+                                    + ",\"prefijoConsecutivo\":\"C2\",\"topeEfectivo\":0}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(get("/api/cajas/mias").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2)); // sin asignar: todas
+            mvc.perform(put("/api/cajas/" + cajaId + "/usuarios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"usuarioIds\":[" + usuarioB + "]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("USUARIO_INVALIDO"));
+            mvc.perform(put("/api/cajas/" + cajaId + "/usuarios").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"usuarioIds\":[" + usuarioA2 + "]}"))
+                    .andExpect(status().isForbidden());
+            mvc.perform(put("/api/cajas/" + cajaId + "/usuarios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"usuarioIds\":[" + usuarioA2 + "]}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$[0].usuarioId").value(usuarioA2));
+            mvc.perform(get("/api/cajas/mias").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].id").value(cajaId));
+            mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA2, "CAJERO"))
+                            .contentType(json).content("{\"cajaId\":" + caja2 + ",\"baseApertura\":0}"))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("CAJA_NO_ASIGNADA"));
+            // el dueño (sin cajas asignadas) también abre turno y vende: ve todas sus cajas
+            mvc.perform(get("/api/cajas/mias").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
+            // nada cruza: B no ve la asignación de A ni la puede cambiar
+            String duenoB2 = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+            mvc.perform(get("/api/cajas/" + cajaId + "/usuarios").header(HttpHeaders.AUTHORIZATION, duenoB2))
+                    .andExpect(status().isNotFound());
+            mvc.perform(put("/api/cajas/" + cajaId + "/usuarios").header(HttpHeaders.AUTHORIZATION, duenoB2).contentType(json)
+                            .content("{\"usuarioIds\":[" + usuarioB + "]}"))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/cajas/mias").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "CAJERO")))
+                    .andExpect(jsonPath("$[?(@.id==" + cajaId + ")]").isEmpty());
+            // la ficha del trabajador muestra sus cajas; la persona de A no existe para B
+            mvc.perform(get("/api/cajas/de-usuario/" + usuarioA2).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                    .andExpect(jsonPath("$[0].nombre").value("Caja 1"));
+            mvc.perform(get("/api/cajas/de-usuario/" + usuarioA2).header(HttpHeaders.AUTHORIZATION, duenoB2))
+                    .andExpect(status().isNotFound());
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM caja_usuario WHERE empresa_id = ?", Integer.class, empresaA));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM caja_usuario WHERE empresa_id = ?", Integer.class, empresaB));
+            jdbc.update("UPDATE caja SET activa = FALSE WHERE id = ?", caja2);
 
             // spec 015: el listado dice quién tiene la caja ocupada y desde cuándo, sin montos del turno
             mvc.perform(get("/api/cajas?activa=true").header(HttpHeaders.AUTHORIZATION, cajeroA))
@@ -2732,8 +2840,28 @@ class AislamientoEmpresasTest {
                     Integer.class, empresaA) >= 6);
 
             // dos personas abren a la vez la misma caja: una abre y la otra recibe 409; nunca hay dos turnos abiertos
+            // spec 023: se cierra contando billetes y monedas; una moneda inventada no cierra el turno
             mvc.perform(post("/api/turnos/" + turno2 + "/cerrar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
-                    .content("{\"contadoEfectivo\":0}")).andExpect(status().isOk());
+                            .content("{\"conteo\":[{\"tipo\":\"MONEDA\",\"valor\":300,\"cantidad\":1}]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("DENOMINACION_INVALIDA"));
+            mvc.perform(post("/api/turnos/" + turno2 + "/cerrar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"conteo\":[{\"tipo\":\"MONEDA\",\"valor\":500,\"cantidad\":2},"
+                                    + "{\"tipo\":\"BILLETE\",\"valor\":50000,\"cantidad\":0}]}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contado.EFECTIVO").value(1000.0))
+                    .andExpect(jsonPath("$.conteo.length()").value(1))
+                    .andExpect(jsonPath("$.conteo[0].valor").value(500));
+            mvc.perform(get("/api/turnos/" + turno2).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.conteo[0].cantidad").value(2));
+            // el conteo de A no se ve desde B, ni su turno en las ventas por turno
+            mvc.perform(get("/api/turnos/" + turno2).header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/reportes/caja/turnos").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.turnos[?(@.id==" + turno2 + ")]").isNotEmpty());
+            mvc.perform(get("/api/reportes/caja/turnos").header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.turnos.length()").value(0));
+            mvc.perform(get("/api/reportes/caja/turnos").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isForbidden());
             java.util.concurrent.CountDownLatch salida = new java.util.concurrent.CountDownLatch(1);
             java.util.concurrent.ExecutorService hilos = java.util.concurrent.Executors.newFixedThreadPool(2);
             List<java.util.concurrent.Future<Integer>> estados = new java.util.ArrayList<>();
@@ -2759,6 +2887,7 @@ class AislamientoEmpresasTest {
             jdbc.update("DELETE FROM movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM categoria_movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM turno_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM caja_usuario WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("UPDATE usuario SET pin_supervisor_hash = NULL, pin_intentos_fallidos = 0, pin_bloqueado_hasta = NULL "
                     + "WHERE empresa_id IN (?, ?)", empresaA, empresaB);
@@ -3743,6 +3872,11 @@ class AislamientoEmpresasTest {
             assertEquals(1, cajaR.get("anulaciones").size());
             assertEquals(0, new java.math.BigDecimal("10000").compareTo(dinero.apply(cajaR.get("totales").get("anulaciones"))));
             assertEquals("Se registró dos veces", cajaR.get("anulaciones").get(0).get("motivo").asText());
+            // ventas por turno (spec 023): el mismo turno, con la anulación descontada de sus ventas
+            com.fasterxml.jackson.databind.JsonNode porTurno = leer.apply("/api/reportes/caja/turnos");
+            assertEquals(1, porTurno.get("turnos").size());
+            assertEquals(turno, porTurno.get("turnos").get(0).get("id").asLong());
+            assertEquals(0, new java.math.BigDecimal("10000").compareTo(dinero.apply(porTurno.get("turnos").get(0).get("anulaciones"))));
 
             // 5) tablero del dueño: lo de hoy
             com.fasterxml.jackson.databind.JsonNode tablero = leer.apply("/api/reportes/tablero/ventas");
@@ -3802,6 +3936,8 @@ class AislamientoEmpresasTest {
                     .andExpect(jsonPath("$.filas.length()").value(0));
             mvc.perform(get("/api/reportes/caja").header(HttpHeaders.AUTHORIZATION, duenoB))
                     .andExpect(jsonPath("$.turnos.length()").value(0)).andExpect(jsonPath("$.anulaciones.length()").value(0));
+            mvc.perform(get("/api/reportes/caja/turnos").header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(jsonPath("$.turnos.length()").value(0)).andExpect(jsonPath("$.totales.totalVentas").value(0.0));
             mvc.perform(get("/api/reportes/tablero/ventas").header(HttpHeaders.AUTHORIZATION, duenoB))
                     .andExpect(jsonPath("$.numeroVentasHoy").value(0));
             mvc.perform(get("/api/reportes/cuadre").header(HttpHeaders.AUTHORIZATION, duenoB))
@@ -4252,15 +4388,18 @@ class AislamientoEmpresasTest {
         try {
             String plataforma = entrarALaPlataforma(correo);
 
-            // alta: plan Básico, activa, con su administrador
+            // alta: activa, con su administrador; spec 024: los módulos se eligen en el alta (todos menos Reportes)
             String alta = mvc.perform(post("/api/plataforma/empresas").header(HttpHeaders.AUTHORIZATION, plataforma)
                             .contentType(contentType).content("{\"razonSocial\":\"Empresa C S.A.S.\",\"nit\":\"901777888-1\","
                                     + "\"codigoPublico\":\"empresa-c-fuga\",\"planCodigo\":\"BASICO\",\"estadoInicial\":\"ACTIVA\","
-                                    + "\"adminNombre\":\"Admin de C\",\"adminCorreo\":\"Admin@C.com\",\"adminPassword\":\"ClaveDeC2026\"}"))
+                                    + "\"adminNombre\":\"Admin de C\",\"adminCorreo\":\"Admin@C.com\",\"adminPassword\":\"ClaveDeC2026\","
+                                    + "\"modulos\":[\"INVENTARIO\",\"PROVEEDORES\",\"COMPRAS\",\"RFQ_COTIZACIONES\",\"IA\","
+                                    + "\"ORDENES_PAGOS\",\"RECEPCION\",\"DESPACHOS\",\"AUDITORIA\",\"VENTAS\",\"CAJA\",\"CARTERA\"]}"))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.empresa.plan").value("BASICO"))
                     .andExpect(jsonPath("$.empresa.estado").value("ACTIVA"))
                     .andExpect(jsonPath("$.modulos[?(@.codigo=='COMPRAS')].activo").value(true))
+                    .andExpect(jsonPath("$.modulos[?(@.codigo=='VENTAS')].activo").value(true))
                     .andExpect(jsonPath("$.modulos[?(@.codigo=='REPORTES')].activo").value(false))
                     .andReturn().getResponse().getContentAsString();
             empresaC = json.readTree(alta).get("empresa").get("id").asLong();
@@ -4292,6 +4431,7 @@ class AislamientoEmpresasTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.plan").value("BASICO"))
                     .andExpect(jsonPath("$.modulos[?(@=='COMPRAS')]").isNotEmpty())
+                    .andExpect(jsonPath("$.modulos[?(@=='VENTAS')]").isNotEmpty())
                     .andExpect(jsonPath("$.modulos[?(@=='REPORTES')]").isEmpty());
 
             // doble permiso: el módulo lo decide el dueño, el rol lo decide la empresa
@@ -4303,20 +4443,28 @@ class AislamientoEmpresasTest {
             // con el módulo pero sin el rol, tampoco
             mvc.perform(put(base + "/modulos/REPORTES").header(HttpHeaders.AUTHORIZATION, plataforma)
                             .contentType(contentType).content("{\"habilitado\":true}"))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.modulos[?(@.codigo=='REPORTES')].excepcion").value(true));
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.modulos[?(@.codigo=='REPORTES')].activo").value(true));
             mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC)).andExpect(status().isOk());
             mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, token(empresaC, adminC, "SOLICITANTE")))
                     .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("PERMISO_REQUERIDO"));
-            // quitar la excepción vuelve a mandar el plan; cambiar de plan da el módulo
+            // spec 024: el plan ya no decide nada. Apagado, ni el plan PROFESIONAL lo devuelve; "{}" lo vuelve a prender
             mvc.perform(put(base + "/modulos/REPORTES").header(HttpHeaders.AUTHORIZATION, plataforma)
-                            .contentType(contentType).content("{}"))
+                            .contentType(contentType).content("{\"habilitado\":false}"))
                     .andExpect(status().isOk());
             mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC)).andExpect(status().isForbidden());
             mvc.perform(put(base + "/plan").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(contentType)
                             .content("{\"planCodigo\":\"PROFESIONAL\"}"))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.empresa.plan").value("PROFESIONAL"));
+            mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC)).andExpect(status().isForbidden());
+            mvc.perform(put(base + "/modulos/REPORTES").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(contentType).content("{}"))
+                    .andExpect(status().isOk());
             mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC)).andExpect(status().isOk());
-            // quitarle a la empresa un módulo que su plan sí trae
+            // ya no se crean ni se editan planes
+            mvc.perform(post("/api/plataforma/planes").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(contentType)
+                            .content("{\"codigo\":\"NUEVO\",\"nombre\":\"Nuevo\",\"modulos\":[\"COMPRAS\"]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PLANES_RETIRADOS"));
+            // quitarle a la empresa un módulo
             mvc.perform(put(base + "/modulos/COMPRAS").header(HttpHeaders.AUTHORIZATION, plataforma)
                             .contentType(contentType).content("{\"habilitado\":false}"))
                     .andExpect(status().isOk());

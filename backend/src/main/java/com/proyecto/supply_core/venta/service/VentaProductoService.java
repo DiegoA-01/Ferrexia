@@ -18,6 +18,7 @@ import com.proyecto.supply_core.inventario.entity.Producto;
 import com.proyecto.supply_core.inventario.repository.BodegaRepository;
 import com.proyecto.supply_core.inventario.repository.StockProductoBodegaRepository;
 import com.proyecto.supply_core.inventario.repository.StockProductoBodegaRepository.TotalPorProducto;
+import com.proyecto.supply_core.venta.dto.CategoriaParaVender;
 import com.proyecto.supply_core.venta.dto.ProductoParaVender;
 import com.proyecto.supply_core.venta.dto.ProductoParaVender.PrecioEnUnidad;
 import com.proyecto.supply_core.venta.entity.ListaPrecio;
@@ -34,6 +35,9 @@ public class VentaProductoService {
 
     /** Máximo de productos por búsqueda: el POS muestra pocos y se filtra escribiendo más. */
     static final int MAXIMO = 20;
+
+    /** Máximo de productos al elegir una categoría (spec 027): una grilla de tarjetas sin buscar. */
+    static final int MAXIMO_CATEGORIA = 60;
 
     private final PrecioProductoRepository precioRepository;
     private final ListaPrecioRepository listaRepository;
@@ -62,7 +66,7 @@ public class VentaProductoService {
     }
 
     /**
-     * Busca productos activos y vendibles.
+     * Busca productos activos y vendibles por texto.
      *
      * @param q        código, código de barras o parte del nombre
      * @param listaId  lista de precios ({@code null} = General)
@@ -72,6 +76,26 @@ public class VentaProductoService {
      */
     @Transactional
     public List<ProductoParaVender> buscar(String q, Long listaId, Long bodegaId) {
+        return buscar(q, listaId, bodegaId, null);
+    }
+
+    /**
+     * Busca productos activos y vendibles por texto, por categoría o por las dos cosas (spec 027).
+     * <ul>
+     *   <li>Solo texto: como siempre, hasta {@value #MAXIMO}.</li>
+     *   <li>Solo categoría: los productos de esa categoría por nombre, hasta {@value #MAXIMO_CATEGORIA}.</li>
+     *   <li>Texto y categoría: la búsqueda por texto, dejando solo los de la categoría.</li>
+     * </ul>
+     *
+     * @param q           código, código de barras o parte del nombre (puede ir vacío si hay categoría)
+     * @param listaId     lista de precios ({@code null} = General)
+     * @param bodegaId    bodega cuyo stock se muestra ({@code null} = todas)
+     * @param categoriaId categoría ({@code null} = todas)
+     * @return productos listos para el POS (vacío si no hay ni texto ni categoría)
+     * @throws NoEncontradoException si la lista o la bodega no son de la empresa
+     */
+    @Transactional
+    public List<ProductoParaVender> buscar(String q, Long listaId, Long bodegaId, Long categoriaId) {
         preciosService.asegurarBase();
         ListaPrecio lista = listaId == null
                 ? listaRepository.findAllByOrderByEsGeneralDescNombreAsc().stream().filter(ListaPrecio::isEsGeneral)
@@ -82,13 +106,21 @@ public class VentaProductoService {
             throw new NoEncontradoException("Bodega no encontrada");
         }
         String texto = limpiar(q);
+        List<Producto> productos;
         if (texto.isEmpty()) {
-            return List.of();
+            if (categoriaId == null) {
+                return List.of();
+            }
+            productos = precioRepository.paraVenderDeCategoria(categoriaId, PageRequest.of(0, MAXIMO_CATEGORIA));
+        } else {
+            String exacto = texto.toLowerCase(Locale.ROOT);
+            String patron = escaparLike(exacto);
+            productos = precioRepository.buscarParaVender(exacto, patron + "%", "%" + patron + "%", texto,
+                    PageRequest.of(0, MAXIMO));
+            if (categoriaId != null) {
+                productos = deCategoria(productos, categoriaId);
+            }
         }
-        String exacto = texto.toLowerCase(Locale.ROOT);
-        String patron = escaparLike(exacto);
-        List<Producto> productos = precioRepository.buscarParaVender(exacto, patron + "%", "%" + patron + "%", texto,
-                PageRequest.of(0, MAXIMO));
         if (productos.isEmpty()) {
             return List.of();
         }
@@ -101,6 +133,29 @@ public class VentaProductoService {
         Map<Long, String> codigos = new HashMap<>();
         return productos.stream().map(p -> armar(p, precios.getOrDefault(p.getId(), List.of()),
                 stock.getOrDefault(p.getId(), BigDecimal.ZERO), codigos)).toList();
+    }
+
+    /**
+     * Categorías para los botones del POS y del pedido de venta (spec 027): activas, con productos vendibles y con
+     * precio vigente en la lista General.
+     *
+     * @return categorías por nombre con cuántos productos tienen
+     */
+    @Transactional(readOnly = true)
+    public List<CategoriaParaVender> categorias() {
+        return precioRepository.categoriasParaVender().stream()
+                .map(c -> new CategoriaParaVender(c.getId(), c.getNombre(), c.getProductos() == null ? 0 : c.getProductos()))
+                .toList();
+    }
+
+    /**
+     * @param productos   productos encontrados por texto
+     * @param categoriaId categoría
+     * @return solo los de esa categoría, en el mismo orden
+     */
+    static List<Producto> deCategoria(List<Producto> productos, Long categoriaId) {
+        return productos.stream().filter(p -> p.getCategoria() != null && categoriaId.equals(p.getCategoria().getId()))
+                .toList();
     }
 
     /**

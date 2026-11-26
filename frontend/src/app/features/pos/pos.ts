@@ -4,13 +4,14 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import {
-  Caja, Cliente, CotizacionVenta, LineaVentaRequest, MedioPagoVenta, PagoVentaRequest, ProductoParaVender, Turno, Venta,
+  Caja, CategoriaParaVender, Cliente, CotizacionVenta, LineaVentaRequest, MedioPagoVenta, PagoVentaRequest, ProductoParaVender, Turno, Venta,
 } from '../../core/api/modelos';
 import { NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { CajaService } from '../../core/servicios/caja.service';
 import { ClientesService } from '../../core/servicios/clientes.service';
 import { VentaService } from '../../core/servicios/venta.service';
 import { VentasService } from '../../core/servicios/ventas.service';
+import { conPermiso } from '../../core/sesion/acceso';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 import { AutorizacionPin } from '../caja/autorizacion-pin';
@@ -50,12 +51,16 @@ export const MEDIOS_VENTA: Record<MedioPagoVenta, string> = {
   TRANSFERENCIA: 'Transferencia', BILLETERA: 'Billetera digital', CREDITO: 'Crédito del cliente', SALDO_FAVOR: 'Saldo a favor',
 };
 
+/** Quién cobra: con permisos cargados decide {@code VENTA_COBRAR} (spec 025); si no, los roles de siempre. */
+export const ROLES_COBRAR = conPermiso(['CAJERO', 'SUPERVISOR_VENTAS'], 'VENTA_COBRAR');
+
 /** Acción que espera el PIN del supervisor. */
 type PinPendiente = 'DESCUENTO' | 'PRECIO_BAJO_MINIMO' | null;
 
 /**
  * Punto de venta (spec 005). El campo del lector tiene el foco: Enter agrega el producto. Atajos: F2 buscar, F4
- * cliente, F9 cobrar, Esc cancelar. La pantalla nunca calcula dinero: cada cambio pide al servidor los totales y el
+ * cliente, F9 cobrar, Esc cancelar. Spec 027: los productos también se eligen por categoría, y el cobro tiene el
+ * cliente y el pago en el mismo paso. La pantalla nunca calcula dinero: cada cambio pide al servidor los totales y el
  * cambio. La clave de idempotencia nace con el carrito y se reenvía igual si el cobro falla por la red. El vendedor
  * (sin caja) usa la misma pantalla para guardar un pedido de venta que luego cobra el cajero.
  */
@@ -90,14 +95,20 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
   protected readonly ordenMedios = computed(() => (Object.keys(MEDIOS_VENTA) as MedioPagoVenta[]).filter(m =>
     (m !== 'CREDITO' || (!!this.cliente() && this.sesion.tieneModulo('CARTERA'))) && (m !== 'SALDO_FAVOR' || !!this.cliente())));
 
-  /** Cobra quien tiene caja; el vendedor solo arma pedidos. */
-  protected readonly cobra = computed(() => this.sesion.tieneRol(['CAJERO', 'SUPERVISOR_VENTAS']) && !this.sesion.soloLectura());
+  /** Cobra quien tiene el permiso (spec 025: también el dueño); el vendedor solo arma pedidos. */
+  protected readonly cobra = computed(() => this.sesion.tieneRol(ROLES_COBRAR) && !this.sesion.soloLectura());
   protected readonly turno = signal<Turno | null>(null);
   protected readonly bodegaId = signal<number | null>(null);
   protected readonly listo = signal(false);
 
   protected readonly texto = signal('');
   protected readonly opciones = signal<ProductoParaVender[]>([]);
+  /** Spec 027: categorías con productos para vender, la elegida y sus productos (null = cargando). */
+  protected readonly categorias = signal<CategoriaParaVender[]>([]);
+  protected readonly categoriaElegida = signal<number | null>(null);
+  protected readonly productosCategoria = signal<ProductoParaVender[] | null>(null);
+  /** Número de la última consulta de categoría: una respuesta vieja se ignora. */
+  private consultaCategoria = 0;
   /** Sugerencia resaltada con las flechas (-1 = ninguna). */
   protected readonly marcado = signal(-1);
   /** Texto que no trajo ninguna sugerencia (para decirlo en pantalla). */
@@ -164,6 +175,7 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.pedidoPendiente = Number(this.ruta.snapshot.queryParamMap.get('pedido')) || null;
     this.clientes.consumidorFinal().subscribe({ next: c => this.consumidorFinal.set(c), error: () => undefined });
+    this.catalogo.categoriasParaVender().subscribe({ next: l => this.categorias.set(l), error: () => undefined });
     if (!this.cobra()) {
       this.listo.set(true);
       this.cargarPedidoPendiente();
@@ -199,7 +211,12 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
       this.enfocar();
     } else if (e.key === 'F4') {
       e.preventDefault();
-      this.abrirClientes();
+      if (this.cobrando()) {
+        // spec 027: dentro del cobro, F4 lleva al bloque de cliente del mismo paso
+        this.enfocarClienteCobro();
+      } else {
+        this.abrirClientes();
+      }
     } else if (e.key === 'F9') {
       e.preventDefault();
       if (this.cobrando()) {
@@ -349,6 +366,32 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     this.enfocar();
   }
 
+  /**
+   * Spec 027: elige una categoría y muestra sus productos como tarjetas; la misma categoría otra vez, o {@code null}
+   * ("Todas"), vuelve a la búsqueda normal.
+   *
+   * @param id categoría elegida
+   */
+  protected elegirCategoria(id: number | null): void {
+    const numero = ++this.consultaCategoria;
+    if (id == null || id === this.categoriaElegida()) {
+      this.categoriaElegida.set(null);
+      this.productosCategoria.set(null);
+      this.enfocar();
+      return;
+    }
+    this.categoriaElegida.set(id);
+    this.productosCategoria.set(null);
+    this.catalogo.productosDeCategoria(id, this.listaId(), this.bodegaId()).subscribe({
+      next: l => {
+        if (numero === this.consultaCategoria) {
+          this.productosCategoria.set(l);
+        }
+      },
+      error: e => this.avisos.error(e),
+    });
+  }
+
   /** @param i posición; @param cantidad cantidad nueva (0 o menos quita la línea) */
   protected cambiarCantidad(i: number, cantidad: number | null): void {
     if (this.fijo()) {
@@ -428,8 +471,26 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     this.cliente.set(c && !c.esConsumidorFinal ? c : null);
     this.panelCliente.set(false);
     this.creandoCliente.set(false);
+    this.clientesEncontrados.set([]);
+    this.buscarCliente.set('');
+    this.buscado.set('');
+    if (this.cobrando()) {
+      // spec 027: elegido dentro del cobro, el cobro sigue abierto. Un medio que solo sirve con cliente registrado
+      // (crédito o saldo a favor) se borra si se vuelve a consumidor final.
+      if (!this.cliente()) {
+        this.pagos.update(p => p.map(x => (x.medio === 'CREDITO' || x.medio === 'SALDO_FAVOR' ? { ...x, medio: null } : x)));
+      }
+      this.recalcular(true);
+      return;
+    }
     this.recalcular();
     this.enfocar();
+  }
+
+  /** Dentro del cobro: lleva el foco al buscador de cliente del mismo paso. */
+  protected enfocarClienteCobro(): void {
+    this.creandoCliente.set(false);
+    setTimeout(() => this.dialogoCobro()?.nativeElement.querySelector<HTMLInputElement>('#cobro-cliente')?.focus());
   }
 
   // ------------------------------------------------------------- cobro
@@ -442,8 +503,13 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
       this.guardarPedido();
       return;
     }
-    // spec 016: el cobro abre sin medio elegido; el cajero elige cómo paga el cliente (E = Efectivo)
+    // spec 016: el cobro abre sin medio elegido; el cajero elige cómo paga el cliente (E = Efectivo).
+    // spec 027: el mismo paso trae el cliente (el elegido en el panel llega ya cargado).
     this.pagos.set([{ medio: null, monto: null, referencia: '' }]);
+    this.creandoCliente.set(false);
+    this.clientesEncontrados.set([]);
+    this.buscarCliente.set('');
+    this.buscado.set('');
     this.cobrando.set(true);
     this.recalcular(true);
     // el foco sale del lector y pasa al primer medio de pago: así E (Efectivo) y las flechas sirven sin el mouse
@@ -610,6 +676,9 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     }
     if (this.pin()) {
       this.pin.set(null);
+    } else if (this.cobrando() && this.creandoCliente()) {
+      this.creandoCliente.set(false);
+      return;
     } else if (this.panelCliente()) {
       this.panelCliente.set(false);
     } else if (this.cobrando()) {

@@ -11,8 +11,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Excepción de módulo para una empresa (tabla {@code empresa_modulo}). {@code habilitado = true} le da un módulo que
- * su plan no incluye; {@code false} le quita uno que sí incluye. Sin fila, manda el plan.
+ * Módulo apagado para una empresa (tabla {@code empresa_modulo}). Desde la spec 024 (D11) no hay planes: una empresa
+ * tiene todos los módulos del catálogo menos los que tienen aquí {@code habilitado = false}. Sin fila, el módulo está
+ * habilitado; una fila con {@code true} (de antes de V46) vale lo mismo que no tenerla.
  */
 @Entity
 @Table(name = "empresa_modulo")

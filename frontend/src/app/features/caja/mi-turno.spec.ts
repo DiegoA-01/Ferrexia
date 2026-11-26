@@ -29,7 +29,8 @@ describe('Mi turno', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
-        { provide: SesionService, useValue: { tieneModulo: (m: string) => m === 'CARTERA' && opciones.cartera !== false } },
+        { provide: SesionService, useValue: { tieneModulo: (m: string) => m === 'CARTERA' && opciones.cartera !== false,
+          tienePermiso: () => false } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(opciones.accion ? { accion: opciones.accion } : {}) } } },
       ],
     });
@@ -42,7 +43,7 @@ describe('Mi turno', () => {
       actual.flush(turno);
     } else {
       actual.flush({}, { status: 404, statusText: 'Not Found' });
-      backend.expectOne(r => r.url === '/api/cajas').flush(cajas);
+      backend.expectOne(r => r.url === '/api/cajas/mias').flush(cajas);
     }
     fixture.detectChanges();
   };
@@ -105,7 +106,7 @@ describe('Mi turno', () => {
       expect(texto()).toContain('cuadró dentro de la tolerancia');
       expect(raiz().querySelector('#ab-caja')).toBeNull();
       c()['nuevo']();
-      backend.expectOne(r => r.url === '/api/cajas').flush([{ id: 1, nombre: 'Caja 1', sede: 'Centro' }]);
+      backend.expectOne(r => r.url === '/api/cajas/mias').flush([{ id: 1, nombre: 'Caja 1', sede: 'Centro' }]);
       fixture.detectChanges();
       expect(raiz().querySelector('#ab-caja')).not.toBeNull();
     });
@@ -150,7 +151,7 @@ describe('Mi turno', () => {
       boton.click();
       fixture.detectChanges();
       expect(c()['accion']()).toBe('cerrar');
-      expect(raiz().querySelector('#cc-EFECTIVO')).not.toBeNull();
+      expect(raiz().querySelector('#cc-BILLETE-100000')).not.toBeNull();
     });
 
     it('la acción queda en la URL', () => {

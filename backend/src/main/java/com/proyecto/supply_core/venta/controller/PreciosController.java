@@ -19,12 +19,14 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.proyecto.supply_core.common.exception.ParametroInvalidoException;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.venta.dto.CargaPreciosResponse;
+import com.proyecto.supply_core.venta.dto.CategoriaParaVender;
 import com.proyecto.supply_core.venta.dto.HistorialPrecio;
 import com.proyecto.supply_core.venta.dto.ListaPrecioRequest;
 import com.proyecto.supply_core.venta.dto.ListaPrecioResponse;
@@ -195,21 +197,40 @@ public class PreciosController {
     }
 
     /**
-     * Busca productos para vender por código, código de barras o nombre, con el precio vigente de la lista y el stock
-     * de la bodega. Es para caja y venta: no trae costos, márgenes ni el precio mínimo.
+     * Busca productos para vender por código, código de barras o nombre, por categoría (spec 027) o por las dos
+     * cosas, con el precio vigente de la lista y el stock de la bodega. Es para caja y venta: no trae costos, márgenes
+     * ni el precio mínimo.
      *
-     * @param q        texto buscado (1 a 100 caracteres)
-     * @param listaId  lista de precios (vacío = General)
-     * @param bodegaId bodega cuyo stock se muestra (vacío = todas)
-     * @return hasta 20 productos
+     * @param q           texto buscado (hasta 100 caracteres; obligatorio si no hay categoría)
+     * @param listaId     lista de precios (vacío = General)
+     * @param bodegaId    bodega cuyo stock se muestra (vacío = todas)
+     * @param categoriaId categoría (vacío = todas)
+     * @return hasta 20 productos por texto o hasta 60 de la categoría
+     * @throws ParametroInvalidoException si no llega ni texto ni categoría
      */
     @GetMapping("/productos")
     @RequierePermiso(Permisos.VENTA_BUSCAR_PRODUCTO)
     public List<ProductoParaVender> buscarParaVender(
-            @RequestParam @Size(min = 1, max = 100, message = "de 1 a 100 caracteres") String q,
+            @RequestParam(required = false) @Size(max = 100, message = "máximo 100 caracteres") String q,
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long listaId,
-            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long bodegaId) {
-        return ventaProductoService.buscar(q, listaId, bodegaId);
+            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long bodegaId,
+            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long categoriaId) {
+        if ((q == null || q.isBlank()) && categoriaId == null) {
+            throw new ParametroInvalidoException("Escriba qué busca o elija una categoría");
+        }
+        return ventaProductoService.buscar(q, listaId, bodegaId, categoriaId);
+    }
+
+    /**
+     * Categorías para elegir productos en el Punto de venta y en el pedido de venta (spec 027): activas, con productos
+     * vendibles y con precio.
+     *
+     * @return categorías con cuántos productos tienen
+     */
+    @GetMapping("/categorias")
+    @RequierePermiso(Permisos.VENTA_BUSCAR_PRODUCTO)
+    public List<CategoriaParaVender> categoriasParaVender() {
+        return ventaProductoService.categorias();
     }
 
     /**

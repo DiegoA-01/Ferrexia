@@ -3,12 +3,20 @@ import { FormsModule } from '@angular/forms';
 
 import { AccionAutorizada, CategoriaMovimientoCaja, Turno } from '../../../core/api/modelos';
 import { CajaService } from '../../../core/servicios/caja.service';
+import { SesionService } from '../../../core/sesion/sesion.service';
 import { Avisos } from '../../../core/ui/avisos';
 import { Cifra } from '../../../core/ui/cifra';
 import { AutorizacionPin } from '../autorizacion-pin';
 
 /** Movimiento de efectivo que registra el cajero. */
 export type TipoMovimiento = 'RETIRO' | 'GASTO' | 'INGRESO';
+
+/** Permiso que deja registrar cada movimiento sin el PIN del supervisor (spec 025, D15). */
+export const PERMISO_SIN_PIN: Record<TipoMovimiento, string> = {
+  RETIRO: 'CAJA_RETIRO_SIN_PIN',
+  GASTO: 'CAJA_GASTO_SIN_PIN',
+  INGRESO: 'CAJA_INGRESO_SIN_PIN',
+};
 
 /** Texto de cada movimiento. */
 export const TIPOS_MOVIMIENTO: Record<TipoMovimiento, string> = {
@@ -44,7 +52,10 @@ export const TIPOS_MOVIMIENTO: Record<TipoMovimiento, string> = {
         <div class="campo"><label for="mt-soporte">Soporte (recibo)</label>
           <input id="mt-soporte" class="entrada" maxlength="100" placeholder="Opcional" [ngModel]="soporte()" (ngModelChange)="soporte.set($event)"></div>
       </div>
-      @if (pidiendo()) {
+      @if (sinPin()) {
+        <button type="button" class="boton" [disabled]="!valido() || enviando()" (click)="registrar(null)">Registrar</button>
+        <span class="sub">Tiene permiso para registrarlo sin el PIN del supervisor.</span>
+      } @else if (pidiendo()) {
         <sc-autorizacion-pin [accion]="accion()" [turnoId]="turnoId()" (autorizado)="registrar($event.token)" (cancelado)="pidiendo.set(false)" />
       } @else {
         <button type="button" class="boton" [disabled]="!valido()" (click)="pidiendo.set(true)">Registrar (pide PIN)</button>
@@ -60,6 +71,7 @@ export const TIPOS_MOVIMIENTO: Record<TipoMovimiento, string> = {
 export class MovimientoCaja implements AfterViewInit {
   private readonly caja = inject(CajaService);
   private readonly avisos = inject(Avisos);
+  private readonly sesion = inject(SesionService);
   private readonly elemento = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /** Turno abierto al que se carga el movimiento. */
@@ -88,6 +100,10 @@ export class MovimientoCaja implements AfterViewInit {
     });
   }
 
+  /** Spec 025 (D15): con el permiso del tipo, el movimiento no pide el PIN del supervisor. */
+  protected readonly sinPin = computed(() => this.sesion.tienePermiso(PERMISO_SIN_PIN[this.tipo()]));
+  protected readonly enviando = signal(false);
+
   protected readonly titulo = computed(() => `Registrar ${TIPOS_MOVIMIENTO[this.tipo()].toLowerCase()}`);
   protected readonly accion = computed<AccionAutorizada>(() => this.tipo());
   protected readonly valido = computed(() => (this.monto() ?? 0) > 0 && this.motivo().trim().length > 2
@@ -98,14 +114,16 @@ export class MovimientoCaja implements AfterViewInit {
     this.elemento.nativeElement.querySelector<HTMLInputElement>('#mt-monto')?.focus();
   }
 
-  /** @param token permiso de un solo uso del supervisor */
-  protected registrar(token: string): void {
+  /** @param token permiso de un solo uso del supervisor ({@code null} si la persona registra sin PIN) */
+  protected registrar(token: string | null): void {
     this.pidiendo.set(false);
+    this.enviando.set(true);
     this.caja.movimiento(this.turnoId(), {
-      tipo: this.tipo(), monto: this.monto()!, motivo: this.motivo().trim(), soporte: this.soporte().trim() || null, autorizacion: token,
-      categoriaId: this.categoriaId(),
+      tipo: this.tipo(), monto: this.monto()!, motivo: this.motivo().trim(), soporte: this.soporte().trim() || null,
+      autorizacion: token ?? undefined, categoriaId: this.categoriaId(),
     }).subscribe({
       next: nuevo => {
+        this.enviando.set(false);
         this.monto.set(null);
         this.motivo.set('');
         this.soporte.set('');
@@ -113,7 +131,10 @@ export class MovimientoCaja implements AfterViewInit {
         this.avisos.ok('Movimiento registrado.');
         this.actualizado.emit(nuevo);
       },
-      error: e => this.avisos.error(e),
+      error: e => {
+        this.enviando.set(false);
+        this.avisos.error(e);
+      },
     });
   }
 

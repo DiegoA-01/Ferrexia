@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  CargaPrecios, HistorialPrecio, ListaPrecio, PrecioFila, Precios, ProductoParaVender, TarifaImpuesto,
+  CargaPrecios, CategoriaParaVender, HistorialPrecio, ListaPrecio, PrecioFila, Precios, ProductoParaVender, TarifaImpuesto,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -84,6 +84,22 @@ export class VentasService {
    */
   buscarParaVender(q: string, listaId: number | null = null, bodegaId: number | null = null): Observable<ProductoParaVender[]> {
     return this.http.get<ProductoParaVender[]>(api('/api/ventas/productos'), { params: parametros({ q, listaId, bodegaId }) });
+  }
+
+  /**
+   * Productos de una categoría para vender (spec 027), por nombre.
+   *
+   * @param categoriaId categoría
+   * @param listaId     lista (null = General)
+   * @param bodegaId    bodega del stock (null = todas)
+   */
+  productosDeCategoria(categoriaId: number, listaId: number | null = null, bodegaId: number | null = null): Observable<ProductoParaVender[]> {
+    return this.http.get<ProductoParaVender[]>(api('/api/ventas/productos'), { params: parametros({ categoriaId, listaId, bodegaId }) });
+  }
+
+  /** Categorías con productos para vender (spec 027), para los botones del POS y del pedido de venta. */
+  categoriasParaVender(): Observable<CategoriaParaVender[]> {
+    return this.http.get<CategoriaParaVender[]>(api('/api/ventas/categorias'));
   }
 
   /**

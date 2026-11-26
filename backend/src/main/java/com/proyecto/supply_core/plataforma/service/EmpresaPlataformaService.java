@@ -1,7 +1,6 @@
 package com.proyecto.supply_core.plataforma.service;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -129,10 +128,8 @@ public class EmpresaPlataformaService {
      *                          inicial no es PRUEBA ni ACTIVA
      */
     public EmpresaDetalleResponse crear(EmpresaCrearRequest req) {
-        Plan plan = planRepository.findByCodigoIgnoreCase(req.planCodigo().trim())
-                .filter(Plan::isActivo)
-                .orElseThrow(() -> new NegocioException("PLAN_INVALIDO",
-                        "El plan " + req.planCodigo() + " no existe o no está activo"));
+        Plan plan = planDelAlta(req.planCodigo());
+        Set<String> apagados = apagados(req.modulos());
         EstadoSuscripcion estado = req.estadoInicial() == null ? EstadoSuscripcion.PRUEBA : req.estadoInicial();
         if (estado != EstadoSuscripcion.PRUEBA && estado != EstadoSuscripcion.ACTIVA) {
             throw new NegocioException("ESTADO_INICIAL_INVALIDO", "Una empresa nueva empieza en PRUEBA o ACTIVA");
@@ -143,19 +140,82 @@ public class EmpresaPlataformaService {
         }
         Empresa empresa = crearConCodigo(req, plan, estado);
         try {
+            apagar(empresa.getId(), apagados);
             EmpresaContexto.como(empresa.getId(),
                     () -> altaService.sembrarAdministrador(req.adminNombre(), req.adminCorreo(), req.adminPassword()));
         } catch (RuntimeException e) {
             log.error("Falló el alta de la empresa {}: {}; se deshace", empresa.getId(), e.getMessage(), e);
+            empresaModuloRepository.findByEmpresaId(empresa.getId()).forEach(empresaModuloRepository::delete);
             altaService.deshacer(empresa.getId());
             auditoria.registrar(PlataformaActual.usuario().id(), AccionPlataforma.EMPRESA_CREAR, null, false,
                     "nit=" + nit + "; motivo=" + e.getMessage());
             throw e;
         }
         auditoria.registrar(PlataformaActual.usuario().id(), AccionPlataforma.EMPRESA_CREAR, empresa.getId(), true,
-                "nit=" + nit + "; codigo=" + empresa.getCodigoPublico() + "; plan=" + plan.getCodigo() + "; estado="
-                        + estado + "; admin=" + req.adminCorreo().trim().toLowerCase());
+                "nit=" + nit + "; codigo=" + empresa.getCodigoPublico() + "; estado=" + estado + "; apagados="
+                        + new java.util.TreeSet<>(apagados) + "; admin=" + req.adminCorreo().trim().toLowerCase());
         return obtener(empresa.getId());
+    }
+
+    /** Plan que se guarda cuando el alta no dice ninguno (spec 024: el plan ya no decide los módulos). */
+    static final String PLAN_POR_DEFECTO = "EMPRESARIAL";
+
+    /**
+     * @param planCodigo plan escrito en el alta ({@code null} o vacío = {@value #PLAN_POR_DEFECTO})
+     * @return plan activo que se guarda como dato
+     * @throws NegocioException si el plan escrito no existe o no está activo
+     */
+    private Plan planDelAlta(String planCodigo) {
+        if (planCodigo == null || planCodigo.isBlank()) {
+            return planRepository.findByCodigoIgnoreCase(PLAN_POR_DEFECTO).filter(Plan::isActivo)
+                    .or(() -> planRepository.findAllByOrderByCodigoAsc().stream().filter(Plan::isActivo).findFirst())
+                    .orElseThrow(() -> new IllegalStateException("No hay ningún plan activo para guardar en la suscripción"));
+        }
+        return planRepository.findByCodigoIgnoreCase(planCodigo.trim()).filter(Plan::isActivo)
+                .orElseThrow(() -> new NegocioException("PLAN_INVALIDO",
+                        "El plan " + planCodigo + " no existe o no está activo"));
+    }
+
+    /**
+     * @param habilitados módulos que se eligieron en el alta ({@code null} = todos)
+     * @return los módulos del catálogo que quedan apagados
+     * @throws NegocioException si se eligió un módulo que no existe o ninguno
+     */
+    private Set<String> apagados(List<String> habilitados) {
+        Set<String> catalogo = moduloRepository.findAllByOrderByCodigoAsc().stream().map(Modulo::getCodigo)
+                .collect(Collectors.toCollection(java.util.TreeSet::new));
+        if (habilitados == null) {
+            return Set.of();
+        }
+        Set<String> elegidos = habilitados.stream().filter(m -> m != null && !m.isBlank())
+                .map(m -> m.trim().toUpperCase()).collect(Collectors.toSet());
+        for (String m : elegidos) {
+            if (!catalogo.contains(m)) {
+                throw new NegocioException("MODULO_INEXISTENTE", "El módulo " + m + " no existe");
+            }
+        }
+        if (elegidos.isEmpty()) {
+            throw new NegocioException("SIN_MODULOS", "Habilite al menos un módulo para la empresa");
+        }
+        catalogo.removeAll(elegidos);
+        return catalogo;
+    }
+
+    /**
+     * @param empresaId empresa nueva
+     * @param apagados  módulos que no se le habilitan
+     */
+    private void apagar(Long empresaId, Set<String> apagados) {
+        for (String m : apagados) {
+            EmpresaModulo fila = new EmpresaModulo();
+            fila.setEmpresaId(empresaId);
+            fila.setModuloCodigo(m);
+            fila.setHabilitado(false);
+            empresaModuloRepository.save(fila);
+        }
+        if (!apagados.isEmpty()) {
+            empresaModuloRepository.flush();
+        }
     }
 
     /**
@@ -240,11 +300,11 @@ public class EmpresaPlataformaService {
     }
 
     /**
-     * Da, quita o restablece un módulo de una empresa aparte de su plan.
+     * Prende o apaga un módulo de una empresa (spec 024: sin planes, solo se guardan los apagados).
      *
      * @param id           empresa
      * @param moduloCodigo módulo
-     * @param habilitado   {@code true} lo da, {@code false} lo quita, {@code null} borra la excepción
+     * @param habilitado   {@code false} lo apaga; {@code true} o {@code null} lo prende
      * @return empresa con su situación de módulos
      * @throws NegocioException      si el módulo no existe
      * @throws NoEncontradoException si la empresa no existe
@@ -257,21 +317,22 @@ public class EmpresaPlataformaService {
             throw new NegocioException("MODULO_INEXISTENTE", "El módulo " + moduloCodigo + " no existe");
         }
         var existente = empresaModuloRepository.findByEmpresaIdAndModuloCodigo(id, codigo);
-        if (habilitado == null) {
+        boolean apagar = Boolean.FALSE.equals(habilitado);
+        if (!apagar) {
             existente.ifPresent(empresaModuloRepository::delete);
         } else if (existente.isPresent()) {
-            existente.get().setHabilitado(habilitado);
+            existente.get().setHabilitado(false);
         } else {
             EmpresaModulo nueva = new EmpresaModulo();
             nueva.setEmpresaId(id);
             nueva.setModuloCodigo(codigo);
-            nueva.setHabilitado(habilitado);
+            nueva.setHabilitado(false);
             empresaModuloRepository.save(nueva);
         }
         empresaModuloRepository.flush();
         accesoEmpresa.invalidar(id);
         auditoria.registrar(PlataformaActual.usuario().id(), AccionPlataforma.EMPRESA_MODULO, id, true,
-                "modulo=" + codigo + "; excepcion=" + (habilitado == null ? "ninguna" : habilitado));
+                "modulo=" + codigo + "; " + (apagar ? "apagado" : "habilitado"));
         return detalle(empresa(id), s);
     }
 
@@ -344,15 +405,14 @@ public class EmpresaPlataformaService {
      * @return detalle
      */
     private EmpresaDetalleResponse detalle(Empresa e, Suscripcion s) {
-        Map<String, Boolean> excepciones = empresaModuloRepository.findByEmpresaId(e.getId()).stream()
-                .collect(Collectors.toMap(EmpresaModulo::getModuloCodigo, EmpresaModulo::isHabilitado));
-        Set<String> delPlan = new HashSet<>(s.getPlan().getModulos());
+        // Spec 024: sin planes. Cada módulo está habilitado salvo que la plataforma lo haya apagado.
+        Set<String> apagados = empresaModuloRepository.findByEmpresaId(e.getId()).stream()
+                .filter(x -> !x.isHabilitado()).map(EmpresaModulo::getModuloCodigo).collect(Collectors.toSet());
         List<EmpresaDetalleResponse.ModuloEmpresa> modulos = moduloRepository.findAllByOrderByCodigoAsc().stream()
                 .map((Modulo m) -> {
-                    boolean enPlan = delPlan.contains(m.getCodigo());
-                    Boolean excepcion = excepciones.get(m.getCodigo());
-                    return new EmpresaDetalleResponse.ModuloEmpresa(m.getCodigo(), m.getNombre(), enPlan, excepcion,
-                            excepcion != null ? excepcion : enPlan);
+                    boolean apagado = apagados.contains(m.getCodigo());
+                    return new EmpresaDetalleResponse.ModuloEmpresa(m.getCodigo(), m.getNombre(), true,
+                            apagado ? Boolean.FALSE : null, !apagado);
                 }).toList();
         EmpresaDetalleResponse.Administrador administrador = usuarioRepository.administradorDe(e.getId()).stream()
                 .findFirst().map(a -> new EmpresaDetalleResponse.Administrador(a.getNombre(), a.getCorreo()))

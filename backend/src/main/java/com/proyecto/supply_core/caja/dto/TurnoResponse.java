@@ -34,11 +34,12 @@ import com.proyecto.supply_core.caja.enums.MedioPago;
  * @param aprobadoEn            cuándo o {@code null}
  * @param explicacionAprobacion explicación del supervisor o {@code null}
  * @param movimientos           libro de caja (al cajero con el turno abierto, solo base, retiros, gastos e ingresos)
+ * @param conteo                billetes y monedas contados al cerrar (spec 023) o {@code null} si se escribió el total
  */
 public record TurnoResponse(Long id, Long cajaId, String caja, String bodega, Long cajeroId, String cajero,
         EstadoTurno estado, LocalDateTime abiertoEn, BigDecimal baseApertura, boolean debeRetirar,
         LocalDateTime cerradoEn, Map<MedioPago, BigDecimal> esperado, Map<MedioPago, BigDecimal> contado,
         Map<MedioPago, BigDecimal> diferencias, BigDecimal diferencia, boolean requiereAprobacion, String observacion,
         String aprobadoPor, LocalDateTime aprobadoEn, String explicacionAprobacion,
-        List<MovimientoCajaResponse> movimientos) {
+        List<MovimientoCajaResponse> movimientos, List<ConteoDenominacion> conteo) {
 }

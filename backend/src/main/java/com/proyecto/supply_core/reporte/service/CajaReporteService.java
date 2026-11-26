@@ -1,6 +1,7 @@
 package com.proyecto.supply_core.reporte.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -8,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,8 +18,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.proyecto.supply_core.caja.enums.MedioPago;
 import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.reporte.dto.CajaReporte;
+import com.proyecto.supply_core.reporte.dto.VentasTurnoReporte;
 
 /**
  * Reporte de caja (spec 009): lo que pasó en los turnos de un periodo. Solo lectura, con {@code empresa_id} a mano en
@@ -127,6 +131,150 @@ public class CajaReporteService {
                 suma(anulaciones.stream().map(CajaReporte.Anulacion::total).toList()),
                 suma(autorizados.stream().map(CajaReporte.Autorizado::descuentoValor).toList()));
         return new CajaReporte(p[0], p[1], turnos, porCajero, movimientos, anulaciones, autorizados, totales);
+    }
+
+    /**
+     * Datos fijos de un turno leídos de {@code turno_caja} para las ventas por turno.
+     *
+     * @param id         turno
+     * @param caja       caja
+     * @param cajero     cajero
+     * @param estado     estado
+     * @param abiertoEn  apertura
+     * @param cerradoEn  cierre o {@code null}
+     * @param diferencia diferencia guardada al cerrar o {@code null}
+     */
+    record BaseTurno(Long id, String caja, String cajero, String estado, LocalDateTime abiertoEn,
+            LocalDateTime cerradoEn, BigDecimal diferencia) {
+    }
+
+    /**
+     * Suma del libro de caja de un turno para un tipo y un medio.
+     *
+     * @param turnoId turno
+     * @param tipo    tipo de movimiento
+     * @param medio   medio de pago
+     * @param monto   suma con signo (lo que sale, en negativo)
+     */
+    record SumaLibro(Long turnoId, String tipo, String medio, BigDecimal monto) {
+    }
+
+    /**
+     * Ventas por turno (spec 023): por cada turno abierto en el periodo, sus ventas por medio de pago, devoluciones,
+     * ingresos, egresos, esperado, contado y diferencia. La base de datos agrupa el libro de caja por turno, tipo y
+     * medio; Java arma las cifras con las mismas sumas del cuadre.
+     *
+     * @param desde  primer día (vacío = primer día del mes en curso)
+     * @param hasta  último día (vacío = hoy)
+     * @param cajaId solo esa caja ({@code null} = todas)
+     * @return ventas por turno del periodo
+     */
+    @Transactional(readOnly = true)
+    public VentasTurnoReporte ventasPorTurno(LocalDate desde, LocalDate hasta, Long cajaId) {
+        LocalDate[] p = VentaReporteService.periodo(desde, hasta);
+        Long empresa = EmpresaContexto.requerida();
+        Timestamp ini = Timestamp.valueOf(p[0].atStartOfDay());
+        Timestamp fin = Timestamp.valueOf(p[1].plusDays(1).atStartOfDay());
+        String filtroCaja = cajaId == null ? "" : " AND t.caja_id = ?";
+        Object[] a = cajaId == null ? new Object[] { empresa, ini, fin } : new Object[] { empresa, ini, fin, cajaId };
+
+        List<BaseTurno> bases = jdbc.query("SELECT t.id, c.nombre AS caja, u.nombre_completo AS cajero, t.estado,"
+                + " t.abierto_en, t.cerrado_en, t.diferencia"
+                + " FROM turno_caja t JOIN caja c ON c.id = t.caja_id JOIN usuario u ON u.id = t.cajero_usuario_id"
+                + " WHERE t.empresa_id = ? AND t.abierto_en >= ? AND t.abierto_en < ?" + filtroCaja
+                + " ORDER BY t.abierto_en DESC, t.id DESC",
+                (rs, i) -> new BaseTurno(rs.getLong("id"), rs.getString("caja"), rs.getString("cajero"),
+                        rs.getString("estado"), fecha(rs, "abierto_en"), fecha(rs, "cerrado_en"),
+                        rs.getBigDecimal("diferencia")), a);
+
+        List<SumaLibro> sumas = jdbc.query("SELECT m.turno_id, m.tipo, m.medio_pago, SUM(m.monto) AS monto"
+                + " FROM movimiento_caja m JOIN turno_caja t ON t.id = m.turno_id AND t.empresa_id = m.empresa_id"
+                + " WHERE m.empresa_id = ? AND t.abierto_en >= ? AND t.abierto_en < ?" + filtroCaja
+                + " GROUP BY m.turno_id, m.tipo, m.medio_pago",
+                (rs, i) -> new SumaLibro(rs.getLong("turno_id"), rs.getString("tipo"), rs.getString("medio_pago"),
+                        rs.getBigDecimal("monto")), a);
+
+        return ventasPorTurno(p[0], p[1], bases, sumas);
+    }
+
+    /**
+     * Arma las ventas por turno en Java (se prueba sin base de datos).
+     *
+     * @param desde primer día
+     * @param hasta último día
+     * @param bases turnos del periodo, en el orden en que se muestran
+     * @param sumas libro de caja agrupado por turno, tipo y medio
+     * @return reporte con sus totales
+     */
+    static VentasTurnoReporte ventasPorTurno(LocalDate desde, LocalDate hasta, List<BaseTurno> bases,
+            List<SumaLibro> sumas) {
+        Map<Long, List<SumaLibro>> porTurno = new HashMap<>();
+        sumas.forEach(s -> porTurno.computeIfAbsent(s.turnoId(), k -> new ArrayList<>()).add(s));
+
+        List<VentasTurnoReporte.Turno> turnos = new ArrayList<>();
+        Map<String, BigDecimal> ventasPeriodo = new LinkedHashMap<>();
+        BigDecimal totalVentas = CERO;
+        BigDecimal devoluciones = CERO;
+        BigDecimal ingresos = CERO;
+        BigDecimal egresos = CERO;
+        BigDecimal diferencia = CERO;
+        for (BaseTurno b : bases) {
+            Map<String, BigDecimal> ventas = new HashMap<>();
+            BigDecimal anulaciones = CERO;
+            BigDecimal dev = CERO;
+            BigDecimal abonos = CERO;
+            BigDecimal ing = CERO;
+            BigDecimal gastos = CERO;
+            BigDecimal retiros = CERO;
+            BigDecimal esperado = CERO;
+            for (SumaLibro s : porTurno.getOrDefault(b.id(), List.of())) {
+                BigDecimal monto = s.monto() == null ? CERO : s.monto().setScale(2, RoundingMode.HALF_UP);
+                esperado = esperado.add(monto);
+                switch (s.tipo()) {
+                    case "VENTA" -> ventas.merge(s.medio(), monto, BigDecimal::add);
+                    case "ANULACION" -> {
+                        ventas.merge(s.medio(), monto, BigDecimal::add);
+                        anulaciones = anulaciones.add(monto.abs());
+                    }
+                    case "DEVOLUCION" -> dev = dev.add(monto.abs());
+                    case "ABONO_CARTERA" -> abonos = abonos.add(monto);
+                    case "INGRESO" -> ing = ing.add(monto);
+                    case "GASTO" -> gastos = gastos.add(monto.abs());
+                    case "RETIRO" -> retiros = retiros.add(monto.abs());
+                    default -> {
+                        // BASE: solo cuenta en el esperado.
+                    }
+                }
+            }
+            Map<String, BigDecimal> ventasOrdenadas = new LinkedHashMap<>();
+            for (MedioPago m : MedioPago.values()) {
+                BigDecimal v = ventas.get(m.name());
+                if (v != null) {
+                    ventasOrdenadas.put(m.name(), v);
+                    ventasPeriodo.merge(m.name(), v, BigDecimal::add);
+                }
+            }
+            BigDecimal suma = ventasOrdenadas.values().stream().reduce(CERO, BigDecimal::add);
+            boolean cerrado = b.cerradoEn() != null && !"ABIERTO".equals(b.estado()) && b.diferencia() != null;
+            BigDecimal dif = cerrado ? b.diferencia().setScale(2, RoundingMode.HALF_UP) : null;
+            turnos.add(new VentasTurnoReporte.Turno(b.id(), b.caja(), b.cajero(), b.estado(), b.abiertoEn(),
+                    b.cerradoEn(), ventasOrdenadas, suma, anulaciones, dev, abonos, ing, gastos, retiros, esperado,
+                    cerrado ? esperado.add(dif) : null, dif));
+            totalVentas = totalVentas.add(suma);
+            devoluciones = devoluciones.add(dev);
+            ingresos = ingresos.add(ing).add(abonos);
+            egresos = egresos.add(gastos).add(retiros);
+            diferencia = cerrado ? diferencia.add(dif) : diferencia;
+        }
+        Map<String, BigDecimal> ventasMedio = new LinkedHashMap<>();
+        for (MedioPago m : MedioPago.values()) {
+            BigDecimal v = ventasPeriodo.get(m.name());
+            if (v != null) {
+                ventasMedio.put(m.name(), v);
+            }
+        }
+        return new VentasTurnoReporte(desde, hasta, turnos, new VentasTurnoReporte.Totales(turnos.size(), ventasMedio,
+                totalVentas, devoluciones, ingresos, egresos, diferencia));
     }
 
     /**

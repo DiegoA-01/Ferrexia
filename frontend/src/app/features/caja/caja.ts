@@ -2,10 +2,11 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { Bodega, Caja, EsperadoTurno, MedioPago, Pagina, Turno } from '../../core/api/modelos';
+import { Bodega, Caja, ConteoDenominacion, EsperadoTurno, MedioPago, Pagina, Turno, Usuario } from '../../core/api/modelos';
 import { FechaPipe, PesosPipe } from '../../core/formato/formato';
 import { CajaService } from '../../core/servicios/caja.service';
 import { InventarioService } from '../../core/servicios/inventario.service';
+import { UsuariosService } from '../../core/servicios/usuarios.service';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 
@@ -42,6 +43,7 @@ interface EdicionCaja {
 export class CajasTurnos implements OnInit {
   private readonly servicio = inject(CajaService);
   private readonly inventario = inject(InventarioService);
+  private readonly usuarios = inject(UsuariosService);
   private readonly sesion = inject(SesionService);
   private readonly avisos = inject(Avisos);
 
@@ -57,6 +59,9 @@ export class CajasTurnos implements OnInit {
   protected readonly cajas = signal<Caja[]>([]);
   protected readonly bodegas = signal<Bodega[]>([]);
   protected readonly edicion = signal<EdicionCaja | null>(null);
+  /** Spec 025: personas activas de la empresa y las asignadas a la caja en edición (null = cargando). */
+  protected readonly personas = signal<Usuario[]>([]);
+  protected readonly asignados = signal<number[] | null>(null);
   protected readonly tolerancia = signal<number | null>(null);
   /** Bodega para lo devuelto en mal estado (spec 006); null = no reingresa. */
   protected readonly averias = signal<number | null>(null);
@@ -140,6 +145,42 @@ export class CajasTurnos implements OnInit {
     this.edicion.set(c
       ? { id: c.id!, nombre: c.nombre ?? '', bodegaId: c.bodegaId ?? null, prefijo: c.prefijoConsecutivo ?? '', tope: c.topeEfectivo ?? 0, activa: c.activa ?? true }
       : { id: null, nombre: '', bodegaId: null, prefijo: '', tope: 0, activa: true });
+    // spec 025: quién puede usar la caja (solo al editar una que ya existe)
+    this.asignados.set(null);
+    if (c?.id) {
+      if (!this.personas().length) {
+        // el usuario de un proveedor nunca abre caja: no se ofrece
+        this.usuarios.buscar({ activo: true }).subscribe({
+          next: p => this.personas.set((p.contenido ?? []).filter(u => u.proveedorId == null)),
+          error: () => undefined,
+        });
+      }
+      this.servicio.usuariosDeCaja(c.id).subscribe({
+        next: l => this.asignados.set(l.map(u => u.usuarioId!)),
+        error: e => this.avisos.error(e),
+      });
+    }
+  }
+
+  /** @param id persona que se marca o desmarca para la caja en edición */
+  protected marcarPersona(id: number): void {
+    this.asignados.update(l => (l ?? []).includes(id) ? (l ?? []).filter(x => x !== id) : [...(l ?? []), id]);
+  }
+
+  /** Guarda quiénes pueden usar la caja en edición (spec 025). */
+  protected guardarAsignados(): void {
+    const id = this.edicion()?.id;
+    const lista = this.asignados();
+    if (!id || !lista) {
+      return;
+    }
+    this.servicio.asignarUsuarios(id, lista).subscribe({
+      next: l => {
+        this.asignados.set(l.map(u => u.usuarioId!));
+        this.avisos.ok(l.length ? `La caja la pueden usar ${l.length} personas.` : 'La caja no tiene personas asignadas.');
+      },
+      error: e => this.avisos.error(e),
+    });
   }
 
   /** @param campo dato; @param valor valor escrito */
@@ -221,5 +262,10 @@ export class CajasTurnos implements OnInit {
   /** @param mapa valores por medio; @param medio medio */
   protected valor(mapa: Record<string, number> | undefined, medio: MedioPago): number {
     return mapa?.[medio] ?? 0;
+  }
+
+  /** @param conteo billetes y monedas contados al cerrar (spec 023) @returns efectivo total del conteo */
+  protected totalConteo(conteo: ConteoDenominacion[]): number {
+    return conteo.reduce((s, f) => s + f.valor * f.cantidad, 0);
   }
 }

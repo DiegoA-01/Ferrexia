@@ -4271,6 +4271,12 @@ export interface components {
             stockMaximo?: number;
             costoReferencia?: number;
             rangoStockValido?: boolean;
+            /** Format: int64 */
+            tarifaImpuestoId?: number;
+            /** Format: int64 */
+            proveedorReferenciaId?: number;
+            /** Format: date */
+            costoReferenciaFecha?: string;
         };
         ProductoResponse: {
             /** Format: int64 */
@@ -4291,6 +4297,15 @@ export interface components {
             /** Format: int32 */
             diasSeguridad?: number;
             costoPromedio?: number;
+            /** Format: int64 */
+            tarifaImpuestoId?: number;
+            tarifaImpuesto?: string;
+            /** Format: int64 */
+            proveedorReferenciaId?: number;
+            proveedorReferencia?: string;
+            /** Format: date */
+            costoReferenciaFecha?: string;
+            sobreStockMaximo?: boolean;
         };
         PresupuestoUpdateRequest: {
             monto: number;
@@ -5050,6 +5065,16 @@ export interface components {
             aprobadoEn?: string;
             explicacionAprobacion?: string;
             movimientos?: components["schemas"]["MovimientoCajaResponse"][];
+            conteo?: components["schemas"]["ConteoDenominacion"][];
+        };
+        ConteoDenominacion: {
+            /** @enum {string} */
+            tipo: "BILLETE" | "MONEDA";
+            /** Format: int32 */
+            valor: number;
+            /** Format: int32 */
+            cantidad: number;
+            referencia?: string;
         };
         MovimientoCajaRequest: {
             /** @enum {string} */
@@ -5057,16 +5082,17 @@ export interface components {
             monto: number;
             motivo: string;
             soporte?: string;
-            autorizacion: string;
+            autorizacion?: string;
             /** Format: int64 */
             categoriaId?: number;
         };
         CerrarTurnoRequest: {
-            contadoEfectivo: number;
+            contadoEfectivo?: number;
             contadoOtros?: {
                 [key: string]: number;
             };
             observacion?: string;
+            conteo?: components["schemas"]["ConteoDenominacion"][];
         };
         AprobarTurnoRequest: {
             explicacion: string;
@@ -5247,6 +5273,12 @@ export interface components {
             stockMaximo?: number;
             costoReferencia?: number;
             rangoStockValido?: boolean;
+            /** Format: int64 */
+            tarifaImpuestoId?: number;
+            /** Format: int64 */
+            proveedorReferenciaId?: number;
+            /** Format: date */
+            costoReferenciaFecha?: string;
         };
         CargaMasivaResponse: {
             soloValidar?: boolean;
@@ -5365,13 +5397,14 @@ export interface components {
             razonSocial: string;
             nit: string;
             codigoPublico?: string;
-            planCodigo: string;
+            planCodigo?: string;
             /** @enum {string} */
             estadoInicial?: "PRUEBA" | "ACTIVA" | "MOROSA" | "SUSPENDIDA" | "CANCELADA";
             adminNombre: string;
             /** Format: email */
             adminCorreo: string;
             adminPassword: string;
+            modulos?: string[];
         };
         MfaRequest: {
             desafio: string;
@@ -6292,6 +6325,13 @@ export interface components {
             unidad?: string;
             precio?: number;
         };
+        CategoriaParaVender: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
+            /** Format: int64 */
+            productos?: number;
+        };
         ProductoParaVender: {
             /** Format: int64 */
             productoId?: number;
@@ -6793,6 +6833,50 @@ export interface components {
             porAprobar?: boolean;
             aprobadoPor?: string;
             explicacion?: string;
+        };
+        VentasTurnoReporte: {
+            /** Format: date */
+            desde?: string;
+            /** Format: date */
+            hasta?: string;
+            turnos?: components["schemas"]["VentasTurno"][];
+            totales?: components["schemas"]["VentasTurnoTotales"];
+        };
+        VentasTurno: {
+            /** Format: int64 */
+            id?: number;
+            caja?: string;
+            cajero?: string;
+            estado?: string;
+            /** Format: date-time */
+            abiertoEn?: string;
+            /** Format: date-time */
+            cerradoEn?: string;
+            ventas?: {
+                [key: string]: number;
+            };
+            totalVentas?: number;
+            anulaciones?: number;
+            devoluciones?: number;
+            abonos?: number;
+            ingresos?: number;
+            gastos?: number;
+            retiros?: number;
+            esperado?: number;
+            contado?: number;
+            diferencia?: number;
+        };
+        VentasTurnoTotales: {
+            /** Format: int64 */
+            turnos?: number;
+            ventas?: {
+                [key: string]: number;
+            };
+            totalVentas?: number;
+            devoluciones?: number;
+            ingresos?: number;
+            egresos?: number;
+            diferencia?: number;
         };
         ContratoSugerido: {
             /** Format: int64 */

@@ -3,8 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  AccionAutorizada, Autorizacion, Caja, CajaRequest, CategoriaMovimientoCaja, ConfiguracionCaja, EsperadoTurno, EstadoTurno, MedioPago,
-  Pagina, TipoCategoriaMovimiento, Turno,
+  AccionAutorizada, Autorizacion, Caja, CajaRequest, CategoriaMovimientoCaja, ConfiguracionCaja, ConteoDenominacion, EsperadoTurno, EstadoTurno, MedioPago,
+  Pagina, TipoCategoriaMovimiento, Turno, UsuarioCaja,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -16,6 +16,26 @@ export class CajaService {
   /** @param activa filtro por estado (null = todas) */
   cajas(activa: boolean | null = null): Observable<Caja[]> {
     return this.http.get<Caja[]>(api('/api/cajas'), { params: parametros({ activa }) });
+  }
+
+  /** Spec 025: cajas activas en las que la sesión puede abrir turno (las asignadas o, sin ninguna, todas). */
+  misCajas(): Observable<Caja[]> {
+    return this.http.get<Caja[]>(api('/api/cajas/mias'));
+  }
+
+  /** @param cajaId caja @returns quiénes la pueden usar (spec 025) */
+  usuariosDeCaja(cajaId: number): Observable<UsuarioCaja[]> {
+    return this.http.get<UsuarioCaja[]>(api(`/api/cajas/${cajaId}/usuarios`));
+  }
+
+  /** @param usuarioId persona @returns sus cajas asignadas (vacío = puede usar todas) */
+  cajasDeUsuario(usuarioId: number): Observable<{ cajaId?: number; nombre?: string }[]> {
+    return this.http.get<{ cajaId?: number; nombre?: string }[]>(api(`/api/cajas/de-usuario/${usuarioId}`));
+  }
+
+  /** @param cajaId caja; @param usuarioIds personas que la pueden usar (reemplaza la lista) */
+  asignarUsuarios(cajaId: number, usuarioIds: number[]): Observable<UsuarioCaja[]> {
+    return this.http.put<UsuarioCaja[]>(api(`/api/cajas/${cajaId}/usuarios`), { usuarioIds });
   }
 
   /** @param datos caja nueva */
@@ -78,7 +98,7 @@ export class CajaService {
    * @param datos   tipo, monto, motivo, soporte, token de autorización y categoría (spec 021)
    */
   movimiento(turnoId: number, datos: { tipo: 'RETIRO' | 'GASTO' | 'INGRESO'; monto: number; motivo: string; soporte?: string | null;
-    autorizacion: string; categoriaId?: number | null }): Observable<Turno> {
+    autorizacion?: string; categoriaId?: number | null }): Observable<Turno> {
     return this.http.post<Turno>(api(`/api/turnos/${turnoId}/movimientos`), datos);
   }
 
@@ -89,9 +109,11 @@ export class CajaService {
    * @param contadoEfectivo efectivo contado
    * @param contadoOtros    vouchers y transferencias por medio
    * @param observacion     nota opcional
+   * @param conteo          billetes y monedas contados (spec 023); si viene, el backend suma el efectivo
    */
-  cerrar(turnoId: number, contadoEfectivo: number, contadoOtros: Partial<Record<MedioPago, number>>, observacion: string | null): Observable<Turno> {
-    return this.http.post<Turno>(api(`/api/turnos/${turnoId}/cerrar`), { contadoEfectivo, contadoOtros, observacion });
+  cerrar(turnoId: number, contadoEfectivo: number | null, contadoOtros: Partial<Record<MedioPago, number>>, observacion: string | null,
+    conteo: ConteoDenominacion[] | null = null): Observable<Turno> {
+    return this.http.post<Turno>(api(`/api/turnos/${turnoId}/cerrar`), { contadoEfectivo, contadoOtros, observacion, conteo });
   }
 
   /**

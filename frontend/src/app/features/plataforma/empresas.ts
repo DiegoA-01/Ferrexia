@@ -1,14 +1,15 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { EmpresaDetalle, EmpresaPlataforma, EstadoSuscripcion, Plan } from '../../core/api/modelos';
+import { EmpresaDetalle, EmpresaPlataforma, EstadoSuscripcion, ModuloPlataforma } from '../../core/api/modelos';
 import { Estado } from '../../core/formato/etiquetas';
 import { FechaPipe } from '../../core/formato/formato';
 import { PlataformaService } from '../../core/servicios/plataforma.service';
 import { Avisos } from '../../core/ui/avisos';
 
 /**
- * Vista 9 · Consola del dueño: empresas clientes, su plan, sus módulos y el estado de la suscripción.
+ * Vista 9 · Consola del dueño: empresas clientes, sus módulos y el estado de la suscripción. Desde la spec 024 no hay
+ * planes: al crear la empresa se marcan sus módulos y luego se prenden o apagan uno por uno.
  * No muestra datos de compra de ninguna empresa.
  */
 @Component({
@@ -24,12 +25,12 @@ export class Empresas implements OnInit {
   protected readonly empresas = signal<EmpresaPlataforma[] | null>(null);
   protected readonly detalle = signal<EmpresaDetalle | null>(null);
   protected readonly cambios = signal<Record<string, boolean>>({});
-  protected readonly planes = signal<Plan[]>([]);
+  /** Spec 024: catálogo de módulos para el panel del alta y los que se marcaron. */
+  protected readonly catalogo = signal<ModuloPlataforma[]>([]);
+  protected readonly modulosAlta = signal<string[]>([]);
   protected readonly creando = signal(false);
   protected readonly trabajando = signal(false);
   protected readonly busqueda = signal('');
-  /** Plan elegido en el selector, antes de confirmar el cambio. */
-  protected readonly planElegido = signal<string | null>(null);
   /** Muestra la contraseña inicial del administrador para revisarla antes de crear la empresa. */
   protected readonly verClave = signal(false);
   /** Spec 020: el código de ingreso se genera solo; esto permite escribirlo a mano. */
@@ -54,7 +55,6 @@ export class Empresas implements OnInit {
     // Opcional (spec 020): vacío = el backend lo genera desde la razón social. Si se escribe: texto libre (espacios,
     // mayúsculas, tildes); solo se excluye lo que rompe la dirección del registro: / \ ? # %
     codigoPublico: ['', [Validators.minLength(3), Validators.maxLength(40), Validators.pattern(/^[^/\\?#%\u0000-\u001f]+$/)]],
-    planCodigo: ['', Validators.required],
     estadoInicial: ['PRUEBA' as EstadoSuscripcion],
     adminNombre: ['', Validators.required],
     adminCorreo: ['', [Validators.required, Validators.email]],
@@ -63,13 +63,22 @@ export class Empresas implements OnInit {
 
   ngOnInit(): void {
     this.cargar();
-    this.servicio.planes().subscribe({ next: l => this.planes.set(l.filter(p => p.activo)), error: () => undefined });
+    this.servicio.modulos().subscribe({ next: l => this.catalogo.set(l), error: () => undefined });
+  }
+
+  /** @param codigo módulo del panel del alta que se marca o desmarca */
+  protected marcarModulo(codigo: string): void {
+    this.modulosAlta.update(l => (l.includes(codigo) ? l.filter(x => x !== codigo) : [...l, codigo]));
+  }
+
+  /** @param todos {@code true} marca todo el catálogo; {@code false} lo desmarca */
+  protected marcarTodos(todos: boolean): void {
+    this.modulosAlta.set(todos ? this.catalogo().map(m => m.codigo!) : []);
   }
 
   /** @param e empresa de la tabla */
   protected abrir(e: EmpresaPlataforma): void {
     this.cambios.set({});
-    this.planElegido.set(null);
     this.servicio.empresa(e.id!).subscribe({ next: d => this.detalle.set(d), error: err => this.avisos.error(err) });
   }
 
@@ -126,29 +135,6 @@ export class Empresas implements OnInit {
     siguiente(0);
   }
 
-  /** Cambia el plan de la empresa abierta: sus módulos pasan a ser los del plan nuevo (más sus excepciones). */
-  protected cambiarPlan(): void {
-    const id = this.detalle()?.empresa?.id;
-    const plan = this.planElegido();
-    if (!id || !plan) {
-      return;
-    }
-    this.trabajando.set(true);
-    this.servicio.cambiarPlan(id, plan).subscribe({
-      next: d => {
-        this.trabajando.set(false);
-        this.detalle.set(d);
-        this.planElegido.set(null);
-        this.avisos.ok(`${d.empresa?.razonSocial} pasó al plan ${d.empresa?.planNombre ?? plan}.`);
-        this.cargar();
-      },
-      error: err => {
-        this.trabajando.set(false);
-        this.avisos.error(err);
-      },
-    });
-  }
-
   /** @param estado nuevo estado de la suscripción */
   protected cambiarEstado(estado: EstadoSuscripcion): void {
     const e = this.detalle()?.empresa;
@@ -191,14 +177,20 @@ export class Empresas implements OnInit {
       this.nueva.markAllAsTouched();
       return;
     }
+    if (!this.modulosAlta().length) {
+      this.avisos.ok('Marca al menos un módulo para la empresa.');
+      return;
+    }
     this.trabajando.set(true);
     const datos = this.nueva.getRawValue();
     const escrito = this.codigoAMano() ? datos.codigoPublico.trim() : '';
-    this.servicio.crear({ ...datos, codigoPublico: escrito || undefined }).subscribe({
+    // spec 024: sin plan; los módulos marcados en el panel son los que la empresa puede usar
+    this.servicio.crear({ ...datos, codigoPublico: escrito || undefined, modulos: [...this.modulosAlta()] }).subscribe({
       next: d => {
         this.trabajando.set(false);
         this.creando.set(false);
         this.nueva.reset();
+        this.modulosAlta.set([]);
         this.codigoAMano.set(false);
         this.detalle.set(d);
         this.creada.set({ razonSocial: d.empresa?.razonSocial ?? '', codigo: d.empresa?.codigoPublico ?? '' });

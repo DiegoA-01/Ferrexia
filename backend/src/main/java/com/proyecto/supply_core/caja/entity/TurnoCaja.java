@@ -73,6 +73,11 @@ public class TurnoCaja {
     @Column(name = "contado_otros")
     private String contadoOtros;
 
+    /** Conteo del efectivo por billete y moneda (JSON, spec 023, V45); {@code null} si se escribió solo el total. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "conteo_denominaciones")
+    private String conteoDenominaciones;
+
     @Column(name = "esperado_efectivo", precision = 18, scale = 2)
     private BigDecimal esperadoEfectivo;
 

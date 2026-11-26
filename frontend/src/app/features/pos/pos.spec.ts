@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CotizacionVenta, ProductoParaVender, Turno } from '../../core/api/modelos';
+import { CategoriaParaVender, Cliente, CotizacionVenta, ProductoParaVender, Turno } from '../../core/api/modelos';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { PuntoDeVenta } from './pos';
 
@@ -17,7 +17,8 @@ const cotizacion = (extra: Partial<CotizacionVenta> = {}): CotizacionVenta => ({
   requiereAutorizacionDescuento: false, requiereAutorizacionPrecio: false, ...extra,
 });
 const sesion = (roles: string[]) => ({ provide: SesionService,
-  useValue: { tieneRol: (r: string[]) => r.some(x => roles.includes(x)), soloLectura: () => false, empresa: signal(null) } });
+  useValue: { tieneRol: (r: string[]) => r.some(x => roles.includes(x)), tieneModulo: () => true, soloLectura: () => false,
+    empresa: signal(null) } });
 
 describe('Punto de venta', () => {
   let fixture: ComponentFixture<PuntoDeVenta>;
@@ -26,7 +27,7 @@ describe('Punto de venta', () => {
   const texto = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
 
   /** @param roles roles; @param conTurno si hay turno abierto; @param configurar si se arma el TestBed aquí */
-  const crear = (roles: string[], conTurno = true, configurar = true) => {
+  const crear = (roles: string[], conTurno = true, configurar = true, categorias: CategoriaParaVender[] = []) => {
     if (configurar) {
       TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), sesion(roles)] });
     }
@@ -34,6 +35,7 @@ describe('Punto de venta', () => {
     fixture = TestBed.createComponent(PuntoDeVenta);
     fixture.detectChanges();
     backend.expectOne('/api/clientes/consumidor-final').flush({ id: 1, nombre: 'Consumidor final', esConsumidorFinal: true });
+    backend.expectOne('/api/ventas/categorias').flush(categorias);
     if (roles.some(r => r === 'CAJERO' || r === 'SUPERVISOR_VENTAS')) {
       const actual = backend.expectOne('/api/turnos/actual');
       if (conTurno) {
@@ -388,5 +390,109 @@ describe('Punto de venta', () => {
     c()['creandoCliente'].set(true);
     fixture.detectChanges();
     expect(texto()).toContain('Escriba el tipo y número de documento');
+  });
+
+  // ------------------------------------------------------------------ spec 027
+
+  const electricos: CategoriaParaVender = { id: 5, nombre: 'Eléctricos', productos: 2 };
+  const ana = { id: 10, nombre: 'Ana Pérez', tipoDocumento: 'CC', numeroDocumento: '123456', esConsumidorFinal: false } as Cliente;
+  const raiz = () => fixture.nativeElement as HTMLElement;
+
+  it('elegir una categoría muestra sus productos en tarjetas y un clic los agrega al carrito', () => {
+    crear(['CAJERO'], true, true, [electricos]);
+    expect(texto()).toContain('Eléctricos');
+    expect(texto()).toContain('Todas');
+    c()['elegirCategoria'](5);
+    const r = backend.expectOne(x => x.url === '/api/ventas/productos');
+    expect(r.request.params.get('categoriaId')).toBe('5');
+    expect(r.request.params.get('bodegaId')).toBe('9');
+    expect(r.request.params.has('q')).toBe(false);
+    r.flush([cable, { ...cable, productoId: 8, codigo: 'CAB-14', nombre: 'Cable 14', precio: null }]);
+    fixture.detectChanges();
+    const tarjetas = [...raiz().querySelectorAll<HTMLButtonElement>('.producto-tarjeta')];
+    expect(tarjetas.length).toBe(2);
+    expect(tarjetas[1].disabled).toBe(true); // sin precio no se vende
+    tarjetas[0].click();
+    expect(c()['carrito']().map((x: { productoId: number }) => x.productoId)).toEqual([7]);
+    cotizar();
+    // "Todas" vuelve a la búsqueda normal
+    c()['elegirCategoria'](null);
+    fixture.detectChanges();
+    expect(raiz().querySelectorAll('.producto-tarjeta').length).toBe(0);
+  });
+
+  it('el vendedor arma el pedido de venta por categorías', () => {
+    crear(['VENDEDOR'], true, true, [electricos]);
+    c()['elegirCategoria'](5);
+    backend.expectOne(x => x.url === '/api/ventas/productos' && x.params.get('categoriaId') === '5').flush([cable]);
+    fixture.detectChanges();
+    raiz().querySelector<HTMLButtonElement>('.producto-tarjeta')!.click();
+    cotizar();
+    c()['atajo'](new KeyboardEvent('keydown', { key: 'F9' }));
+    const pedido = backend.expectOne('/api/pedidos-venta');
+    expect(pedido.request.body.lineas[0].productoId).toBe(7);
+    pedido.flush({ id: 3, consecutivo: 'PV-000003' });
+  });
+
+  it('el cobro tiene cliente y pago en el mismo paso, y F4 dentro del cobro va al cliente', () => {
+    crear(['CAJERO']);
+    escanear();
+    cotizar();
+    c()['atajo'](new KeyboardEvent('keydown', { key: 'F9' }));
+    cotizar();
+    const dialogo = () => raiz().querySelector('.dialogo.cobro')!;
+    expect(dialogo().textContent).toContain('Cliente (F4)');
+    expect(dialogo().querySelector('[data-prueba="cliente-cobro"]')?.textContent).toContain('Consumidor final');
+    expect(dialogo().textContent).toContain('¿Cómo paga el cliente?');
+    // F4 dentro del cobro no abre el otro panel: lleva al buscador de cliente del cobro
+    c()['atajo'](new KeyboardEvent('keydown', { key: 'F4' }));
+    vi.advanceTimersByTime(1);
+    expect(c()['panelCliente']()).toBe(false);
+    expect(document.activeElement?.id).toBe('cobro-cliente');
+    // busca y elige al cliente sin salir del cobro
+    c()['buscarCliente'].set('123456');
+    c()['buscarClientes']();
+    backend.expectOne(x => x.url === '/api/clientes').flush({ contenido: [ana], pagina: 0, tamano: 20, totalElementos: 1, totalPaginas: 1 });
+    fixture.detectChanges();
+    expect(dialogo().textContent).toContain('Ana Pérez');
+    c()['elegirCliente'](ana);
+    expect(c()['cobrando']()).toBe(true);
+    const r = cotizar();
+    expect(r.request.body.clienteId).toBe(10);
+    expect(dialogo().querySelector('[data-prueba="cliente-cobro"]')?.textContent).toContain('Ana Pérez');
+    // y el pago, en el mismo paso: E elige efectivo y se confirma con un solo botón
+    c()['atajo'](new KeyboardEvent('keydown', { key: 'e' }));
+    c()['cambiarPago'](0, 'monto', 5000);
+    cotizar(cotizacion({ cambio: 1300, pagado: 5000 }));
+    expect(c()['puedeConfirmar']()).toBe(true);
+    expect([...dialogo().querySelectorAll('button')].filter(b => b.textContent?.includes('Confirmar venta')).length).toBe(1);
+  });
+
+  it('el cliente elegido en el panel llega cargado al cobro; volver a consumidor final quita el crédito elegido', () => {
+    crear(['CAJERO']);
+    escanear();
+    cotizar();
+    c()['elegirCliente'](ana);
+    cotizar();
+    c()['abrirCobro']();
+    cotizar();
+    expect(raiz().querySelector('[data-prueba="cliente-cobro"]')?.textContent).toContain('Ana Pérez');
+    c()['pagos'].set([{ medio: 'SALDO_FAVOR', monto: 3700, referencia: '' }]);
+    c()['elegirCliente'](null);
+    expect(c()['pagos']()[0].medio).toBeNull();
+    const r = cotizar();
+    expect(r.request.body.clienteId).toBeNull();
+  });
+
+  it('Esc dentro del cobro cierra primero el formulario de cliente nuevo y no el cobro', () => {
+    crear(['CAJERO']);
+    escanear();
+    cotizar();
+    c()['abrirCobro']();
+    cotizar();
+    c()['creandoCliente'].set(true);
+    c()['cancelar']();
+    expect(c()['creandoCliente']()).toBe(false);
+    expect(c()['cobrando']()).toBe(true);
   });
 });

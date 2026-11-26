@@ -90,6 +90,25 @@ public class ExportacionController {
     }
 
     /**
+     * Descarga las ventas por turno (spec 023) en Excel.
+     *
+     * @param formato {@code xlsx}
+     * @param desde   primer día (vacío = primer día del mes)
+     * @param hasta   último día (vacío = hoy)
+     * @param cajaId  solo esa caja (vacío = todas)
+     * @return archivo adjunto
+     */
+    @GetMapping("/reportes/caja/turnos")
+    @RequiereModulo(Modulos.VENTAS)
+    @RequierePermiso(Permisos.REPORTE_CAJA)
+    public ResponseEntity<byte[]> ventasPorTurno(@RequestParam(required = false) String formato,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Long cajaId) {
+        return descarga(exportacionService.ventasPorTurno(formato, desde, hasta, cajaId, DestinoExportacion.DESCARGA));
+    }
+
+    /**
      * Descarga los clientes de la empresa (spec 002). Solo el dueño y auditoría: son datos personales.
      *
      * @param formato {@code xlsx}

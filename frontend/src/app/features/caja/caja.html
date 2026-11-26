@@ -75,6 +75,19 @@
                 <tr class="total"><td>Total</td><td></td><td></td><td class="num {{ tono(d.diferencia) }}">{{ d.diferencia | pesos }}</td></tr>
               </tbody>
             </table>
+            @if (d.conteo?.length) {
+              <h3>Conteo del efectivo</h3>
+              <table class="tabla cuadre conteo">
+                <thead><tr><th>Billete o moneda</th><th class="num">Cantidad</th><th class="num">Subtotal</th><th>Referencia</th></tr></thead>
+                <tbody>
+                  @for (f of d.conteo; track f.tipo + f.valor) {
+                    <tr><td>{{ f.tipo === 'BILLETE' ? 'Billete' : 'Moneda' }} de {{ f.valor | pesos }}</td><td class="num">{{ f.cantidad }}</td>
+                      <td class="num">{{ f.valor * f.cantidad | pesos }}</td><td>{{ f.referencia ?? '—' }}</td></tr>
+                  }
+                  <tr class="total"><td>Total</td><td></td><td class="num">{{ totalConteo(d.conteo) | pesos }}</td><td></td></tr>
+                </tbody>
+              </table>
+            }
             @if (d.observacion) { <p class="texto-chico"><strong>Nota del cajero:</strong> {{ d.observacion }}</p> }
             @if (d.estado === 'APROBADO') {
               <p class="texto-chico"><strong>Aprobó {{ d.aprobadoPor }}</strong> el {{ d.aprobadoEn | fecha }}: {{ d.explicacionAprobacion }}</p>
@@ -145,6 +158,20 @@
             <button type="button" class="boton primario" [disabled]="guardando()" (click)="guardarCaja()">Guardar</button>
             <button type="button" class="boton" (click)="edicion.set(null)">Cancelar</button>
           </div>
+          @if (e.id) {
+            <h3>Quién puede usarla</h3>
+            <p class="texto-chico texto-2">Marca a las personas que pueden abrir turno en esta caja. Quien no tenga ninguna caja
+              asignada puede usar todas.</p>
+            @if (asignados(); as marcados) {
+              <div class="personas-caja">
+                @for (p of personas(); track p.id) {
+                  <label class="opcion"><input type="checkbox" [checked]="marcados.includes(p.id!)" (change)="marcarPersona(p.id!)">
+                    {{ p.nombreCompleto }}</label>
+                }
+              </div>
+              <button type="button" class="boton" (click)="guardarAsignados()">Guardar quién la usa</button>
+            } @else { <p class="cargando">Cargando…</p> }
+          }
         </section>
       }
 

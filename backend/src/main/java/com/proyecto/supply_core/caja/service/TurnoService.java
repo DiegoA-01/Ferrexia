@@ -22,11 +22,13 @@ import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.caja.dto.AbrirTurnoRequest;
 import com.proyecto.supply_core.caja.dto.AprobarTurnoRequest;
 import com.proyecto.supply_core.caja.dto.CerrarTurnoRequest;
+import com.proyecto.supply_core.caja.dto.ConteoDenominacion;
 import com.proyecto.supply_core.caja.dto.EsperadoTurnoResponse;
 import com.proyecto.supply_core.caja.dto.MovimientoCajaRequest;
 import com.proyecto.supply_core.caja.dto.MovimientoCajaResponse;
 import com.proyecto.supply_core.caja.dto.TurnoResponse;
 import com.proyecto.supply_core.caja.entity.Caja;
+import com.proyecto.supply_core.caja.entity.CajaUsuario;
 import com.proyecto.supply_core.caja.entity.CategoriaMovimientoCaja;
 import com.proyecto.supply_core.caja.entity.MovimientoCaja;
 import com.proyecto.supply_core.caja.entity.TurnoCaja;
@@ -36,6 +38,7 @@ import com.proyecto.supply_core.caja.enums.MedioPago;
 import com.proyecto.supply_core.caja.enums.TipoCategoriaMovimiento;
 import com.proyecto.supply_core.caja.enums.TipoMovimientoCaja;
 import com.proyecto.supply_core.caja.repository.CajaRepository;
+import com.proyecto.supply_core.caja.repository.CajaUsuarioRepository;
 import com.proyecto.supply_core.caja.repository.CategoriaMovimientoCajaRepository;
 import com.proyecto.supply_core.caja.repository.MovimientoCajaRepository;
 import com.proyecto.supply_core.caja.repository.TurnoCajaRepository;
@@ -83,6 +86,7 @@ public class TurnoService {
     private final AuditoriaService auditoriaService;
     private final CategoriaMovimientoCajaService categoriaService;
     private final CategoriaMovimientoCajaRepository categoriaRepository;
+    private final CajaUsuarioRepository cajaUsuarioRepository;
     private final JsonMapper json = JsonMapper.builder().build();
 
     /**
@@ -96,12 +100,15 @@ public class TurnoService {
      * @param auditoriaService     registro de cada acción
      * @param categoriaService     validación de la categoría de un ingreso o egreso (spec 021)
      * @param categoriaRepository  nombres de las categorías en el libro de caja
+     * @param cajaUsuarioRepository cajas asignadas a cada persona (spec 025)
      */
     public TurnoService(TurnoCajaRepository turnoRepository, CajaRepository cajaRepository,
             MovimientoCajaRepository movimientoRepository, EmpresaRepository empresaRepository,
             UsuarioRepository usuarioRepository, AutorizacionService autorizacionService,
             NotificacionService notificacionService, AuditoriaService auditoriaService,
-            CategoriaMovimientoCajaService categoriaService, CategoriaMovimientoCajaRepository categoriaRepository) {
+            CategoriaMovimientoCajaService categoriaService, CategoriaMovimientoCajaRepository categoriaRepository,
+            CajaUsuarioRepository cajaUsuarioRepository) {
+        this.cajaUsuarioRepository = cajaUsuarioRepository;
         this.turnoRepository = turnoRepository;
         this.cajaRepository = cajaRepository;
         this.movimientoRepository = movimientoRepository;
@@ -128,6 +135,12 @@ public class TurnoService {
         Caja caja = cajaRepository.conDetalle(req.cajaId()).orElseThrow(() -> new NoEncontradoException("Caja no encontrada"));
         if (!caja.isActiva()) {
             throw new NegocioException("CAJA_INACTIVA", "La caja " + caja.getNombre() + " está inactiva");
+        }
+        // Spec 025: quien tiene cajas asignadas solo abre en ellas; sin ninguna asignada puede usar todas.
+        Set<Long> asignadas = cajaUsuarioRepository.findByUsuarioId(cajero).stream().map(CajaUsuario::getCajaId)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!asignadas.isEmpty() && !asignadas.contains(caja.getId())) {
+            throw new AccesoDenegadoException("CAJA_NO_ASIGNADA", "No tiene asignada la caja " + caja.getNombre());
         }
         turnoRepository.abiertoDe(cajero).ifPresent(t -> {
             throw new NegocioException("TURNO_ABIERTO", "Ya tienes un turno abierto en " + t.getCaja().getNombre());
@@ -193,24 +206,42 @@ public class TurnoService {
         if (sale && movimientoRepository.saldo(t.getId(), MedioPago.EFECTIVO).compareTo(monto) < 0) {
             throw new NegocioException("EFECTIVO_INSUFICIENTE", "No hay suficiente efectivo en la caja para ese monto");
         }
-        Long supervisor = autorizacionService.consumir(req.autorizacion(), accion, t.getId(), null);
+        // Spec 025 (D15): con el permiso de hacerlo sin PIN no se pide autorización; sin él, el PIN como siempre.
+        boolean sinPin = SesionActual.usuario().tienePermiso(permisoSinPin(req.tipo()));
+        Long supervisor = sinPin ? null : autorizacionService.consumir(req.autorizacion(), accion, t.getId(), null);
         MovimientoCaja m = movimiento(t, req.tipo(), sale ? monto.negate() : monto, req.motivo().trim(),
                 req.soporte() == null || req.soporte().isBlank() ? null : req.soporte().trim(), supervisor);
         m.setCategoriaId(categoria == null ? null : categoria.getId());
         movimientoRepository.save(m);
         auditoriaService.exito(AccionAuditoria.TURNO_MOVIMIENTO, EntidadAuditada.TURNO_CAJA, t.getId(),
-                req.tipo() + " " + monto + "; movimiento=" + m.getId() + "; autorizó=" + supervisor
+                req.tipo() + " " + monto + "; movimiento=" + m.getId()
+                        + (sinPin ? "; sinPin=true" : "; autorizó=" + supervisor)
                         + (categoria == null ? "" : "; categoría=" + categoria.getNombre()));
         return respuesta(t);
     }
 
     /**
+     * @param tipo retiro, gasto o ingreso
+     * @return el permiso que deja registrarlo sin el PIN del supervisor (spec 025)
+     */
+    static String permisoSinPin(TipoMovimientoCaja tipo) {
+        return switch (tipo) {
+            case RETIRO -> Permisos.CAJA_RETIRO_SIN_PIN;
+            case GASTO -> Permisos.CAJA_GASTO_SIN_PIN;
+            default -> Permisos.CAJA_INGRESO_SIN_PIN;
+        };
+    }
+
+    /**
      * Cierre ciego: guarda lo contado, calcula el esperado y la diferencia por medio, y deja el turno cerrado. Si
-     * alguna diferencia pasa la tolerancia, avisa a los supervisores para que la aprueben.
+     * alguna diferencia pasa la tolerancia, avisa a los supervisores para que la aprueben. Si llega el conteo por
+     * billete y moneda (spec 023), Java suma el efectivo y guarda el conteo con el turno.
      *
      * @param turnoId turno
-     * @param req     contado y observación
+     * @param req     contado (total o conteo), otros medios y observación
      * @return turno cerrado con esperado, contado y diferencias (tiquete Z)
+     * @throws NegocioException si falta el efectivo, el conteo no cuadra con el total escrito o trae una denominación
+     *                          que no existe o repetida
      */
     @Transactional
     public TurnoResponse cerrar(Long turnoId, CerrarTurnoRequest req) {
@@ -222,8 +253,9 @@ public class TurnoService {
                 }
             });
         }
+        BigDecimal efectivo = efectivoContado(req);
         Map<MedioPago, BigDecimal> esperado = CalculoCaja.esperado(movimientoRepository.findByTurnoIdOrderByIdAsc(t.getId()));
-        Map<MedioPago, BigDecimal> contado = CalculoCaja.contado(req.contadoEfectivo(), req.contadoOtros());
+        Map<MedioPago, BigDecimal> contado = CalculoCaja.contado(efectivo, req.contadoOtros());
         Map<MedioPago, BigDecimal> diferencias = CalculoCaja.diferencias(contado, esperado);
         BigDecimal tolerancia = empresaRepository.findById(EmpresaContexto.requerida())
                 .orElseThrow(() -> new NoEncontradoException("Empresa no encontrada")).getToleranciaDiferenciaCaja();
@@ -232,6 +264,8 @@ public class TurnoService {
         t.setCerradoEn(LocalDateTime.now());
         t.setContadoEfectivo(contado.get(MedioPago.EFECTIVO));
         t.setContadoOtros(aJson(sinEfectivo(contado)));
+        t.setConteoDenominaciones(req.conteo() == null || req.conteo().isEmpty() ? null
+                : json.writeValueAsString(conteoLimpio(req.conteo())));
         t.setEsperadoEfectivo(esperado.get(MedioPago.EFECTIVO));
         t.setEsperadoOtros(aJson(sinEfectivo(esperado)));
         t.setDiferencias(aJson(diferencias));
@@ -421,7 +455,7 @@ public class TurnoService {
                 t.getCerradoEn(), esperado, contado, cerrado ? deJson(t.getDiferencias()) : null,
                 cerrado ? t.getDiferencia() : null, t.isRequiereAprobacion(), t.getObservacionCierre(),
                 t.getAprobadoPorUsuarioId() == null ? null : nombres.get(t.getAprobadoPorUsuarioId()), t.getAprobadoEn(),
-                t.getExplicacionAprobacion(), lista);
+                t.getExplicacionAprobacion(), lista, cerrado ? conteoDeJson(t.getConteoDenominaciones()) : null);
     }
 
     /**
@@ -497,6 +531,50 @@ public class TurnoService {
      */
     private String aJson(Map<MedioPago, BigDecimal> mapa) {
         return json.writeValueAsString(mapa);
+    }
+
+    /**
+     * @param texto JSON del conteo guardado
+     * @return filas del conteo o {@code null} si el turno se cerró escribiendo solo el total
+     */
+    private List<ConteoDenominacion> conteoDeJson(String texto) {
+        if (texto == null || texto.isBlank()) {
+            return null;
+        }
+        return json.readValue(texto, new TypeReference<List<ConteoDenominacion>>() { });
+    }
+
+    /**
+     * @param req cierre pedido
+     * @return efectivo contado: la suma del conteo si viene, o el total escrito
+     * @throws NegocioException {@code CONTADO_OBLIGATORIO} si no viene ni el total ni el conteo, o
+     *                          {@code CONTEO_NO_CUADRA} si vienen los dos y no coinciden
+     */
+    private static BigDecimal efectivoContado(CerrarTurnoRequest req) {
+        if (req.conteo() == null || req.conteo().isEmpty()) {
+            if (req.contadoEfectivo() == null) {
+                throw new NegocioException("CONTADO_OBLIGATORIO", "Escriba el efectivo contado o cuente los billetes y monedas");
+            }
+            return req.contadoEfectivo();
+        }
+        BigDecimal suma = Denominaciones.total(req.conteo());
+        if (req.contadoEfectivo() != null && req.contadoEfectivo().compareTo(suma) != 0) {
+            throw new NegocioException("CONTEO_NO_CUADRA", "El conteo de billetes y monedas suma $ " + suma.toPlainString()
+                    + " y el efectivo escrito es $ " + req.contadoEfectivo().toPlainString());
+        }
+        return suma;
+    }
+
+    /**
+     * @param conteo filas del conteo
+     * @return conteo limpio (sin filas en cero, referencia recortada) para guardar
+     */
+    private static List<ConteoDenominacion> conteoLimpio(List<ConteoDenominacion> conteo) {
+        return conteo.stream().filter(f -> f.cantidad() != null && f.cantidad() > 0
+                || f.referencia() != null && !f.referencia().isBlank())
+                .map(f -> new ConteoDenominacion(f.tipo(), f.valor(), f.cantidad() == null ? 0 : f.cantidad(),
+                        f.referencia() == null || f.referencia().isBlank() ? null : f.referencia().trim()))
+                .toList();
     }
 
     /**

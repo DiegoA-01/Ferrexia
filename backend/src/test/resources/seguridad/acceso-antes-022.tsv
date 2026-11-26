@@ -196,7 +196,7 @@ PortalProveedorController#misEvaluaciones(Pageable)	PROVEEDOR
 PortalRecepcionController#deOrden(Long)	PROVEEDOR
 PortalRfqController#invitadas(Pageable)	PROVEEDOR
 PortalRfqController#obtener(Long)	PROVEEDOR
-PreciosController#buscarParaVender(String,Long,Long)	ADMIN_SISTEMA,CAJERO,SUPERVISOR_VENTAS,VENDEDOR|I
+PreciosController#buscarParaVender(String,Long,Long,Long)	ADMIN_SISTEMA,CAJERO,SUPERVISOR_VENTAS,VENDEDOR|I
 PreciosController#cargarPrecios(MultipartFile,boolean)	ADMIN_COMPRAS,ADMIN_SISTEMA,AUDITOR|I
 PreciosController#configurarProducto(Long,ProductoVentaRequest)	ADMIN_COMPRAS,ADMIN_SISTEMA,AUDITOR|I
 PreciosController#crearImpuesto(TarifaImpuestoRequest)	ADMIN_COMPRAS,ADMIN_SISTEMA,AUDITOR|I

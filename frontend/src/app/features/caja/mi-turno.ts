@@ -302,7 +302,8 @@ export class MiTurno implements OnInit {
   }
 
   private cargarCajas(): void {
-    this.caja.cajas(true).subscribe({
+    // spec 025: solo las cajas asignadas a la persona (o todas, si no tiene ninguna)
+    this.caja.misCajas().subscribe({
       next: c => {
         this.cajas.set(c);
         this.cajasCargadas.set(true);

@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { Turno } from '../../../core/api/modelos';
+import { SesionService } from '../../../core/sesion/sesion.service';
 import { AbonoTurno } from './abono-turno';
 import { CierreTurno } from './cierre-turno';
 import { FacturasTurno } from './facturas-turno';
@@ -47,6 +48,39 @@ describe('Formularios del turno', () => {
     r.flush({ ...abierto, debeRetirar: false });
     expect(recibido).not.toBeNull();
     expect(c['monto']()).toBeNull();
+  });
+
+  it('spec 025: con el permiso, el retiro se registra sin PIN y sin autorización', () => {
+    preparar();
+    TestBed.inject(SesionService).permisos.set(new Set(['CAJA_RETIRO_SIN_PIN']));
+    const f = TestBed.createComponent(MovimientoCaja);
+    f.componentRef.setInput('turnoId', 4);
+    f.componentRef.setInput('tipo', 'RETIRO');
+    f.detectChanges();
+    backend.expectOne(r => r.url === '/api/cajas/categorias-movimiento').flush([]);
+    const raiz = f.nativeElement as HTMLElement;
+    expect(raiz.textContent).not.toContain('pide PIN');
+    expect(raiz.textContent).toContain('sin el PIN del supervisor');
+    const c = f.componentInstance as unknown as Record<string, any>;
+    c['monto'].set(30000);
+    c['motivo'].set('A la bóveda');
+    f.detectChanges();
+    const boton = [...raiz.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent?.trim() === 'Registrar')!;
+    boton.click();
+    const r = backend.expectOne('/api/turnos/4/movimientos');
+    expect(r.request.body.autorizacion).toBeUndefined();
+    r.flush({ ...abierto });
+  });
+
+  it('spec 025: el permiso sin PIN es por tipo; sin el del gasto, el gasto sigue pidiendo PIN', () => {
+    preparar();
+    TestBed.inject(SesionService).permisos.set(new Set(['CAJA_RETIRO_SIN_PIN']));
+    const f = TestBed.createComponent(MovimientoCaja);
+    f.componentRef.setInput('turnoId', 4);
+    f.componentRef.setInput('tipo', 'GASTO');
+    f.detectChanges();
+    backend.expectOne(r => r.url === '/api/cajas/categorias-movimiento').flush([]);
+    expect((f.nativeElement as HTMLElement).textContent).toContain('Registrar (pide PIN)');
   });
 
   it('sin monto o sin motivo no deja pedir el PIN', () => {
@@ -144,30 +178,65 @@ describe('Formularios del turno', () => {
     window.print = imprimir;
   });
 
-  it('el cierre es ciego: no muestra lo esperado y envía lo contado', () => {
+  it('el cierre es ciego: no muestra lo esperado y envía el conteo por billete y moneda', () => {
+    preparar();
+    const f = TestBed.createComponent(CierreTurno);
+    f.componentRef.setInput('turnoId', 4);
+    f.detectChanges();
+    const raiz = f.nativeElement as HTMLElement;
+    const c = f.componentInstance as unknown as Record<string, any>;
+    expect(raiz.textContent).not.toContain('Esperado');
+    let cerrado: Turno | null = null;
+    f.componentInstance.cerrado.subscribe(t => (cerrado = t));
+    c['contarDenominacion']({ tipo: 'BILLETE', valor: 50000 }, 1);
+    c['contarDenominacion']({ tipo: 'BILLETE', valor: 1000 }, 2);
+    c['contarDenominacion']({ tipo: 'MONEDA', valor: 1000 }, 4);
+    c['contarDenominacion']({ tipo: 'MONEDA', valor: 500 }, 0);
+    c['referir']({ tipo: 'BILLETE', valor: 50000 }, ' Uno roto ');
+    f.detectChanges();
+    // el total se calcula en vivo: 50.000 + 2.000 + 4.000
+    expect(raiz.querySelector('[data-prueba="total-efectivo"]')?.textContent).toContain('56.000');
+    c['cerrar']();
+    const r = backend.expectOne('/api/turnos/4/cerrar');
+    expect(r.request.body.contadoEfectivo).toBeNull();
+    expect(r.request.body.contadoOtros.TARJETA_DEBITO).toBe(0);
+    expect(r.request.body.contadoOtros.EFECTIVO).toBeUndefined();
+    expect(r.request.body.conteo).toEqual([
+      { tipo: 'BILLETE', valor: 50000, cantidad: 1, referencia: 'Uno roto' },
+      { tipo: 'BILLETE', valor: 1000, cantidad: 2, referencia: undefined },
+      { tipo: 'MONEDA', valor: 1000, cantidad: 4, referencia: undefined },
+    ]);
+    r.flush({ ...abierto, estado: 'CERRADO', esperado: { EFECTIVO: 56000 } });
+    expect(cerrado).not.toBeNull();
+  });
+
+  it('el cierre sin efectivo (todo en 0) envía el total en 0 y sin conteo', () => {
     preparar();
     const f = TestBed.createComponent(CierreTurno);
     f.componentRef.setInput('turnoId', 4);
     f.detectChanges();
     const c = f.componentInstance as unknown as Record<string, any>;
-    expect((f.nativeElement as HTMLElement).textContent).not.toContain('Esperado');
-    let cerrado: Turno | null = null;
-    f.componentInstance.cerrado.subscribe(t => (cerrado = t));
-    c['contar']('EFECTIVO', 79000);
+    c['contarDenominacion']({ tipo: 'BILLETE', valor: 100000 }, 0);
     c['cerrar']();
     const r = backend.expectOne('/api/turnos/4/cerrar');
-    expect(r.request.body.contadoEfectivo).toBe(79000);
-    expect(r.request.body.contadoOtros.TARJETA_DEBITO).toBe(0);
-    r.flush({ ...abierto, estado: 'CERRADO', esperado: { EFECTIVO: 80000 } });
-    expect(cerrado).not.toBeNull();
+    expect(r.request.body.contadoEfectivo).toBe(0);
+    expect(r.request.body.conteo).toBeNull();
+    r.flush({ ...abierto, estado: 'CERRADO' });
   });
 
-  it('el cierre no se puede confirmar sin el efectivo contado', () => {
+  it('el cierre no se puede confirmar sin contar el efectivo', () => {
     preparar();
     const f = TestBed.createComponent(CierreTurno);
     f.componentRef.setInput('turnoId', 4);
     f.detectChanges();
-    const boton = [...(f.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent?.includes('Confirmar cierre'))!;
-    expect(boton.disabled).toBe(true);
+    const raiz = f.nativeElement as HTMLElement;
+    const boton = () => [...raiz.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent?.includes('Confirmar cierre'))!;
+    expect(boton().disabled).toBe(true);
+    // doce filas: siete billetes y cinco monedas
+    expect(raiz.querySelectorAll('input[id^="cc-BILLETE-"]').length).toBe(7);
+    expect(raiz.querySelectorAll('input[id^="cc-MONEDA-"]').length).toBe(5);
+    (f.componentInstance as unknown as Record<string, any>)['contarDenominacion']({ tipo: 'MONEDA', valor: 50 }, 3);
+    f.detectChanges();
+    expect(boton().disabled).toBe(false);
   });
 });

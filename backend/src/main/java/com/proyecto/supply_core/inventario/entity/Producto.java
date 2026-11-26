@@ -70,6 +70,15 @@ public class Producto {
     @Column(name = "costo_referencia", precision = 18, scale = 4)
     private BigDecimal costoReferencia;
 
+    /** Proveedor del costo de referencia (spec 026, V49); lo actualiza la recepción. */
+    @jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @jakarta.persistence.JoinColumn(name = "proveedor_referencia_id")
+    private com.proyecto.supply_core.proveedor.entity.Proveedor proveedorReferencia;
+
+    /** Fecha del costo de referencia (spec 026, V49); la actualiza la recepción. */
+    @Column(name = "costo_referencia_fecha")
+    private java.time.LocalDate costoReferenciaFecha;
+
     /** Costo promedio ponderado en la unidad del producto; lo actualiza la recepción (spec 008, V36). */
     @Column(name = "costo_promedio", precision = 18, scale = 4)
     private BigDecimal costoPromedio;

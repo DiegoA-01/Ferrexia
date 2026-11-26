@@ -86,10 +86,22 @@ test('abrir turno, vender, anular con PIN y cerrar el turno cuadrado', async ({ 
   await lector.fill(c.producto);
   await lector.press('Enter');
   await expect(page.locator('.carrito tbody tr').first()).toContainText(c.producto);
+  // spec 027: también se elige por categoría; un clic en la tarjeta agrega el producto
+  await page.locator('.chip-categoria').nth(1).click();
+  const tarjeta = page.locator('.producto-tarjeta:not([disabled])').first();
+  await expect(tarjeta).toBeVisible();
+  const lineas = await page.locator('.carrito tbody tr').count();
+  const nombre = (await tarjeta.locator('strong').innerText()).trim();
+  await tarjeta.click();
+  await expect(page.locator('.carrito tbody')).toContainText(nombre);
+  expect(await page.locator('.carrito tbody tr').count()).toBeGreaterThanOrEqual(lineas);
   await expect(page.locator('.totales')).toContainText('Total');
   await page.keyboard.press('F9');
   const cobro = page.getByRole('dialog', { name: /Cobrar/ });
   await expect(cobro).toBeVisible();
+  // spec 027: cliente y pago en el mismo paso
+  await expect(cobro.getByText('Cliente (F4)')).toBeVisible();
+  await expect(cobro.locator('[data-prueba="cliente-cobro"]')).toHaveText('Consumidor final');
   // spec 016: el cobro abre sin medio elegido y no deja confirmar hasta elegir; E elige Efectivo
   await expect(cobro.getByText(/Elige cómo paga el cliente/)).toBeVisible();
   await expect(cobro.getByRole('button', { name: 'Confirmar venta' })).toBeDisabled();
@@ -121,7 +133,9 @@ test('abrir turno, vender, anular con PIN y cerrar el turno cuadrado', async ({ 
   await page.goto('/app/caja/mi-turno');
   await page.getByRole('button', { name: 'Cerrar turno' }).click();
   await expect(page.getByRole('heading', { name: 'Cierre ciego' })).toBeVisible();
-  await page.locator('#cc-EFECTIVO').fill('100000');
+  // spec 023: se cuenta por billete y moneda; la base de 100.000 es un billete de 100.000
+  await page.locator('#cc-BILLETE-100000').fill('1');
+  await expect(page.locator('[data-prueba="total-efectivo"]')).toContainText('100.000');
   await page.getByRole('button', { name: 'Confirmar cierre' }).click();
   await expect(page.getByRole('heading', { name: 'Turno cerrado' })).toBeVisible();
   await expect(page.getByText('El turno cuadró dentro de la tolerancia.')).toBeVisible();

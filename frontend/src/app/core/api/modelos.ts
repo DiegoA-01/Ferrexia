@@ -136,6 +136,7 @@ export type HistorialPrecio = S['HistorialPrecio'];
 export type PrecioUnidad = S['PrecioUnidad'];
 export type CargaPrecios = S['CargaPreciosResponse'];
 export type ProductoParaVender = S['ProductoParaVender'];
+export type CategoriaParaVender = S['CategoriaParaVender'];
 export type Cliente = S['ClienteResponse'];
 export type ClienteRequest = S['ClienteRequest'];
 export type TipoDocumento = ClienteRequest['tipoDocumento'];
@@ -149,6 +150,10 @@ export type MedioPago = NonNullable<MovimientoCaja['medioPago']>;
 export type CategoriaMovimientoCaja = S['CategoriaMovimientoCajaResponse'];
 export type TipoCategoriaMovimiento = NonNullable<CategoriaMovimientoCaja['tipo']>;
 export type EsperadoTurno = S['EsperadoTurnoResponse'];
+export type ConteoDenominacion = S['ConteoDenominacion'];
+/** Persona asignada a una caja (spec 025). */
+export interface UsuarioCaja { usuarioId?: number; nombre?: string; }
+export type TipoDenominacion = ConteoDenominacion['tipo'];
 export type AccionAutorizada = 'ANULAR_VENTA' | 'DESCUENTO' | 'PRECIO_BAJO_MINIMO' | 'DEVOLUCION' | 'RETIRO' | 'GASTO' | 'INGRESO';
 export type Autorizacion = S['AutorizacionResponse'];
 export type LineaVentaRequest = S['LineaVentaRequest'];
@@ -175,6 +180,8 @@ export type VentaReporte = S['VentaReporte'];
 export type FilaVentaReporte = S['FilaVentaReporte'];
 export type AgrupacionVenta = NonNullable<S['VentaReporte']['agrupar']>;
 export type CajaReporte = S['CajaReporte'];
+export type VentasTurnoReporte = S['VentasTurnoReporte'];
+export type VentasTurno = S['VentasTurno'];
 export type Cuadre = S['CuadreResponse'];
 export type TableroVentas = S['TableroVentas'];
 export type DetalleCartera = S['DetalleCartera'];

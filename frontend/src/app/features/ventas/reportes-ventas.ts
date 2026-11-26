@@ -1,11 +1,16 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { AgrupacionVenta, CajaReporte, Cuadre, Pagina, VentaReporte } from '../../core/api/modelos';
+import { AgrupacionVenta, Caja, CajaReporte, Cuadre, MedioPago, Pagina, VentaReporte, VentasTurnoReporte } from '../../core/api/modelos';
 import { FechaPipe, NumeroPipe, PesosPipe } from '../../core/formato/formato';
+import { CajaService } from '../../core/servicios/caja.service';
 import { ReportesVentasService } from '../../core/servicios/reportes-ventas.service';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos, descargar } from '../../core/ui/avisos';
+import { MEDIOS } from '../caja/caja';
+
+/** Pestañas de la pantalla. */
+type Pestana = 'ventas' | 'caja' | 'turnos' | 'cuadre';
 
 /** Nombre de cada agrupación del reporte de ventas. */
 export const AGRUPACIONES: Record<AgrupacionVenta, string> = {
@@ -28,12 +33,19 @@ const SUPERVISION = ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'];
 })
 export class ReportesVentas implements OnInit {
   private readonly servicio = inject(ReportesVentasService);
+  private readonly cajaService = inject(CajaService);
   private readonly sesion = inject(SesionService);
   private readonly avisos = inject(Avisos);
 
   protected readonly agrupaciones = AGRUPACIONES;
   protected readonly ordenAgrupaciones = Object.keys(AGRUPACIONES) as AgrupacionVenta[];
-  protected readonly pestana = signal<'ventas' | 'caja' | 'cuadre'>('ventas');
+  protected readonly pestana = signal<Pestana>('ventas');
+  protected readonly medios = MEDIOS;
+  protected readonly ordenMedios = Object.keys(MEDIOS) as MedioPago[];
+  /** Ventas por turno (spec 023) y su filtro de caja. */
+  protected readonly porTurno = signal<VentasTurnoReporte | null>(null);
+  protected readonly cajas = signal<Caja[]>([]);
+  protected readonly cajaId = signal<number | null>(null);
   protected readonly desde = signal<string>(primerDiaDelMes());
   protected readonly hasta = signal<string>(hoy());
   protected readonly agrupar = signal<AgrupacionVenta>('DIA');
@@ -53,10 +65,15 @@ export class ReportesVentas implements OnInit {
   }
 
   /** @param p pestaña elegida; carga sus datos la primera vez */
-  protected elegir(p: 'ventas' | 'caja' | 'cuadre'): void {
+  protected elegir(p: Pestana): void {
     this.pestana.set(p);
     if (p === 'caja' && !this.caja()) {
       this.cargarCaja();
+    } else if (p === 'turnos' && !this.porTurno()) {
+      if (!this.cajas().length) {
+        this.cajaService.cajas().subscribe({ next: l => this.cajas.set(l), error: () => undefined });
+      }
+      this.cargarPorTurno();
     } else if (p === 'cuadre' && !this.cuadres()) {
       this.cargarCuadres();
     }
@@ -66,6 +83,8 @@ export class ReportesVentas implements OnInit {
   protected consultar(): void {
     if (this.pestana() === 'caja') {
       this.cargarCaja();
+    } else if (this.pestana() === 'turnos') {
+      this.cargarPorTurno();
     } else if (this.pestana() === 'cuadre') {
       this.cargarCuadres();
     } else {
@@ -91,6 +110,11 @@ export class ReportesVentas implements OnInit {
     this.servicio.caja(this.desde(), this.hasta()).subscribe({ next: r => this.caja.set(r), error: e => this.avisos.error(e) });
   }
 
+  protected cargarPorTurno(): void {
+    this.servicio.ventasPorTurno(this.desde(), this.hasta(), this.cajaId())
+      .subscribe({ next: r => this.porTurno.set(r), error: e => this.avisos.error(e) });
+  }
+
   protected cargarCuadres(): void {
     this.servicio.cuadres(this.soloDescuadres()).subscribe({ next: r => this.cuadres.set(r), error: e => this.avisos.error(e) });
   }
@@ -113,7 +137,9 @@ export class ReportesVentas implements OnInit {
   protected exportar(formato: 'xlsx' | 'pdf'): void {
     const peticion = this.pestana() === 'caja'
       ? this.servicio.exportarCaja(formato, this.desde(), this.hasta())
-      : this.servicio.exportarVentas(formato, this.desde(), this.hasta(), this.agrupar());
+      : this.pestana() === 'turnos'
+        ? this.servicio.exportarVentasPorTurno(this.desde(), this.hasta(), this.cajaId())
+        : this.servicio.exportarVentas(formato, this.desde(), this.hasta(), this.agrupar());
     peticion.subscribe({
       next: b => descargar(b, `reporte-${this.pestana()}-${this.desde()}-a-${this.hasta()}.${formato}`),
       error: e => this.avisos.error(e),
