@@ -78,6 +78,28 @@ describe('Cajas y turnos', () => {
     expect(texto()).toContain('Papelería');
   });
 
+  it('el detalle de un turno cerrado muestra el conteo por billete y moneda (spec 023)', () => {
+    crear(['SUPERVISOR_VENTAS']);
+    const contado: Turno = { ...pendiente, conteo: [{ tipo: 'BILLETE', valor: 50000, cantidad: 2, referencia: 'Uno roto' },
+      { tipo: 'MONEDA', valor: 1000, cantidad: 5 }] };
+    c()['ver'](contado);
+    backend.expectOne('/api/turnos/9').flush(contado);
+    fixture.detectChanges();
+    expect(texto()).toContain('Conteo del efectivo');
+    expect(texto()).toContain('Billete de $ 50.000');
+    expect(texto()).toContain('Moneda de $ 1.000');
+    expect(texto()).toContain('Uno roto');
+    expect(texto()).toContain('$ 105.000');
+  });
+
+  it('sin conteo (cierre escrito a mano) no sale la tabla del conteo', () => {
+    crear(['SUPERVISOR_VENTAS']);
+    c()['ver'](pendiente);
+    backend.expectOne('/api/turnos/9').flush(pendiente);
+    fixture.detectChanges();
+    expect(texto()).not.toContain('Conteo del efectivo');
+  });
+
   it('el auditor consulta pero no aprueba ni edita cajas', () => {
     crear(['AUDITOR']);
     c()['ver'](pendiente);

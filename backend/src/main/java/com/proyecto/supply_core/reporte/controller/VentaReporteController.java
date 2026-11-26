@@ -18,6 +18,7 @@ import com.proyecto.supply_core.reporte.dto.CajaReporte;
 import com.proyecto.supply_core.reporte.dto.CuadreResponse;
 import com.proyecto.supply_core.reporte.dto.TableroVentas;
 import com.proyecto.supply_core.reporte.dto.VentaReporte;
+import com.proyecto.supply_core.reporte.dto.VentasTurnoReporte;
 import com.proyecto.supply_core.reporte.enums.AgrupacionVenta;
 import com.proyecto.supply_core.reporte.service.CajaReporteService;
 import com.proyecto.supply_core.reporte.service.CuadreDiarioService;
@@ -86,6 +87,23 @@ public class VentaReporteController {
     public CajaReporte caja(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
         return cajaReporte.reporte(desde, hasta);
+    }
+
+    /**
+     * Ventas por turno (spec 023): ventas por medio de pago, devoluciones, ingresos, egresos y diferencia de cada turno.
+     *
+     * @param desde  primer día (vacío = primer día del mes)
+     * @param hasta  último día (vacío = hoy)
+     * @param cajaId solo esa caja (vacío = todas)
+     * @return reporte
+     */
+    @GetMapping("/caja/turnos")
+    @RequierePermiso(Permisos.REPORTE_CAJA)
+    public VentasTurnoReporte ventasPorTurno(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Long cajaId) {
+        return cajaReporte.ventasPorTurno(desde, hasta, cajaId);
     }
 
     /**

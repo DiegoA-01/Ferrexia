@@ -80,6 +80,38 @@ describe('Reportes de ventas', () => {
     backend.expectOne(r => r.url === '/api/reportes/cuadre').flush({ contenido: [], pagina: 0, tamano: 31, totalElementos: 0, totalPaginas: 0 });
   });
 
+  it('ventas por turno (spec 023): filtra por caja, muestra las cifras del servidor y exporta a Excel', () => {
+    crear(['SUPERVISOR_VENTAS']);
+    backend.expectOne(r => r.url === '/api/reportes/ventas').flush(reporte);
+    c()['elegir']('turnos');
+    backend.expectOne('/api/cajas').flush([{ id: 3, nombre: 'Caja 1 mostrador', activa: true }]);
+    backend.expectOne(r => r.url === '/api/reportes/caja/turnos' && !r.params.has('cajaId')).flush({
+      desde: '2026-11-01', hasta: '2026-11-25',
+      turnos: [{ id: 9, caja: 'Caja 1 mostrador', cajero: 'Pedro Cajero', estado: 'CERRADO', abiertoEn: '2026-11-25T08:00:00',
+        cerradoEn: '2026-11-25T18:00:00', ventas: { EFECTIVO: 120000, TARJETA_DEBITO: 80000 }, totalVentas: 200000,
+        anulaciones: 0, devoluciones: 10000, abonos: 5000, ingresos: 2000, gastos: 7000, retiros: 100000, esperado: 140000,
+        contado: 139500, diferencia: -500 }],
+      totales: { turnos: 1, ventas: { EFECTIVO: 120000, TARJETA_DEBITO: 80000 }, totalVentas: 200000, devoluciones: 10000,
+        ingresos: 7000, egresos: 107000, diferencia: -500 },
+    });
+    fixture.detectChanges();
+    expect(texto()).toContain('Ventas por turno');
+    expect(texto()).toContain('Pedro Cajero');
+    expect(texto()).toContain('200.000');
+    expect(texto()).toContain('139.500');
+    expect(texto()).toContain('107.000');
+    expect(texto()).not.toContain('PDF');
+    c()['cajaId'].set(3);
+    c()['consultar']();
+    backend.expectOne(r => r.url === '/api/reportes/caja/turnos' && r.params.get('cajaId') === '3')
+      .flush({ turnos: [], totales: { turnos: 0, ventas: {}, totalVentas: 0, devoluciones: 0, ingresos: 0, egresos: 0, diferencia: 0 } });
+    c()['exportar']('xlsx');
+    const req = backend.expectOne(r => r.url === '/api/exportaciones/reportes/caja/turnos');
+    expect(req.request.params.get('formato')).toBe('xlsx');
+    expect(req.request.params.get('cajaId')).toBe('3');
+    req.flush(new Blob(['xlsx']));
+  });
+
   it('exporta con los mismos filtros de la pantalla', () => {
     crear(['SUPERVISOR_VENTAS']);
     backend.expectOne(r => r.url === '/api/reportes/ventas').flush(reporte);

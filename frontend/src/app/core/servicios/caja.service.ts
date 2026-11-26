@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  AccionAutorizada, Autorizacion, Caja, CajaRequest, CategoriaMovimientoCaja, ConfiguracionCaja, EsperadoTurno, EstadoTurno, MedioPago,
+  AccionAutorizada, Autorizacion, Caja, CajaRequest, CategoriaMovimientoCaja, ConfiguracionCaja, ConteoDenominacion, EsperadoTurno, EstadoTurno, MedioPago,
   Pagina, TipoCategoriaMovimiento, Turno,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
@@ -89,9 +89,11 @@ export class CajaService {
    * @param contadoEfectivo efectivo contado
    * @param contadoOtros    vouchers y transferencias por medio
    * @param observacion     nota opcional
+   * @param conteo          billetes y monedas contados (spec 023); si viene, el backend suma el efectivo
    */
-  cerrar(turnoId: number, contadoEfectivo: number, contadoOtros: Partial<Record<MedioPago, number>>, observacion: string | null): Observable<Turno> {
-    return this.http.post<Turno>(api(`/api/turnos/${turnoId}/cerrar`), { contadoEfectivo, contadoOtros, observacion });
+  cerrar(turnoId: number, contadoEfectivo: number | null, contadoOtros: Partial<Record<MedioPago, number>>, observacion: string | null,
+    conteo: ConteoDenominacion[] | null = null): Observable<Turno> {
+    return this.http.post<Turno>(api(`/api/turnos/${turnoId}/cerrar`), { contadoEfectivo, contadoOtros, observacion, conteo });
   }
 
   /**

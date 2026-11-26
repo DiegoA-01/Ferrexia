@@ -7,6 +7,7 @@
     <button type="button" role="tab" [class.activa]="pestana() === 'ventas'" (click)="elegir('ventas')">Ventas</button>
     @if (veCaja()) {
       <button type="button" role="tab" [class.activa]="pestana() === 'caja'" (click)="elegir('caja')">Caja</button>
+      <button type="button" role="tab" [class.activa]="pestana() === 'turnos'" (click)="elegir('turnos')">Ventas por turno</button>
     }
     @if (veCuadre()) {
       <button type="button" role="tab" [class.activa]="pestana() === 'cuadre'" (click)="elegir('cuadre')">Cuadre diario</button>
@@ -23,10 +24,17 @@
             @for (a of ordenAgrupaciones; track a) { <option [ngValue]="a">{{ agrupaciones[a] }}</option> }
           </select></label>
       }
+      @if (pestana() === 'turnos') {
+        <label>Caja
+          <select class="entrada" [ngModel]="cajaId()" (ngModelChange)="cajaId.set($event)">
+            <option [ngValue]="null">Todas</option>
+            @for (k of cajas(); track k.id) { <option [ngValue]="k.id">{{ k.nombre }}</option> }
+          </select></label>
+      }
       <button type="button" class="boton primario" (click)="consultar()">Consultar</button>
       <span class="espacio"></span>
       <button type="button" class="boton" (click)="exportar('xlsx')">Excel</button>
-      <button type="button" class="boton" (click)="exportar('pdf')">PDF</button>
+      @if (pestana() !== 'turnos') { <button type="button" class="boton" (click)="exportar('pdf')">PDF</button> }
     </section>
   }
 
@@ -116,6 +124,37 @@
           <tr><td>{{ d.tipo }}</td><td>{{ d.consecutivo }} · {{ d.producto }}</td><td class="num">{{ d.descuentoValor | pesos }}</td>
             <td>{{ d.cajero }}</td><td>{{ d.autorizadoPor }}</td><td>{{ d.confirmadaEn | fecha:'corta' }}</td></tr>
         }
+      </tbody>
+    </table></div></section>
+  }
+
+  @if (pestana() === 'turnos' && porTurno(); as v) {
+    <div class="kpis">
+      <div class="tarjeta kpi"><div class="etiqueta">Turnos</div><div class="valor">{{ v.totales?.turnos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Ventas</div><div class="valor">{{ v.totales?.totalVentas | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Devoluciones</div><div class="valor">{{ v.totales?.devoluciones | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Ingresos</div><div class="valor">{{ v.totales?.ingresos | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Egresos</div><div class="valor">{{ v.totales?.egresos | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Diferencia</div><div class="valor" [class]="tono(v.totales?.diferencia)">{{ v.totales?.diferencia | pesos }}</div></div>
+    </div>
+    <section class="tarjeta sin-relleno"><div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Turno</th><th>Abrió · cerró</th>
+        @for (m of ordenMedios; track m) { <th class="num">{{ medios[m] }}</th> }
+        <th class="num">Total ventas</th><th class="num">Devoluciones</th><th class="num">Ingresos</th><th class="num">Egresos</th>
+        <th class="num">Esperado</th><th class="num">Contado</th><th class="num">Diferencia</th></tr></thead>
+      <tbody>
+        @for (t of v.turnos; track t.id) {
+          <tr><td><strong>{{ t.caja }}</strong><span class="sub">{{ t.cajero }} · turno {{ t.id }}</span></td>
+            <td>{{ t.abiertoEn | fecha:'corta' }}<span class="sub">{{ t.cerradoEn ? (t.cerradoEn | fecha:'corta') : 'Abierto' }}</span></td>
+            @for (m of ordenMedios; track m) { <td class="num">{{ t.ventas?.[m] ?? 0 | pesos }}</td> }
+            <td class="num"><strong>{{ t.totalVentas | pesos }}</strong>@if (t.anulaciones) { <span class="sub">anulado {{ t.anulaciones | pesos }}</span> }</td>
+            <td class="num">{{ t.devoluciones | pesos }}</td>
+            <td class="num">{{ (t.ingresos ?? 0) + (t.abonos ?? 0) | pesos }}</td>
+            <td class="num">{{ (t.gastos ?? 0) + (t.retiros ?? 0) | pesos }}</td>
+            <td class="num">{{ t.esperado | pesos }}</td>
+            <td class="num">{{ t.contado == null ? '—' : (t.contado | pesos) }}</td>
+            <td class="num" [class]="tono(t.diferencia)">{{ t.diferencia == null ? '—' : (t.diferencia | pesos) }}</td></tr>
+        } @empty { <tr><td [attr.colspan]="9 + ordenMedios.length" class="vacio">Sin turnos en el periodo.</td></tr> }
       </tbody>
     </table></div></section>
   }

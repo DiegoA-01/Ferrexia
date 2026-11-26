@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { Bodega, Caja, EsperadoTurno, MedioPago, Pagina, Turno } from '../../core/api/modelos';
+import { Bodega, Caja, ConteoDenominacion, EsperadoTurno, MedioPago, Pagina, Turno } from '../../core/api/modelos';
 import { FechaPipe, PesosPipe } from '../../core/formato/formato';
 import { CajaService } from '../../core/servicios/caja.service';
 import { InventarioService } from '../../core/servicios/inventario.service';
@@ -221,5 +221,10 @@ export class CajasTurnos implements OnInit {
   /** @param mapa valores por medio; @param medio medio */
   protected valor(mapa: Record<string, number> | undefined, medio: MedioPago): number {
     return mapa?.[medio] ?? 0;
+  }
+
+  /** @param conteo billetes y monedas contados al cerrar (spec 023) @returns efectivo total del conteo */
+  protected totalConteo(conteo: ConteoDenominacion[]): number {
+    return conteo.reduce((s, f) => s + f.valor * f.cantidad, 0);
   }
 }

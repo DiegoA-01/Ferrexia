@@ -22,6 +22,7 @@ import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.caja.dto.AbrirTurnoRequest;
 import com.proyecto.supply_core.caja.dto.AprobarTurnoRequest;
 import com.proyecto.supply_core.caja.dto.CerrarTurnoRequest;
+import com.proyecto.supply_core.caja.dto.ConteoDenominacion;
 import com.proyecto.supply_core.caja.dto.EsperadoTurnoResponse;
 import com.proyecto.supply_core.caja.dto.MovimientoCajaRequest;
 import com.proyecto.supply_core.caja.dto.MovimientoCajaResponse;
@@ -206,11 +207,14 @@ public class TurnoService {
 
     /**
      * Cierre ciego: guarda lo contado, calcula el esperado y la diferencia por medio, y deja el turno cerrado. Si
-     * alguna diferencia pasa la tolerancia, avisa a los supervisores para que la aprueben.
+     * alguna diferencia pasa la tolerancia, avisa a los supervisores para que la aprueben. Si llega el conteo por
+     * billete y moneda (spec 023), Java suma el efectivo y guarda el conteo con el turno.
      *
      * @param turnoId turno
-     * @param req     contado y observación
+     * @param req     contado (total o conteo), otros medios y observación
      * @return turno cerrado con esperado, contado y diferencias (tiquete Z)
+     * @throws NegocioException si falta el efectivo, el conteo no cuadra con el total escrito o trae una denominación
+     *                          que no existe o repetida
      */
     @Transactional
     public TurnoResponse cerrar(Long turnoId, CerrarTurnoRequest req) {
@@ -222,8 +226,9 @@ public class TurnoService {
                 }
             });
         }
+        BigDecimal efectivo = efectivoContado(req);
         Map<MedioPago, BigDecimal> esperado = CalculoCaja.esperado(movimientoRepository.findByTurnoIdOrderByIdAsc(t.getId()));
-        Map<MedioPago, BigDecimal> contado = CalculoCaja.contado(req.contadoEfectivo(), req.contadoOtros());
+        Map<MedioPago, BigDecimal> contado = CalculoCaja.contado(efectivo, req.contadoOtros());
         Map<MedioPago, BigDecimal> diferencias = CalculoCaja.diferencias(contado, esperado);
         BigDecimal tolerancia = empresaRepository.findById(EmpresaContexto.requerida())
                 .orElseThrow(() -> new NoEncontradoException("Empresa no encontrada")).getToleranciaDiferenciaCaja();
@@ -232,6 +237,8 @@ public class TurnoService {
         t.setCerradoEn(LocalDateTime.now());
         t.setContadoEfectivo(contado.get(MedioPago.EFECTIVO));
         t.setContadoOtros(aJson(sinEfectivo(contado)));
+        t.setConteoDenominaciones(req.conteo() == null || req.conteo().isEmpty() ? null
+                : json.writeValueAsString(conteoLimpio(req.conteo())));
         t.setEsperadoEfectivo(esperado.get(MedioPago.EFECTIVO));
         t.setEsperadoOtros(aJson(sinEfectivo(esperado)));
         t.setDiferencias(aJson(diferencias));
@@ -421,7 +428,7 @@ public class TurnoService {
                 t.getCerradoEn(), esperado, contado, cerrado ? deJson(t.getDiferencias()) : null,
                 cerrado ? t.getDiferencia() : null, t.isRequiereAprobacion(), t.getObservacionCierre(),
                 t.getAprobadoPorUsuarioId() == null ? null : nombres.get(t.getAprobadoPorUsuarioId()), t.getAprobadoEn(),
-                t.getExplicacionAprobacion(), lista);
+                t.getExplicacionAprobacion(), lista, cerrado ? conteoDeJson(t.getConteoDenominaciones()) : null);
     }
 
     /**
@@ -497,6 +504,50 @@ public class TurnoService {
      */
     private String aJson(Map<MedioPago, BigDecimal> mapa) {
         return json.writeValueAsString(mapa);
+    }
+
+    /**
+     * @param texto JSON del conteo guardado
+     * @return filas del conteo o {@code null} si el turno se cerró escribiendo solo el total
+     */
+    private List<ConteoDenominacion> conteoDeJson(String texto) {
+        if (texto == null || texto.isBlank()) {
+            return null;
+        }
+        return json.readValue(texto, new TypeReference<List<ConteoDenominacion>>() { });
+    }
+
+    /**
+     * @param req cierre pedido
+     * @return efectivo contado: la suma del conteo si viene, o el total escrito
+     * @throws NegocioException {@code CONTADO_OBLIGATORIO} si no viene ni el total ni el conteo, o
+     *                          {@code CONTEO_NO_CUADRA} si vienen los dos y no coinciden
+     */
+    private static BigDecimal efectivoContado(CerrarTurnoRequest req) {
+        if (req.conteo() == null || req.conteo().isEmpty()) {
+            if (req.contadoEfectivo() == null) {
+                throw new NegocioException("CONTADO_OBLIGATORIO", "Escriba el efectivo contado o cuente los billetes y monedas");
+            }
+            return req.contadoEfectivo();
+        }
+        BigDecimal suma = Denominaciones.total(req.conteo());
+        if (req.contadoEfectivo() != null && req.contadoEfectivo().compareTo(suma) != 0) {
+            throw new NegocioException("CONTEO_NO_CUADRA", "El conteo de billetes y monedas suma $ " + suma.toPlainString()
+                    + " y el efectivo escrito es $ " + req.contadoEfectivo().toPlainString());
+        }
+        return suma;
+    }
+
+    /**
+     * @param conteo filas del conteo
+     * @return conteo limpio (sin filas en cero, referencia recortada) para guardar
+     */
+    private static List<ConteoDenominacion> conteoLimpio(List<ConteoDenominacion> conteo) {
+        return conteo.stream().filter(f -> f.cantidad() != null && f.cantidad() > 0
+                || f.referencia() != null && !f.referencia().isBlank())
+                .map(f -> new ConteoDenominacion(f.tipo(), f.valor(), f.cantidad() == null ? 0 : f.cantidad(),
+                        f.referencia() == null || f.referencia().isBlank() ? null : f.referencia().trim()))
+                .toList();
     }
 
     /**

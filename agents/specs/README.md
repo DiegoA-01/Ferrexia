@@ -52,7 +52,7 @@ decisiones y se aprueban antes de escribir el plan.
 | [020-empresa-sedes-simples](020-empresa-sedes-simples/spec.md) | 1 | Código de ingreso automático y sede con enlace de Google Maps | `feature/empresa-sedes-simples` | SaaS 2 | Persona 2 | Hecha (V41, PR #24) |
 | [021-mi-turno-movimientos](021-mi-turno-movimientos/spec.md) | 2 | Facturas del turno con paginación, ingresos y egresos con categoría, esperado antes de cerrar | `feature/mi-turno-movimientos` | 018 | Persona 1 | Hecha (V42, PR #26) |
 | [022-permisos-plantillas-rol](022-permisos-plantillas-rol/spec.md) | 2 | Permisos por acción, plantillas de rol, permisos sueltos y clave corta del personal | `feature/permisos-plantillas-rol` | SaaS 3 | Persona 2 | Hecha (V43, PR #27; V44, PR pendiente) |
-| [023-cierre-por-denominacion](023-cierre-por-denominacion/spec.md) | 2 | Cierre contando billetes y monedas, vista de ventas por turno | `feature/cierre-por-denominacion` | 021 | Persona 1 | Propuesta |
+| [023-cierre-por-denominacion](023-cierre-por-denominacion/spec.md) | 2 | Cierre contando billetes y monedas, vista de ventas por turno | `feature/cierre-por-denominacion` | 021 | Persona 1 | En construcción (V45; falta revisión en Docker) |
 | [024-planes-simbolicos](024-planes-simbolicos/spec.md) | 2 | Todos los módulos para todos los planes; planes solo como etiqueta | `feature/planes-simbolicos` | SaaS 2 | Persona 2 | Propuesta (D11) |
 | [025-caja-con-permisos](025-caja-con-permisos/spec.md) | 3 | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | `feature/caja-con-permisos` | 022 | Persona 1 | Propuesta (D15) |
 | [026-producto-completo](026-producto-completo/spec.md) | 3 | Categoría y proveedor al vuelo, impuesto, unidad ajustable, stock máximo, proveedor y fecha del costo | `feature/producto-completo` | 001 | Persona 2 | Propuesta (D17) |
@@ -121,7 +121,8 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V42 | `feature/mi-turno-movimientos` | Categorías de ingresos y egresos de caja y `movimiento_caja.categoria_id` (spec 021) |
 | V43 | `feature/permisos-plantillas-rol` | Catálogo de permisos, roles como plantillas, `rol_permiso` de los 12 roles y `usuario_permiso` (spec 022, Parte A) |
 | V44 | `feature/permisos-parte-b` | Clave corta del personal y roles propios por empresa (spec 022, Parte B) |
-| V45 en adelante | libre | Se reserva al empezar cada spec |
+| V45 | `feature/cierre-por-denominacion` | `turno_caja.conteo_denominaciones`: conteo del efectivo por billete y moneda (spec 023) |
+| V46 en adelante | libre | Se reserva al empezar cada spec |
 
 **Numeración propuesta en los planes 018 a 035 (no es reserva):** V41 (020), V42 (021), V43 y V44 (022), V45 (023),
 V46 (025), V47 (026), V48 (028), V49 (029), V50 (030), V51 (031), V52 (032), V53 (033), V54 (035). Las specs 018, 019,

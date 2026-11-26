@@ -1,7 +1,7 @@
 # 023 - Cierre de caja contando billetes y monedas
 
-**Estado:** Propuesta · **Rama:** `feature/cierre-por-denominacion` · **Depende de:** 021 · **Responsable:** Persona 1 ·
-**Puntos de la reunión 2:** 50 · **Migración:** sí (se reserva al empezar)
+**Estado:** En construcción (2026-11-25) · **Rama:** `feature/cierre-por-denominacion` · **Depende de:** 021 · **Responsable:** Persona 1 ·
+**Puntos de la reunión 2:** 50 · **Migración:** V45
 
 ## Objetivo
 Que contar la caja al cerrar sea más fácil y con menos errores: el cajero dice cuántos billetes y monedas tiene de cada

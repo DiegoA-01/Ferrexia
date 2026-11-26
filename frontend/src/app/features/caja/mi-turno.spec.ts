@@ -150,7 +150,7 @@ describe('Mi turno', () => {
       boton.click();
       fixture.detectChanges();
       expect(c()['accion']()).toBe('cerrar');
-      expect(raiz().querySelector('#cc-EFECTIVO')).not.toBeNull();
+      expect(raiz().querySelector('#cc-BILLETE-100000')).not.toBeNull();
     });
 
     it('la acción queda en la URL', () => {

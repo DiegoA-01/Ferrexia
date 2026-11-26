@@ -2732,8 +2732,28 @@ class AislamientoEmpresasTest {
                     Integer.class, empresaA) >= 6);
 
             // dos personas abren a la vez la misma caja: una abre y la otra recibe 409; nunca hay dos turnos abiertos
+            // spec 023: se cierra contando billetes y monedas; una moneda inventada no cierra el turno
             mvc.perform(post("/api/turnos/" + turno2 + "/cerrar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
-                    .content("{\"contadoEfectivo\":0}")).andExpect(status().isOk());
+                            .content("{\"conteo\":[{\"tipo\":\"MONEDA\",\"valor\":300,\"cantidad\":1}]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("DENOMINACION_INVALIDA"));
+            mvc.perform(post("/api/turnos/" + turno2 + "/cerrar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"conteo\":[{\"tipo\":\"MONEDA\",\"valor\":500,\"cantidad\":2},"
+                                    + "{\"tipo\":\"BILLETE\",\"valor\":50000,\"cantidad\":0}]}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contado.EFECTIVO").value(1000.0))
+                    .andExpect(jsonPath("$.conteo.length()").value(1))
+                    .andExpect(jsonPath("$.conteo[0].valor").value(500));
+            mvc.perform(get("/api/turnos/" + turno2).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.conteo[0].cantidad").value(2));
+            // el conteo de A no se ve desde B, ni su turno en las ventas por turno
+            mvc.perform(get("/api/turnos/" + turno2).header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/reportes/caja/turnos").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.turnos[?(@.id==" + turno2 + ")]").isNotEmpty());
+            mvc.perform(get("/api/reportes/caja/turnos").header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.turnos.length()").value(0));
+            mvc.perform(get("/api/reportes/caja/turnos").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isForbidden());
             java.util.concurrent.CountDownLatch salida = new java.util.concurrent.CountDownLatch(1);
             java.util.concurrent.ExecutorService hilos = java.util.concurrent.Executors.newFixedThreadPool(2);
             List<java.util.concurrent.Future<Integer>> estados = new java.util.ArrayList<>();
@@ -3743,6 +3763,11 @@ class AislamientoEmpresasTest {
             assertEquals(1, cajaR.get("anulaciones").size());
             assertEquals(0, new java.math.BigDecimal("10000").compareTo(dinero.apply(cajaR.get("totales").get("anulaciones"))));
             assertEquals("Se registró dos veces", cajaR.get("anulaciones").get(0).get("motivo").asText());
+            // ventas por turno (spec 023): el mismo turno, con la anulación descontada de sus ventas
+            com.fasterxml.jackson.databind.JsonNode porTurno = leer.apply("/api/reportes/caja/turnos");
+            assertEquals(1, porTurno.get("turnos").size());
+            assertEquals(turno, porTurno.get("turnos").get(0).get("id").asLong());
+            assertEquals(0, new java.math.BigDecimal("10000").compareTo(dinero.apply(porTurno.get("turnos").get(0).get("anulaciones"))));
 
             // 5) tablero del dueño: lo de hoy
             com.fasterxml.jackson.databind.JsonNode tablero = leer.apply("/api/reportes/tablero/ventas");
@@ -3802,6 +3827,8 @@ class AislamientoEmpresasTest {
                     .andExpect(jsonPath("$.filas.length()").value(0));
             mvc.perform(get("/api/reportes/caja").header(HttpHeaders.AUTHORIZATION, duenoB))
                     .andExpect(jsonPath("$.turnos.length()").value(0)).andExpect(jsonPath("$.anulaciones.length()").value(0));
+            mvc.perform(get("/api/reportes/caja/turnos").header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(jsonPath("$.turnos.length()").value(0)).andExpect(jsonPath("$.totales.totalVentas").value(0.0));
             mvc.perform(get("/api/reportes/tablero/ventas").header(HttpHeaders.AUTHORIZATION, duenoB))
                     .andExpect(jsonPath("$.numeroVentasHoy").value(0));
             mvc.perform(get("/api/reportes/cuadre").header(HttpHeaders.AUTHORIZATION, duenoB))
