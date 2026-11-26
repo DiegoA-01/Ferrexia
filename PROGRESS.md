@@ -1,13 +1,13 @@
 # Ferrexia (antes Supply-Core) — Progreso
 
 > **Última actualización: 2026-11-26.** El proyecto sigue en el repositorio `DiegoA-01/Ferrexia` (Supply-Core quedó como
-> histórico). Estado: **specs 000 a 027 mezcladas en `develop`** (`9f7e18d`, PR #29). Hechas y verificadas: 000 a 022
-> (la 022, permisos por acción, roles propios y PIN del personal, en #27 y #28). **Mezcladas pero sin cerrar: 023 a 027**
-> (PR #29, de Martin): les faltan la revisión en Docker, la aprobación y marcar sus criterios, y la 026 tiene una decisión
-> abierta. **Faltan las specs 028 a 035** (ver la **sección 8**, que manda sobre las anteriores). Migraciones: 49 (V1 a
-> V49), **próxima V50**.
-> **028 a 030 mezcladas (V50 a V52, PR #31 a #33). En curso (rama `feature/domicilios`): spec 032 con la V53**
-> (próxima libre V54). Pruebas en esa rama: backend 924 en verde (1 omitida, Gemini en vivo); frontend 334; e2e con 4 pruebas en el CI.
+> histórico). Estado: **specs 000 a 030 mezcladas en `develop`** (`fe6e60b`, PR #33) y **032 (domicilios) en su rama
+> `feature/domicilios`** (commit `c3470a3`, PR por abrir o mezclar). Hechas y verificadas con pruebas: 000 a 022 y 028 a
+> 032 (la 028 a la 032 sin la revisión en Docker). **Mezcladas pero sin cerrar: 023 a 027** (PR #29, de Martin): les
+> faltan la revisión en Docker, la aprobación y marcar sus criterios, y la 026 tiene una decisión abierta. **Faltan las
+> specs 031, 033, 034 y 035** (ver la **sección 8**, que manda sobre las anteriores). Migraciones: 53 (V1 a V53),
+> **próxima V54**.
+> Pruebas (rama de la 032): backend 924 en verde (1 omitida, Gemini en vivo); frontend 334; e2e con 4 pruebas en el CI.
 > Las secciones 0 a 7 se dejan como historia.
 
 > Estado al 2026-11-19 (historia): **Ventas y Caja en construcción por specs: hechas la 000 (CI), 001 (catálogo de venta), 002 (clientes) y 003 (cajas y turnos); sigue la 004, la venta (ver sección 7)**. Antes: frontend completo (fases 0 a 8), stack de Docker e informe de compras para el dueño (V25). Antes: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), exportación a Excel y PDF con archivos legibles, y cruce de totales de la IA con Gemini como proveedor de lectura (sin migración)**.
@@ -680,8 +680,10 @@ Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agen
 - Numeración propuesta de migraciones en los planes: V41 (020) a V54 (035); cada rama la reserva al empezar.
 
 ### Specs: hechas y faltantes (corte 2026-11-26, para retomar tras compactar)
-**Hechas y verificadas en `develop`:** 000 a 022. Las últimas: 016 (V40, #19), 017 (#20), 018 (#22), 019 (#23),
-020 (V41, #24), 021 (V42, #26) y 022 (V43 y V44, #27 y #28). Detalle en su `spec.md` (criterios marcados) y su `tasks.md`.
+**Hechas y verificadas en `develop`:** 000 a 022 y 028 a 030. Las últimas: 016 (V40, #19), 017 (#20), 018 (#22),
+019 (#23), 020 (V41, #24), 021 (V42, #26), 022 (V43 y V44, #27 y #28), 028 (V50, #31), 029 (V51, #32) y 030 (V52, #33).
+**Hecha en su rama:** 032 (V53, `feature/domicilios`). A la 028, 029, 030 y 032 les falta la revisión en Docker. Detalle
+en su `spec.md` (criterios marcados) y su `tasks.md`.
 
 **Mezcladas pero sin cerrar (PR #29, rama `feature/cierre-por-denominacion` de Martin):** el código está en `develop`, pero
 cada `spec.md` sigue "En construcción" y sin criterios marcados.
@@ -694,7 +696,7 @@ cada `spec.md` sigue "En construcción" y sin criterios marcados.
 | 026 Producto completo | V49 | **Decidir qué pasa con la unidad de un producto que ya tiene movimientos**; revisión y criterios |
 | 027 Venta ágil | — | Revisión en Docker y marcar criterios |
 
-**Faltan (en Propuesta, con `plan.md` y `tasks.md`; ninguna empezada). La migración se reserva al empezar (próxima libre V50):**
+**Faltan (en Propuesta, con `plan.md` y `tasks.md`; ninguna empezada). La migración se reserva al empezar (próxima libre V54):**
 
 | Spec | Qué entrega | Responsable | Decisión que la bloquea |
 |---|---|---|---|
@@ -711,12 +713,12 @@ se tomaron). Hay que tomarlas antes de aprobar la spec que bloquean.
    022 (un rol propio con PIN, quitar un permiso suelto, los usuarios de la demo ven lo mismo que antes) y 023 a 027.
    Al terminar, marcar los criterios de 023 a 027 y pasarlas a "Hecha" en el índice.
 2. **Decidir la unidad de la 026** (producto con movimientos) y aprobar la 025.
-3. **Spec 028, variantes de producto: hecha en `feature/variantes-producto` (V50)**; falta el PR, el merge y la revisión
-   en Docker (crear un producto con variantes, comprarlo, recibirlo y venderlo por código de barras). La unidad de una
-   variante es la de su producto general y solo cambia si ninguna variante tiene movimientos.
-4. **Spec 032 hecha en su rama (V53, D19 tomada)**: falta PR, merge y revisión en Docker. Luego **tomar las decisiones
-   abiertas** D21, D14 y aclarar D12, y seguir con 033, 031 y 035 (la 034 no espera y ya puede usar el tipo de servicio). La 034
-   (reportes de ventas ampliados) no espera decisión y se puede hacer en paralelo.
+3. **Mezclar la 032** (`feature/domicilios`, V53) y hacer la **revisión en Docker de la 028 a la 032**: variantes (crear,
+   comprar, recibir y vender por código de barras), cambio de pago y anulación de una factura de ayer, venta sin
+   existencia que se regulariza al recibir, y un domicilio contraentrega de punta a punta con vendedor, cajero y
+   domiciliario (este último con el permiso suelto `DOMICILIO_REPARTIR`) a 360 px.
+4. **Spec 034, reportes de ventas ampliados**: no espera decisión y ya puede usar el tipo de servicio (mostrador o
+   domicilio) de la 032. Después, **tomar las decisiones abiertas** D21, D14 y aclarar D12, y seguir con 033, 031 y 035.
 5. Pendientes menores de la 022: botones internos de algunas pantallas que usan listas de roles sueltas y los avisos por
    rol (`notificarRol`), que no llegan a quien tiene un rol propio.
 6. Siguen abiertos de antes: paso 19 del backend (SMTP real, archivos por empresa, `permisos.sql`, OWASP), IA con
@@ -725,10 +727,13 @@ se tomaron). Hay que tomarlas antes de aprobar la spec que bloquean.
 `agents/specs/022-permisos-plantillas-rol/permisos.md`); un permiso nuevo se siembra en su migración y se da a los roles.
 
 ### Entorno local de DiegoA-01 (2026-11-26)
-- Copia local en `develop` = `origin/develop` (`9f7e18d`). `backend/mvnw.cmd` aparece modificado solo por el fin de línea:
-  no se sube. Hay 11 ramas locales ya mezcladas (`docs/progreso-2026-11-25`, `feature/menu-*`, `feature/inicio-categorias`,
-  `feature/pestanas-categoria`, `feature/cajas-ocupadas`, `feature/pos-ajustes-rapidos`, `feature/interfaz-general`,
-  `feature/mi-turno-movimientos`, `feature/permisos-plantillas-rol`, `feature/permisos-parte-b`) que se pueden borrar.
+- Copia local en la rama `feature/domicilios` (sobre `develop` = `fe6e60b`). `backend/mvnw.cmd` aparece modificado solo
+  por el fin de línea: no se sube. Siguen 11 ramas locales viejas ya mezcladas (`docs/progreso-2026-11-25`,
+  `feature/menu-*`, `feature/inicio-categorias`, `feature/pestanas-categoria`, `feature/cajas-ocupadas`,
+  `feature/pos-ajustes-rapidos`, `feature/interfaz-general`, `feature/mi-turno-movimientos`,
+  `feature/permisos-plantillas-rol`, `feature/permisos-parte-b`) que se pueden borrar.
+- La base local de desarrollo (`supply_core`) ya tiene aplicadas hasta la V53: se levantó el backend para regenerar los
+  tipos del frontend (`npm run api:tipos`), que se hace en cada spec que cambia la API.
 - `gh` no está instalado: los PR se abren desde el enlace que da `git push`.
 - Archivos locales que git ignora: `.env` (claves del stack), `credenciales-docker.local.txt` (cuentas de la demo, con la
   cuenta `todo@ferreteriademo.local` que tiene los 11 roles internos y pide MFA la primera vez) y
