@@ -12,6 +12,9 @@
     @if (veCuadre()) {
       <button type="button" role="tab" [class.activa]="pestana() === 'cuadre'" (click)="elegir('cuadre')">Cuadre diario</button>
     }
+    @if (veCaja()) {
+      <button type="button" role="tab" [class.activa]="pestana() === 'sinExistencia'" (click)="elegir('sinExistencia')">Sin existencia</button>
+    }
   </div>
 
   @if (pestana() !== 'cuadre') {
@@ -31,10 +34,19 @@
             @for (k of cajas(); track k.id) { <option [ngValue]="k.id">{{ k.nombre }}</option> }
           </select></label>
       }
+      @if (pestana() === 'sinExistencia') {
+        <label>Estado
+          <select class="entrada" [ngModel]="estadoSinExistencia()" (ngModelChange)="estadoSinExistencia.set($event)">
+            <option [ngValue]="null">Todos</option>
+            @for (e of ['PENDIENTE', 'REGULARIZADA', 'ANULADA']; track e) { <option [ngValue]="e">{{ estadosSinExistencia[e] }}</option> }
+          </select></label>
+      }
       <button type="button" class="boton primario" (click)="consultar()">Consultar</button>
       <span class="espacio"></span>
-      <button type="button" class="boton" (click)="exportar('xlsx')">Excel</button>
-      @if (pestana() !== 'turnos') { <button type="button" class="boton" (click)="exportar('pdf')">PDF</button> }
+      @if (pestana() !== 'sinExistencia') {
+        <button type="button" class="boton" (click)="exportar('xlsx')">Excel</button>
+        @if (pestana() !== 'turnos') { <button type="button" class="boton" (click)="exportar('pdf')">PDF</button> }
+      }
     </section>
   }
 
@@ -155,6 +167,26 @@
             <td class="num">{{ t.contado == null ? '—' : (t.contado | pesos) }}</td>
             <td class="num" [class]="tono(t.diferencia)">{{ t.diferencia == null ? '—' : (t.diferencia | pesos) }}</td></tr>
         } @empty { <tr><td [attr.colspan]="9 + ordenMedios.length" class="vacio">Sin turnos en el periodo.</td></tr> }
+      </tbody>
+    </table></div></section>
+  }
+
+  @if (pestana() === 'sinExistencia') {
+    <p class="sub">Lo que se vendió sin existencia (spec 030). El stock nunca baja de cero: lo pendiente se descuenta solo cuando entra la mercancía.</p>
+    <section class="tarjeta sin-relleno"><div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Venta</th><th>Producto</th><th>Cajero · caja</th><th class="num">Faltaba</th><th class="num">Pendiente</th>
+        <th>Motivo</th><th>Estado</th></tr></thead>
+      <tbody>
+        @for (f of sinExistencia() ?? []; track f.id) {
+          <tr><td><strong>{{ f.consecutivo }}</strong><span class="sub">{{ f.fecha | fecha:'corta' }}</span></td>
+            <td>{{ f.producto }}<span class="sub">{{ f.codigo }}</span></td>
+            <td>{{ f.cajero }}<span class="sub">{{ f.caja }}</span></td>
+            <td class="num">{{ f.cantidad | numero }} {{ f.unidad }}</td>
+            <td class="num"><strong>{{ f.pendiente | numero }}</strong></td>
+            <td>{{ f.motivo }}</td>
+            <td><span class="chip" [class.ambar]="f.estado === 'PENDIENTE'" [class.verde]="f.estado === 'REGULARIZADA'" [class.gris]="f.estado === 'ANULADA'">
+              {{ estadosSinExistencia[f.estado ?? ''] }}</span>@if (f.regularizadaEn) { <span class="sub">{{ f.regularizadaEn | fecha:'corta' }}</span> }</td></tr>
+        } @empty { <tr><td colspan="7" class="vacio">{{ sinExistencia() ? 'No hay ventas sin existencia en el periodo.' : 'Cargando…' }}</td></tr> }
       </tbody>
     </table></div></section>
   }

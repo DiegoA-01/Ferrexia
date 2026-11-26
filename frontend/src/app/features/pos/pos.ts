@@ -579,6 +579,29 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     return p.medio === 'TARJETA_DEBITO' || p.medio === 'TARJETA_CREDITO';
   }
 
+  /**
+   * Spec 030 (D13): el servidor dijo que no hay existencia suficiente y la sesión puede vender igual. Guarda el mensaje
+   * del servidor; al confirmar con un motivo, la venta sale con el faltante pendiente.
+   */
+  protected readonly sinExistencia = signal<string | null>(null);
+  /** Motivo elegido para vender sin existencia ({@code null} mientras no se confirma). */
+  protected readonly motivoSinExistencia = signal<string | null>(null);
+  protected readonly motivoElegido = signal('No registrado');
+  protected readonly motivoOtro = signal('');
+  protected readonly motivosSinExistencia = ['No registrado', 'Se consigue afuera', 'Otro'];
+
+  /** Confirma vender sin existencia con el motivo elegido y reenvía la venta (spec 030). */
+  protected venderSinExistencia(): void {
+    const motivo = this.motivoElegido() === 'Otro' ? this.motivoOtro().trim() : this.motivoElegido();
+    if (motivo.length < 3) {
+      this.avisos.ok('Escribe el motivo.');
+      return;
+    }
+    this.motivoSinExistencia.set(motivo);
+    this.sinExistencia.set(null);
+    this.confirmar();
+  }
+
   /** Confirma la venta; antes pide el PIN si el servidor dijo que hace falta. */
   protected confirmar(): void {
     const c = this.cotizacion();
@@ -595,7 +618,8 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     }
     this.enviando.set(true);
     this.ventas.confirmar({
-      clienteId: this.cliente()?.id, pedidoVentaId: this.pedidoVentaId() ?? undefined, lineas: this.lineas(), pagos: this.pagosEnviados(),
+      clienteId: this.cliente()?.id, pedidoVentaId: this.pedidoVentaId() ?? undefined, lineas: this.lineas(this.motivoSinExistencia()),
+      pagos: this.pagosEnviados(),
       autorizacionDescuento: this.tokenDescuento() ?? undefined, autorizacionPrecio: this.tokenPrecio() ?? undefined,
     }, this.clave()).subscribe({
       next: v => {
@@ -617,6 +641,12 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
           this.tokenDescuento.set(null);
           this.tokenPrecio.set(null);
         }
+        // spec 030: con el permiso, ofrece vender igual con un motivo en vez de solo mostrar el error
+        if (codigo === 'STOCK_INSUFICIENTE' && this.sesion.tienePermiso('VENTA_SIN_EXISTENCIA') && !this.motivoSinExistencia()) {
+          this.sinExistencia.set((e.error as { mensaje?: string } | null)?.mensaje ?? 'No hay existencia suficiente.');
+          return;
+        }
+        this.motivoSinExistencia.set(null);
         this.avisos.error(e);
       },
     });
@@ -749,8 +779,14 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
   }
 
   /** @returns el carrito como lo espera el servidor */
-  private lineas(): LineaVentaRequest[] {
-    return this.carrito().map(x => ({ productoId: x.productoId, unidadMedidaId: x.unidadMedidaId ?? undefined, cantidad: x.cantidad, descuentoPct: x.descuentoPct }));
+  /**
+   * @param motivoSinExistencia motivo para vender sin existencia (spec 030): marca todas las líneas; solo queda faltante
+   *                            de lo que de verdad no alcanza
+   * @returns las líneas del carrito como las recibe el backend
+   */
+  private lineas(motivoSinExistencia: string | null = null): LineaVentaRequest[] {
+    return this.carrito().map(x => ({ productoId: x.productoId, unidadMedidaId: x.unidadMedidaId ?? undefined, cantidad: x.cantidad, descuentoPct: x.descuentoPct,
+      ...(motivoSinExistencia ? { sinExistencia: true, motivoSinExistencia } : {}) }));
   }
 
   /** @returns los pagos con medio y monto; la referencia (voucher) solo si se escribió. Sin últimos 4 (spec 016). */
@@ -778,6 +814,8 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     this.pedidoVentaId.set(null);
     this.pedidoConsecutivo.set(null);
     this.reintento.set(false);
+    this.sinExistencia.set(null);
+    this.motivoSinExistencia.set(null);
     this.clave.set(this.nuevaClave());
     this.enfocar();
   }

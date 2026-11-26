@@ -215,11 +215,18 @@ public class AnulacionVentaService {
             String motivo, String detalle) {
         carteraService.revertirVenta(v);
 
-        // Stock: vuelve a la bodega de la caja, por producto en orden de id
+        // Stock: vuelve a la bodega de la caja, por producto en orden de id. Lo que quedó como faltante pendiente
+        // (spec 030) nunca salió del stock: el faltante se anula y esa parte no vuelve.
+        Map<Long, BigDecimal> pendiente = movimientoInventarioService.anularFaltantes(v.getId());
         Map<Long, BigDecimal> porProducto = new TreeMap<>();
         v.getLineas().forEach(l -> porProducto.merge(l.getProductoId(), l.getCantidadUnidadProducto(), BigDecimal::add));
-        porProducto.forEach((productoId, cantidad) -> movimientoInventarioService.registrarAnulacionVenta(productoId,
-                v.getBodegaId(), cantidad, "Anulación de " + v.getConsecutivo() + ": " + motivo, v.getId()));
+        porProducto.forEach((productoId, cantidad) -> {
+            BigDecimal vuelve = cantidad.subtract(pendiente.getOrDefault(productoId, BigDecimal.ZERO));
+            if (vuelve.signum() > 0) {
+                movimientoInventarioService.registrarAnulacionVenta(productoId, v.getBodegaId(), vuelve,
+                        "Anulación de " + v.getConsecutivo() + ": " + motivo, v.getId());
+            }
+        });
 
         netos.forEach((medio, monto) -> {
             MovimientoCaja m = new MovimientoCaja();

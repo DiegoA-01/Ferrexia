@@ -2996,6 +2996,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reportes/ventas-sin-existencia": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ventasSinExistencia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reportes/tablero": {
         parameters: {
             query?: never;
@@ -4826,6 +4842,9 @@ export interface components {
             unidadMedidaId?: number;
             cantidad: number;
             descuentoPct?: number;
+            sinExistencia?: boolean;
+            motivoSinExistencia?: string;
+            motivoSinExistenciaValido?: boolean;
         };
         PedidoVentaRequest: {
             /** Format: int64 */
@@ -4997,7 +5016,7 @@ export interface components {
         };
         ConfigNotificacionCambioRequest: {
             /** @enum {string} */
-            evento: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_SOBRE_MAXIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "ALERTA_CAJERO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE";
+            evento: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_SOBRE_MAXIMO" | "VENTA_SIN_EXISTENCIA" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "ALERTA_CAJERO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE";
             /** @enum {string} */
             canal: "EMAIL" | "INTERNA";
             activo: boolean;
@@ -5006,7 +5025,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_SOBRE_MAXIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "ALERTA_CAJERO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE";
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_SOBRE_MAXIMO" | "VENTA_SIN_EXISTENCIA" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "ALERTA_CAJERO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE";
             /** @enum {string} */
             canal?: "EMAIL" | "INTERNA";
             activo?: boolean;
@@ -5911,8 +5930,8 @@ export interface components {
             bodegaId?: number;
             observaciones?: string;
             lineas: components["schemas"]["LineaRecepcionRequest"][];
-            conMovimiento?: boolean;
             lineasSinRepetir?: boolean;
+            conMovimiento?: boolean;
         };
         RecepcionResponse: {
             /** Format: int64 */
@@ -6396,8 +6415,8 @@ export interface components {
             /** Format: date */
             vigenteHasta: string;
             precios: components["schemas"]["PrecioRequest"][];
-            productosSinRepetir?: boolean;
             vigenciaEnOrden?: boolean;
+            productosSinRepetir?: boolean;
         };
         PrecioRequest: {
             /** Format: int64 */
@@ -6602,7 +6621,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_SOBRE_MAXIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "ALERTA_CAJERO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE";
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_SOBRE_MAXIMO" | "VENTA_SIN_EXISTENCIA" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "ALERTA_CAJERO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE";
             mensaje?: string;
             leida?: boolean;
             /** Format: date-time */
@@ -6884,6 +6903,28 @@ export interface components {
             filas?: components["schemas"]["FilaVentaReporte"][];
             totales?: components["schemas"]["TotalesVentaReporte"];
             soloPropio?: boolean;
+        };
+        VentaSinExistenciaFila: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: date-time */
+            fecha?: string;
+            /** Format: int64 */
+            ventaId?: number;
+            consecutivo?: string;
+            caja?: string;
+            cajero?: string;
+            /** Format: int64 */
+            productoId?: number;
+            codigo?: string;
+            producto?: string;
+            unidad?: string;
+            cantidad?: number;
+            pendiente?: number;
+            motivo?: string;
+            estado?: string;
+            /** Format: date-time */
+            regularizadaEn?: string;
         };
         ReabastecimientoItem: {
             /** Format: int64 */
@@ -13807,6 +13848,31 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["VentaReporte"];
+                };
+            };
+        };
+    };
+    ventasSinExistencia: {
+        parameters: {
+            query?: {
+                desde?: string;
+                hasta?: string;
+                productoId?: number;
+                estado?: "PENDIENTE" | "REGULARIZADA" | "ANULADA";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VentaSinExistenciaFila"][];
                 };
             };
         };

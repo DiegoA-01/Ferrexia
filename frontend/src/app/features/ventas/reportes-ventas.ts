@@ -1,7 +1,9 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { AgrupacionVenta, Caja, CajaReporte, Cuadre, MedioPago, Pagina, VentaReporte, VentasTurnoReporte } from '../../core/api/modelos';
+import {
+  AgrupacionVenta, Caja, CajaReporte, Cuadre, MedioPago, Pagina, VentaReporte, VentaSinExistencia, VentasTurnoReporte,
+} from '../../core/api/modelos';
 import { FechaPipe, NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { CajaService } from '../../core/servicios/caja.service';
 import { ReportesVentasService } from '../../core/servicios/reportes-ventas.service';
@@ -10,7 +12,12 @@ import { Avisos, descargar } from '../../core/ui/avisos';
 import { MEDIOS } from '../caja/caja';
 
 /** Pestañas de la pantalla. */
-type Pestana = 'ventas' | 'caja' | 'turnos' | 'cuadre';
+type Pestana = 'ventas' | 'caja' | 'turnos' | 'cuadre' | 'sinExistencia';
+
+/** Nombre de cada estado de una venta sin existencia (spec 030). */
+export const ESTADOS_SIN_EXISTENCIA: Record<string, string> = {
+  PENDIENTE: 'Pendiente', REGULARIZADA: 'Regularizada', ANULADA: 'Anulada',
+};
 
 /** Nombre de cada agrupación del reporte de ventas. */
 export const AGRUPACIONES: Record<AgrupacionVenta, string> = {
@@ -54,6 +61,10 @@ export class ReportesVentas implements OnInit {
   protected readonly cuadres = signal<Pagina<Cuadre> | null>(null);
   protected readonly soloDescuadres = signal(true);
   protected readonly cargando = signal(false);
+  /** Spec 030: ventas sin existencia y su filtro de estado. */
+  protected readonly sinExistencia = signal<VentaSinExistencia[] | null>(null);
+  protected readonly estadoSinExistencia = signal<string | null>(null);
+  protected readonly estadosSinExistencia = ESTADOS_SIN_EXISTENCIA;
 
   protected readonly veCaja = computed(() => this.sesion.tieneRol(SUPERVISION));
   protected readonly veCuadre = computed(() => this.sesion.tieneRol(['ADMIN_SISTEMA', 'AUDITOR']));
@@ -76,6 +87,8 @@ export class ReportesVentas implements OnInit {
       this.cargarPorTurno();
     } else if (p === 'cuadre' && !this.cuadres()) {
       this.cargarCuadres();
+    } else if (p === 'sinExistencia' && !this.sinExistencia()) {
+      this.cargarSinExistencia();
     }
   }
 
@@ -87,6 +100,8 @@ export class ReportesVentas implements OnInit {
       this.cargarPorTurno();
     } else if (this.pestana() === 'cuadre') {
       this.cargarCuadres();
+    } else if (this.pestana() === 'sinExistencia') {
+      this.cargarSinExistencia();
     } else {
       this.cargarVentas();
     }
@@ -113,6 +128,11 @@ export class ReportesVentas implements OnInit {
   protected cargarPorTurno(): void {
     this.servicio.ventasPorTurno(this.desde(), this.hasta(), this.cajaId())
       .subscribe({ next: r => this.porTurno.set(r), error: e => this.avisos.error(e) });
+  }
+
+  protected cargarSinExistencia(): void {
+    this.servicio.ventasSinExistencia(this.desde(), this.hasta(), this.estadoSinExistencia())
+      .subscribe({ next: r => this.sinExistencia.set(r), error: e => this.avisos.error(e) });
   }
 
   protected cargarCuadres(): void {

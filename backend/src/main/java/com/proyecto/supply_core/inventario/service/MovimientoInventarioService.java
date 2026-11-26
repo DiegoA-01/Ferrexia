@@ -64,6 +64,16 @@ public class MovimientoInventarioService {
     private final NotificacionService notificacionService;
     /** Aviso por sede; {@code null} en las pruebas que no lo necesitan. */
     private final AlertaSedeService alertaSedeService;
+    /** Faltantes de ventas sin existencia (spec 030); {@code null} en las pruebas que no los usan. */
+    private com.proyecto.supply_core.inventario.repository.FaltanteVentaRepository faltanteRepository;
+
+    /**
+     * @param faltanteRepository faltantes de ventas sin existencia (spec 030)
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setFaltanteRepository(com.proyecto.supply_core.inventario.repository.FaltanteVentaRepository faltanteRepository) {
+        this.faltanteRepository = faltanteRepository;
+    }
 
     /**
      * @param stockRepository      existencias por bodega
@@ -194,6 +204,106 @@ public class MovimientoInventarioService {
             String referenciaTipo, Long referenciaId) {
         return aplicar(TipoMovimiento.SALIDA_VENTA, productoId, bodegaId, null, cantidad, null,
                 referenciaTipo, referenciaId);
+    }
+
+    /**
+     * Salida de una venta sin existencia (spec 030, D13): sale lo que haya en la bodega y la diferencia queda como
+     * faltante pendiente, que se descuenta cuando entre mercancía. El stock nunca queda negativo. Avisa a compras y
+     * bodega.
+     *
+     * @param productoId producto
+     * @param bodegaId   bodega de la caja
+     * @param cantidad   cantidad vendida en la unidad del producto (> 0)
+     * @param ventaId    venta
+     * @param motivo     por qué se vendió sin existencia
+     * @return lo que quedó como faltante (0 si la existencia alcanzó)
+     */
+    @Transactional
+    public BigDecimal registrarSalidaVentaConFaltante(Long productoId, Long bodegaId, BigDecimal cantidad, Long ventaId,
+            String motivo) {
+        BigDecimal pedida = cantidad.setScale(ESCALA, RoundingMode.HALF_UP);
+        Producto producto = productoActivo(productoId);
+        Bodega bodega = bodegaActiva(bodegaId);
+        BigDecimal disponible = bloquear(producto, bodega).getCantidad().max(BigDecimal.ZERO);
+        BigDecimal sale = disponible.min(pedida);
+        if (sale.signum() > 0) {
+            aplicar(TipoMovimiento.SALIDA_VENTA, productoId, bodegaId, null, sale, null, "VENTA", ventaId);
+        }
+        BigDecimal falta = pedida.subtract(sale);
+        if (falta.signum() > 0) {
+            com.proyecto.supply_core.inventario.entity.FaltanteVenta f = new com.proyecto.supply_core.inventario.entity.FaltanteVenta();
+            f.setVentaId(ventaId);
+            f.setProductoId(productoId);
+            f.setBodegaId(bodegaId);
+            f.setUsuarioId(SesionActual.usuario().id());
+            f.setCantidad(falta);
+            f.setPendiente(falta);
+            f.setMotivo(motivo.trim());
+            faltanteRepository.save(f);
+            String texto = "Se vendió " + falta.toPlainString() + " de " + producto.getCodigo() + " - " + producto.getNombre()
+                    + " sin existencia en " + bodega.getNombre() + " (" + f.getMotivo()
+                    + "). Queda pendiente hasta que entre la mercancía.";
+            notificacionService.notificarRol(Roles.ADMIN_COMPRAS, EventoNotificacion.VENTA_SIN_EXISTENCIA, texto);
+            notificacionService.notificarRol(Roles.ALMACENISTA, EventoNotificacion.VENTA_SIN_EXISTENCIA, texto);
+        }
+        return falta;
+    }
+
+    /**
+     * Anula los faltantes pendientes de una venta que se anula (spec 030): lo que nunca salió del stock no vuelve.
+     *
+     * @param ventaId venta
+     * @return lo que estaba pendiente, por producto
+     */
+    @Transactional
+    public java.util.Map<Long, BigDecimal> anularFaltantes(Long ventaId) {
+        java.util.Map<Long, BigDecimal> anulado = new java.util.TreeMap<>();
+        if (faltanteRepository == null) {
+            return anulado;
+        }
+        for (com.proyecto.supply_core.inventario.entity.FaltanteVenta f : faltanteRepository.deVentaBloqueados(ventaId)) {
+            if (f.getEstado() == com.proyecto.supply_core.inventario.entity.FaltanteVenta.Estado.PENDIENTE) {
+                anulado.merge(f.getProductoId(), f.getPendiente(), BigDecimal::add);
+                f.setPendiente(BigDecimal.ZERO);
+                f.setEstado(com.proyecto.supply_core.inventario.entity.FaltanteVenta.Estado.ANULADA);
+            }
+        }
+        return anulado;
+    }
+
+    /**
+     * Lo devuelto de un producto descuenta primero el faltante pendiente de esa venta (spec 030): esa parte nunca salió
+     * del stock, así que no vuelve a entrar.
+     *
+     * @param ventaId    venta
+     * @param productoId producto devuelto
+     * @param cantidad   cantidad devuelta en la unidad del producto
+     * @return lo que se descontó del faltante (el resto sí entra al stock)
+     */
+    @Transactional
+    public BigDecimal descontarFaltanteDevuelto(Long ventaId, Long productoId, BigDecimal cantidad) {
+        BigDecimal resto = cantidad.setScale(ESCALA, RoundingMode.HALF_UP);
+        BigDecimal descontado = BigDecimal.ZERO.setScale(ESCALA);
+        if (faltanteRepository == null) {
+            return descontado;
+        }
+        for (com.proyecto.supply_core.inventario.entity.FaltanteVenta f : faltanteRepository.deVentaBloqueados(ventaId)) {
+            if (resto.signum() <= 0) {
+                break;
+            }
+            if (!f.getProductoId().equals(productoId)
+                    || f.getEstado() != com.proyecto.supply_core.inventario.entity.FaltanteVenta.Estado.PENDIENTE) {
+                continue;
+            }
+            BigDecimal q = resto.min(f.getPendiente());
+            f.setPendiente(f.getPendiente().subtract(q));
+            if (f.getPendiente().signum() == 0) {
+                f.setEstado(com.proyecto.supply_core.inventario.entity.FaltanteVenta.Estado.ANULADA);
+            }
+            resto = resto.subtract(q);
+            descontado = descontado.add(q);
+        }
+        return descontado;
     }
 
     /**
@@ -370,6 +480,10 @@ public class MovimientoInventarioService {
         if (alertaSedeService != null && origen != null) {
             alertaSedeService.revisar(producto, origen, destino, cantidad);
         }
+        // spec 030 (D13): lo que entra a una bodega descuenta primero los faltantes pendientes de ventas sin existencia
+        if (destino != null && faltanteRepository != null) {
+            regularizar(producto, destino);
+        }
         BigDecimal total = stockRepository.totalDeProducto(producto.getId());
         boolean bajoMinimo = total.compareTo(producto.getStockMinimo()) < 0;
         if (bajoMinimo) {
@@ -392,6 +506,32 @@ public class MovimientoInventarioService {
                             + producto.getStockMaximo().toPlainString());
         }
         return new RegistroMovimientoResponse(MovimientoResponse.of(guardado), total, bajoMinimo);
+    }
+
+    /**
+     * Descuenta los faltantes pendientes del producto en la bodega, del más viejo al más nuevo, hasta donde alcance el
+     * stock (spec 030). Cada descuento es una {@code SALIDA_VENTA} que apunta a su venta, con la fila de stock
+     * bloqueada: nunca queda negativo.
+     *
+     * @param producto producto que entró
+     * @param bodega   bodega a la que entró
+     */
+    private void regularizar(Producto producto, Bodega bodega) {
+        for (com.proyecto.supply_core.inventario.entity.FaltanteVenta f
+                : faltanteRepository.pendientesBloqueados(producto.getId(), bodega.getId())) {
+            BigDecimal disponible = bloquear(producto, bodega).getCantidad();
+            if (disponible.signum() <= 0) {
+                return;
+            }
+            BigDecimal q = disponible.min(f.getPendiente());
+            aplicar(TipoMovimiento.SALIDA_VENTA, producto.getId(), bodega.getId(), null, q,
+                    "Regulariza una venta sin existencia", "VENTA", f.getVentaId());
+            f.setPendiente(f.getPendiente().subtract(q));
+            if (f.getPendiente().signum() == 0) {
+                f.setEstado(com.proyecto.supply_core.inventario.entity.FaltanteVenta.Estado.REGULARIZADA);
+                f.setRegularizadaEn(java.time.LocalDateTime.now());
+            }
+        }
     }
 
     /**

@@ -244,6 +244,8 @@ public final class Permisos {
     public static final String VENTA_ANULAR_OTRO_TURNO = "VENTA_ANULAR_OTRO_TURNO";
     /** Cambiar el método de pago de una factura sin el PIN del supervisor (spec 029, D16). */
     public static final String VENTA_CAMBIAR_PAGO = "VENTA_CAMBIAR_PAGO";
+    /** Vender sin existencia con motivo: queda un faltante pendiente (spec 030, D13). */
+    public static final String VENTA_SIN_EXISTENCIA = "VENTA_SIN_EXISTENCIA";
 
     /** Clase de constantes: no se instancia. */
     private Permisos() {

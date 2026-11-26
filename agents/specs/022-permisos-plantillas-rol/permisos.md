@@ -31,7 +31,8 @@ plantilla **Administrador** (`ADMINISTRADOR`, = Dueño sin `EMPRESA_GESTIONAR`) 
 `DELEGACION_REVOCAR_AJENA` y `PEDIDO_INTERNO_VER_TODOS` (107 en total).
 
 Después se sumaron `CAJA_RETIRO_SIN_PIN`, `CAJA_GASTO_SIN_PIN` y `CAJA_INGRESO_SIN_PIN` (spec 025, V47) y
-`VENTA_ANULAR_OTRO_TURNO` y `VENTA_CAMBIAR_PAGO` (spec 029, V51; Dueño, Administrador y Supervisor de ventas): 112 en total.
+`VENTA_ANULAR_OTRO_TURNO` y `VENTA_CAMBIAR_PAGO` (spec 029, V51) y `VENTA_SIN_EXISTENCIA` (spec 030, V52), los tres para
+Dueño, Administrador y Supervisor de ventas: 113 en total.
 
 ## Compras
 

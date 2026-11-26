@@ -2,7 +2,9 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { AgrupacionVenta, CajaReporte, Cuadre, Pagina, TableroVentas, VentaReporte, VentasTurnoReporte } from '../api/modelos';
+import {
+  AgrupacionVenta, CajaReporte, Cuadre, Pagina, TableroVentas, VentaReporte, VentaSinExistencia, VentasTurnoReporte,
+} from '../api/modelos';
 import { api, parametros } from '../http/api';
 
 /** Reportes de ventas y caja, bloque de ventas del tablero y cuadre diario (spec 009). Todo lo calcula el backend. */
@@ -18,6 +20,11 @@ export class ReportesVentasService {
   /** @param desde fecha ISO; @param hasta fecha ISO */
   caja(desde: string | null, hasta: string | null): Observable<CajaReporte> {
     return this.http.get<CajaReporte>(api('/api/reportes/caja'), { params: parametros({ desde, hasta }) });
+  }
+
+  /** @param desde fecha ISO; @param hasta fecha ISO; @param estado PENDIENTE, REGULARIZADA o ANULADA (null = todos) (spec 030) */
+  ventasSinExistencia(desde: string | null, hasta: string | null, estado: string | null): Observable<VentaSinExistencia[]> {
+    return this.http.get<VentaSinExistencia[]>(api('/api/reportes/ventas-sin-existencia'), { params: parametros({ desde, hasta, estado }) });
   }
 
   /** @param desde fecha ISO; @param hasta fecha ISO; @param cajaId solo esa caja (null = todas) */

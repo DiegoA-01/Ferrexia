@@ -65,3 +65,6 @@ tr.alerta td { background: #fff8eb; }
 .bloque-cliente { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--sc-borde);
   .fila { flex-wrap: wrap; gap: 6px; input { flex: 1 1 160px; min-width: 0; } }
   .cliente-elegido { display: flex; } }
+
+/* spec 030: vender sin existencia con motivo */
+.sin-existencia { display: grid; gap: 8px; }

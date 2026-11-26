@@ -291,6 +291,25 @@
       @if (pin(); as accion) {
         <sc-autorizacion-pin [accion]="accion" [turnoId]="turno()!.id!" (autorizado)="autorizado($event.token)" (cancelado)="pin.set(null)" />
       }
+      @if (sinExistencia(); as mensaje) {
+        <div class="aviso ambar sin-existencia" role="alertdialog" aria-label="Vender sin existencia">
+          <strong>No hay existencia suficiente. ¿Vender igual?</strong>
+          <span>{{ mensaje }}</span>
+          <span class="sub">Sale lo que hay; lo que falta queda pendiente y se descuenta cuando entre la mercancía. Compras y bodega reciben el aviso.</span>
+          <div class="fila">
+            <select class="entrada" aria-label="Motivo para vender sin existencia" [ngModel]="motivoElegido()" (ngModelChange)="motivoElegido.set($event)">
+              @for (m of motivosSinExistencia; track m) { <option [ngValue]="m">{{ m }}</option> }
+            </select>
+            @if (motivoElegido() === 'Otro') {
+              <input class="entrada" maxlength="200" aria-label="Otro motivo" placeholder="¿Por qué?" [ngModel]="motivoOtro()" (ngModelChange)="motivoOtro.set($event)">
+            }
+          </div>
+          <div class="fila">
+            <button type="button" class="boton primario chico" (click)="venderSinExistencia()">Vender igual</button>
+            <button type="button" class="boton chico" (click)="sinExistencia.set(null)">No vender</button>
+          </div>
+        </div>
+      }
       <div class="fila">
         <button type="button" class="boton primario" [disabled]="!puedeConfirmar()" (click)="confirmar()">
           {{ enviando() ? 'Cobrando…' : 'Confirmar venta' }}</button>

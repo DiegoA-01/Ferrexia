@@ -44,19 +44,43 @@ public class VentaReporteController {
     private final CajaReporteService cajaReporte;
     private final TableroVentasService tablero;
     private final CuadreDiarioService cuadre;
+    private final com.proyecto.supply_core.reporte.service.VentaSinExistenciaService sinExistencia;
 
     /**
-     * @param ventaReporte ventas netas
-     * @param cajaReporte  caja
-     * @param tablero      bloque del tablero
-     * @param cuadre       cuadre diario
+     * @param ventaReporte  ventas netas
+     * @param cajaReporte   caja
+     * @param tablero       bloque del tablero
+     * @param cuadre        cuadre diario
+     * @param sinExistencia ventas sin existencia (spec 030)
      */
     public VentaReporteController(VentaReporteService ventaReporte, CajaReporteService cajaReporte,
-            TableroVentasService tablero, CuadreDiarioService cuadre) {
+            TableroVentasService tablero, CuadreDiarioService cuadre,
+            com.proyecto.supply_core.reporte.service.VentaSinExistenciaService sinExistencia) {
+        this.sinExistencia = sinExistencia;
         this.ventaReporte = ventaReporte;
         this.cajaReporte = cajaReporte;
         this.tablero = tablero;
         this.cuadre = cuadre;
+    }
+
+    /**
+     * Ventas sin existencia (spec 030): lo que se vendió sin stock, lo pendiente y si ya se regularizó. Quien no ve
+     * todas las ventas recibe solo lo suyo.
+     *
+     * @param desde      primer día (opcional)
+     * @param hasta      último día (opcional)
+     * @param productoId producto (opcional)
+     * @param estado     PENDIENTE, REGULARIZADA o ANULADA (opcional)
+     * @return filas, de la más reciente a la más vieja
+     */
+    @GetMapping("/ventas-sin-existencia")
+    @RequierePermiso(Permisos.REPORTE_VENTAS)
+    public java.util.List<com.proyecto.supply_core.reporte.dto.VentaSinExistenciaFila> ventasSinExistencia(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Long productoId,
+            @RequestParam(required = false) com.proyecto.supply_core.inventario.entity.FaltanteVenta.Estado estado) {
+        return sinExistencia.reporte(desde, hasta, productoId, estado);
     }
 
     /**
