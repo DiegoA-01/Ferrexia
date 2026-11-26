@@ -137,6 +137,8 @@ public enum AccionAuditoria {
     RFQ_CERRAR,
     /** Cancelación de una RFQ. */
     RFQ_CANCELAR,
+    /** Nuevo enlace de cotización para un proveedor invitado (el anterior deja de servir, spec 031). */
+    ENLACE_COTIZACION_REGENERAR,
     /** Creación de un despacho (remisión de salida) en BORRADOR. */
     DESPACHO_CREAR,
     /** Edición de un despacho en BORRADOR. */
@@ -171,6 +173,8 @@ public enum AccionAuditoria {
     ORDEN_CANCELAR,
     /** Respuesta del proveedor: aceptar, rechazar, preparar o despachar. */
     ORDEN_PROVEEDOR,
+    /** Envío de la orden en PDF al correo del proveedor (spec 031). */
+    ORDEN_ENVIAR_PROVEEDOR,
     /** Registro de un pago de una orden (UC-11). */
     PAGO_REGISTRAR,
     /** Comprobante adjuntado a un pago (cierra la evidencia pendiente). */

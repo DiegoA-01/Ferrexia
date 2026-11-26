@@ -4,19 +4,19 @@ import { ROLES_DOMICILIOS } from './core/navegacion/menu';
 import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO, ROLES_PRECIOS, ROLES_CATALOGOS, ROLES_CLIENTES, ROLES_CAJA, ROLES_POS, ROLES_MI_TURNO, ROLES_VENTAS, ROLES_PEDIDOS_VENTA, ROLES_CARTERA, ROLES_RECEPCION, ROLES_REPORTES_VENTAS, ROLES_CONFIGURACION,
   ROLES_CATALOGOS_BASE, ROLES_USUARIOS, ROLES_AUDITORIA, ROLES_INFORMES, ROLES_NOTIFICACIONES, ROLES_EMPRESA, ROLES_IMPORTACION,
   ROLES_SOLICITAR, ROLES_CREAR_RFQ, ROLES_EMITIR_ORDEN } from './core/navegacion/menu';
-import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard, proveedorGuard } from './core/sesion/guards';
+import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard } from './core/sesion/guards';
 
 /**
- * Una sola aplicación con tres zonas: {@code /app} (empresa), {@code /portal} (proveedor) y {@code /plataforma}
- * (dueño). Cada pantalla se carga solo cuando se abre.
+ * Una sola aplicación con dos zonas: {@code /app} (empresa) y {@code /plataforma} (dueño), más la página pública
+ * {@code /cotizar/:token} donde el proveedor cotiza sin cuenta (spec 031: el portal del proveedor se retiró). Cada
+ * pantalla se carga solo cuando se abre.
  */
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'ingreso' },
   {
-    path: 'registro/:empresa',
-    canActivate: [invitadoGuard],
-    title: 'Registro de proveedor · Supply-Core',
-    loadComponent: () => import('./features/portal/registro-proveedor').then(m => m.RegistroProveedor),
+    path: 'cotizar/:token',
+    title: 'Cotizar · Ferrexia',
+    loadComponent: () => import('./features/cotizar-enlace/cotizar-enlace').then(m => m.CotizarEnlace),
   },
   {
     path: 'ingreso',
@@ -371,19 +371,6 @@ export const routes: Routes = [
         loadComponent: () => import('./features/usuarios/usuarios').then(m => m.Usuarios),
       },
       { path: 'perfil', title: 'Mi perfil · Supply-Core', loadComponent: () => import('./features/perfil/perfil').then(m => m.Perfil) },
-    ],
-  },
-  {
-    path: 'portal',
-    canActivate: [proveedorGuard],
-    loadComponent: () => import('./layout/portal-shell/portal-shell').then(m => m.PortalShell),
-    children: [
-      { path: '', pathMatch: 'full', redirectTo: 'cotizaciones' },
-      { path: 'cotizaciones', title: 'Cotizaciones · Portal', loadComponent: () => import('./features/portal/portal-rfqs').then(m => m.PortalRfqs) },
-      { path: 'cotizaciones/:rfqId', title: 'Cotizar · Portal', loadComponent: () => import('./features/portal/portal-cotizar').then(m => m.PortalCotizar) },
-      { path: 'perfil', title: 'Mi perfil · Portal', loadComponent: () => import('./features/portal/portal-perfil').then(m => m.PortalPerfil) },
-      { path: 'catalogo', title: 'Mi catálogo · Portal', loadComponent: () => import('./features/portal/portal-catalogo').then(m => m.PortalCatalogo) },
-      { path: 'ordenes', title: 'Órdenes · Portal', loadComponent: () => import('./features/portal/portal-ordenes').then(m => m.PortalOrdenes) },
     ],
   },
   {

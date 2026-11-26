@@ -5,14 +5,14 @@ import { PlataformaSesionService } from './plataforma-sesion.service';
 import { Acceso } from './acceso';
 import { SesionService } from './sesion.service';
 
-/** Zona de la empresa ({@code /app}): usuario interno con sesión. El proveedor va a su portal. */
+/** Zona de la empresa ({@code /app}): usuario interno con sesión. El proveedor ya no tiene portal (spec 031). */
 export const empresaGuard: CanActivateFn = () => {
   const sesion = inject(SesionService);
   const router = inject(Router);
   if (!sesion.autenticado()) {
     return router.parseUrl('/ingreso');
   }
-  return sesion.esProveedor() ? router.parseUrl('/portal') : true;
+  return sesion.esProveedor() ? router.parseUrl('/ingreso') : true;
 };
 
 /**
@@ -26,16 +26,6 @@ export const permisoGuard: CanActivateFn = route => {
   return sesion.tieneRol(roles) && sesion.tieneModulo(modulo) ? true : inject(Router).parseUrl('/app/inicio');
 };
 
-/** Portal del proveedor ({@code /portal}): solo el rol PROVEEDOR. */
-export const proveedorGuard: CanActivateFn = () => {
-  const sesion = inject(SesionService);
-  const router = inject(Router);
-  if (!sesion.autenticado()) {
-    return router.parseUrl('/ingreso');
-  }
-  return sesion.esProveedor() ? true : router.parseUrl('/app/inicio');
-};
-
 /** Consola del dueño ({@code /plataforma}): sesión de plataforma con MFA. */
 export const plataformaGuard: CanActivateFn = () =>
   inject(PlataformaSesionService).autenticado() ? true : inject(Router).parseUrl('/plataforma/ingreso');
@@ -46,5 +36,5 @@ export const invitadoGuard: CanActivateFn = () => {
   if (!sesion.autenticado()) {
     return true;
   }
-  return inject(Router).parseUrl(sesion.esProveedor() ? '/portal' : '/app/inicio');
+  return sesion.esProveedor() ? true : inject(Router).parseUrl('/app/inicio');
 };

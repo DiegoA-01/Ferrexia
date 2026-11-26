@@ -25,6 +25,7 @@ import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.util.ConsecutivoGenerator;
 import com.proyecto.supply_core.common.util.Ordenamiento;
+import com.proyecto.supply_core.compra.enlace.service.EnlaceCotizacionService;
 import com.proyecto.supply_core.compra.rfq.dto.EspecificacionRequest;
 import com.proyecto.supply_core.compra.rfq.dto.RfqCrearRequest;
 import com.proyecto.supply_core.compra.rfq.dto.RfqDatosRequest;
@@ -77,6 +78,7 @@ public class RfqService {
     private final ConsecutivoGenerator consecutivos;
     private final AuditoriaService auditoriaService;
     private final NotificacionService notificacionService;
+    private final EnlaceCotizacionService enlaceService;
 
     /**
      * @param rfqRepository       RFQ
@@ -87,11 +89,13 @@ public class RfqService {
      * @param consecutivos        números RFQ-000001
      * @param auditoriaService    registro de acciones
      * @param notificacionService avisos a invitados y comprador
+     * @param enlaceService       enlaces para cotizar sin cuenta (spec 031)
      */
     public RfqService(RfqRepository rfqRepository, SolicitudCompraRepository solicitudRepository,
             ProveedorRepository proveedorRepository, ProveedorService proveedorService,
             UsuarioRepository usuarioRepository, ConsecutivoGenerator consecutivos,
-            AuditoriaService auditoriaService, NotificacionService notificacionService) {
+            AuditoriaService auditoriaService, NotificacionService notificacionService,
+            EnlaceCotizacionService enlaceService) {
         this.rfqRepository = rfqRepository;
         this.solicitudRepository = solicitudRepository;
         this.proveedorRepository = proveedorRepository;
@@ -100,6 +104,7 @@ public class RfqService {
         this.consecutivos = consecutivos;
         this.auditoriaService = auditoriaService;
         this.notificacionService = notificacionService;
+        this.enlaceService = enlaceService;
     }
 
     /**
@@ -160,7 +165,7 @@ public class RfqService {
     }
 
     /**
-     * Abre la RFQ: la solicitud pasa a EN_RFQ y se avisa a los invitados.
+     * Abre la RFQ: la solicitud pasa a EN_RFQ, se crea el enlace para cotizar de cada invitado y se les avisa.
      *
      * @param id id de la RFQ
      * @return RFQ abierta
@@ -185,6 +190,7 @@ public class RfqService {
         solicitud.setEstado(EstadoSolicitud.EN_RFQ);
         rfq.setEstado(EstadoRfq.ABIERTA);
         rfq.setAbiertaEn(LocalDateTime.now());
+        enlaceService.crearAlAbrir(rfq); // un enlace por invitado, enviado por correo si tiene (spec 031)
         avisarInvitados(rfq, EventoNotificacion.RFQ_INVITACION, "Fue invitado a cotizar la " + rfq.getConsecutivo()
                 + " (" + rfq.getLineas().size() + " productos) hasta el " + rfq.getFechaLimite());
         auditoriaService.exito(AccionAuditoria.RFQ_ABRIR, EntidadAuditada.RFQ, id,

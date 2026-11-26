@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.proyecto.supply_core.common.exception.ParametroInvalidoException;
 import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
 import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
@@ -62,7 +63,7 @@ public class OrdenProveedorService {
      */
     @Transactional
     public OrdenResponse aceptar(Long id) {
-        return mover(id, EstadoOrden.ACEPTADA_PROVEEDOR, null, "aceptó");
+        return mover(id, EstadoOrden.ACEPTADA_PROVEEDOR, null, "aceptó", proveedorDeSesion());
     }
 
     /**
@@ -74,7 +75,8 @@ public class OrdenProveedorService {
      */
     @Transactional
     public OrdenResponse rechazar(Long id, String motivo) {
-        return mover(id, EstadoOrden.RECHAZADA_PROVEEDOR, OrdenCompraService.obligatorio(motivo), "rechazó");
+        return mover(id, EstadoOrden.RECHAZADA_PROVEEDOR, OrdenCompraService.obligatorio(motivo), "rechazó",
+                proveedorDeSesion());
     }
 
     /**
@@ -85,7 +87,7 @@ public class OrdenProveedorService {
      */
     @Transactional
     public OrdenResponse preparar(Long id) {
-        return mover(id, EstadoOrden.EN_PREPARACION, null, "está preparando");
+        return mover(id, EstadoOrden.EN_PREPARACION, null, "está preparando", proveedorDeSesion());
     }
 
     /**
@@ -97,8 +99,41 @@ public class OrdenProveedorService {
      */
     @Transactional
     public OrdenResponse despachar(Long id, String observacion) {
-        OrdenResponse r = mover(id, EstadoOrden.DESPACHADA, observacion == null || observacion.isBlank()
-                ? null : observacion.trim(), "despachó");
+        return despachada(mover(id, EstadoOrden.DESPACHADA, observacion == null || observacion.isBlank()
+                ? null : observacion.trim(), "despachó", proveedorDeSesion()));
+    }
+
+    /**
+     * Compras registra una respuesta del proveedor a la orden (spec 031: el proveedor ya no tiene portal). Mismas
+     * transiciones que en el portal; el historial anota que lo registró compras.
+     *
+     * @param id          orden
+     * @param accion      {@code aceptar}, {@code rechazar}, {@code preparar} o {@code despachar}
+     * @param observacion motivo (obligatorio al rechazar), guía o comentario
+     * @return orden actualizada
+     * @throws com.proyecto.supply_core.common.exception.ParametroInvalidoException si la acción no existe
+     */
+    @Transactional
+    public OrdenResponse registrarPorCompras(Long id, String accion, String observacion) {
+        String nota = observacion == null || observacion.isBlank() ? null : observacion.trim();
+        String conMarca = nota == null ? "Registrado por compras" : nota + " (registrado por compras)";
+        return switch (accion == null ? "" : accion) {
+            case "aceptar" -> mover(id, EstadoOrden.ACEPTADA_PROVEEDOR, conMarca, "aceptó", null);
+            case "rechazar" -> mover(id, EstadoOrden.RECHAZADA_PROVEEDOR,
+                    OrdenCompraService.obligatorio(nota) + " (registrado por compras)", "rechazó", null);
+            case "preparar" -> mover(id, EstadoOrden.EN_PREPARACION, conMarca, "está preparando", null);
+            case "despachar" -> despachada(mover(id, EstadoOrden.DESPACHADA, conMarca, "despachó", null));
+            default -> throw new ParametroInvalidoException("La acción debe ser aceptar, rechazar, preparar o despachar");
+        };
+    }
+
+    /**
+     * Avisa a bodega que la orden salió.
+     *
+     * @param r orden DESPACHADA
+     * @return la misma orden
+     */
+    private OrdenResponse despachada(OrdenResponse r) {
         notificacionService.notificarRol(Roles.ALMACENISTA, EventoNotificacion.ORDEN_DESPACHADA, r.proveedorRazonSocial()
                 + " despachó la orden " + r.consecutivo() + " hacia " + r.bodegaDestinoNombre() + "; prepare la recepción");
         return r;
@@ -135,18 +170,18 @@ public class OrdenProveedorService {
     // ----------------------------------------------------------------- apoyo
 
     /**
-     * Aplica una transición del proveedor sobre su orden.
+     * Aplica una transición del proveedor sobre la orden (desde el portal o registrada por compras).
      *
      * @param id          orden
      * @param destino     estado destino
      * @param observacion comentario o motivo
      * @param verbo       texto para el aviso ("aceptó", "rechazó"...)
+     * @param proveedorId proveedor de la sesión (portal), o {@code null} si lo registra compras
      * @return orden actualizada
      */
-    private OrdenResponse mover(Long id, EstadoOrden destino, String observacion, String verbo) {
-        Long proveedorId = proveedorDeSesion();
+    private OrdenResponse mover(Long id, EstadoOrden destino, String observacion, String verbo, Long proveedorId) {
         OrdenCompra o = ordenService.bloquear(id);
-        if (!o.getProveedor().getId().equals(proveedorId)) {
+        if (proveedorId != null && !o.getProveedor().getId().equals(proveedorId)) {
             throw new NoEncontradoException("Orden", id);
         }
         OrdenCompraService.exigirTransicion(o, destino);

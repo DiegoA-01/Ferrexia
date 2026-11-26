@@ -88,6 +88,9 @@ Los archivos subidos están en el volumen `storage` (`docker volume inspect ferr
 ### Lectura de cotizaciones con IA
 En `.env`: `IA_PROVEEDOR=gemini` y `GEMINI_API_KEY=...`, y `docker compose up -d api`. Con un proveedor de IA los documentos salen del servidor hacia ese proveedor. Para Ollama en el mismo equipo, `OLLAMA_URL=http://host.docker.internal:11434`.
 
+### Proveedores sin cuenta: enlace para cotizar (spec 031)
+El portal del proveedor está retirado (`/api/portal/**` responde 410). Al abrir una RFQ, cada proveedor invitado recibe un enlace de un solo uso (por correo, o compras lo copia para WhatsApp) que abre `PUBLIC_URL/cotizar/...`. El formulario se protege con Cloudflare Turnstile: crea las claves gratis en dash.cloudflare.com y pon `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET` en `.env`. Sin `TURNSTILE_SECRET` el perfil `prod` no acepta cotizaciones por enlace (`ANTIBOT_NO_CONFIGURADO`). Para probar en local sirven las claves de prueba de Cloudflare que siempre pasan (están en `.env.example`).
+
 ## HTTPS en producción
 Este `nginx` habla HTTP. En un servidor real ponlo detrás de quien termine el HTTPS (Caddy, Traefik, un balanceador de la nube) y:
 - Activa HSTS en ese proxy (`Strict-Transport-Security`).

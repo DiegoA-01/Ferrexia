@@ -68,4 +68,22 @@ class RateLimitFilterTest {
             assertEquals(true, cadena.getRequest() != null && cadenaGet.getRequest() != null);
         }
     }
+
+    @Test
+    void elEnlaceDeCotizacionSeLimitaConTodoMetodoPorIpYPorEnlace() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            MockHttpServletRequest get = new MockHttpServletRequest("GET", "/api/publico/cotizar/7.abc");
+            get.setRemoteAddr("5.5.5." + i); // IP distinta cada vez: cuenta el enlace
+            filtro.doFilter(get, new MockHttpServletResponse(), new MockFilterChain());
+        }
+        MockHttpServletRequest put = new MockHttpServletRequest("PUT", "/api/publico/cotizar/7.abc");
+        put.setRemoteAddr("6.6.6.6");
+        MockFilterChain cadena = new MockFilterChain();
+        filtro.doFilter(put, new MockHttpServletResponse(), cadena);
+        assertNull(cadena.getRequest());
+
+        MockFilterChain otroEnlace = new MockFilterChain();
+        filtro.doFilter(post("/api/publico/cotizar/8.xyz/enviar", "6.6.6.7"), new MockHttpServletResponse(), otroEnlace);
+        assertEquals(true, otroEnlace.getRequest() != null);
+    }
 }

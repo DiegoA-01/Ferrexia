@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 
+import { EnlacesRfq } from './enlaces-rfq';
 import { Extraccion } from './extraccion';
 import { Adjudicacion, Analisis, Bodega, Cotizacion, Pesos, ResultadoAnalisis, Rfq } from '../../core/api/modelos';
 import { Estado, EtiquetaPipe, etiqueta } from '../../core/formato/etiquetas';
@@ -19,7 +20,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
  */
 @Component({
   selector: 'sc-analisis',
-  imports: [FormsModule, RouterLink, Extraccion, Estado, EtiquetaPipe, PesosPipe, PuntajePipe, NumeroPipe, FechaPipe],
+  imports: [FormsModule, RouterLink, EnlacesRfq, Extraccion, Estado, EtiquetaPipe, PesosPipe, PuntajePipe, NumeroPipe, FechaPipe],
   templateUrl: './analisis.html',
   styleUrl: './analisis.scss',
 })
@@ -46,6 +47,8 @@ export class AnalisisRfq implements OnInit {
   protected readonly orden = signal({ bodegaDestinoId: 0, lugarEntrega: '', fechaEntregaEsperada: '' });
 
   protected readonly esComprador = computed(() => this.sesion.tieneRol(['COMPRADOR']) && !this.sesion.soloLectura());
+  /** Spec 031: quien gestiona RFQ ve y copia los enlaces para cotizar sin cuenta. */
+  protected readonly puedeVerEnlaces = computed(() => this.sesion.tienePermiso('RFQ_GESTIONAR') && this.rfq()?.estado === 'ABIERTA');
   protected readonly puedeCancelarRfq = computed(() => this.esComprador() && ['BORRADOR', 'ABIERTA'].includes(this.rfq()?.estado ?? ''));
   protected readonly leidasPorIa = computed(() => this.cotizaciones().filter(c => c.origen === 'ARCHIVO'));
   protected readonly puedeVerLectura = computed(() => this.sesion.tieneRol(['COMPRADOR', 'ADMIN_COMPRAS', 'AUDITOR']));

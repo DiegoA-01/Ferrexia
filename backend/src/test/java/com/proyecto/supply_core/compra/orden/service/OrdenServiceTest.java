@@ -278,6 +278,29 @@ class OrdenServiceTest {
     }
 
     @Test
+    void comprasRegistraLosPasosDelProveedorSinPortal() {
+        var v1 = emitir();
+        sesion(new UsuarioAutenticado(30L, "c@x.com", "C", Set.of("COMPRADOR"), null, 1L));
+
+        assertThrows(ParametroInvalidoException.class, () -> proveedorService.registrarPorCompras(v1.id(), "volar", null));
+        assertThrows(NegocioException.class, () -> proveedorService.registrarPorCompras(v1.id(), "despachar", null));
+        assertEquals(EstadoOrden.ACEPTADA_PROVEEDOR, proveedorService.registrarPorCompras(v1.id(), "aceptar", null).estado());
+        assertEquals(EstadoOrden.EN_PREPARACION, proveedorService.registrarPorCompras(v1.id(), "preparar", " ").estado());
+        var despachada = proveedorService.registrarPorCompras(v1.id(), "despachar", "Guía 9");
+        assertEquals(EstadoOrden.DESPACHADA, despachada.estado());
+        verify(notificaciones).notificarRol(eq("ALMACENISTA"), eq(EventoNotificacion.ORDEN_DESPACHADA), anyString());
+    }
+
+    @Test
+    void comprasRegistraElRechazoDelProveedorConMotivo() {
+        var v1 = emitir();
+        sesion(new UsuarioAutenticado(30L, "c@x.com", "C", Set.of("COMPRADOR"), null, 1L));
+        assertThrows(ParametroInvalidoException.class, () -> proveedorService.registrarPorCompras(v1.id(), "rechazar", ""));
+        assertEquals(EstadoOrden.RECHAZADA_PROVEEDOR,
+                proveedorService.registrarPorCompras(v1.id(), "rechazar", "No tiene stock").estado());
+    }
+
+    @Test
     void proveedorAjenoYRechazoSinMotivo() {
         var v1 = emitir();
         sesion(new UsuarioAutenticado(78L, "o@x.com", "O", Set.of("PROVEEDOR"), 41L, 1L));

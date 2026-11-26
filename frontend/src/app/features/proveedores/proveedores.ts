@@ -12,7 +12,8 @@ import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 
 /**
- * Proveedores de la empresa. Se registran solos en el portal y solo cotizan cuando compras los habilita. Compras puede
+ * Proveedores de la empresa. Spec 031: ya no tienen cuenta; compras los crea (basta el nombre) y les envía un enlace
+ * para cotizar. Los que se registraron antes en el portal quedan como historial. Compras puede
  * habilitar, rechazar, suspender (y volver a habilitar), corregir el contacto y las categorías en que cotizan, y ver las
  * calificaciones que han recibido. El score lo calcula el backend al cerrar cada recepción.
  */
@@ -58,8 +59,13 @@ export class Proveedores implements OnInit {
   protected readonly evaluaciones = signal<Pagina<Evaluacion> | null>(null);
   protected readonly paginaEval = signal(0);
 
-  /** Código de la empresa: con él entran los proveedores al portal. */
-  protected readonly codigoEmpresa = computed(() => this.sesion.empresa()?.codigoPublico);
+  // Alta corta (spec 026 y 031): solo el nombre es obligatorio
+  protected readonly puedeCrear = computed(() => this.sesion.tienePermiso('PROVEEDOR_GESTIONAR') && !this.sesion.soloLectura());
+  protected readonly nuevoAbierto = signal(false);
+  protected readonly nuevoNombre = signal('');
+  protected readonly nuevoNit = signal('');
+  protected readonly nuevoCorreo = signal('');
+  protected readonly nuevoTelefono = signal('');
 
   protected readonly puedeDecidir = computed(() => this.sesion.tieneRol(['ADMIN_COMPRAS']) && !this.sesion.soloLectura());
 
@@ -73,9 +79,31 @@ export class Proveedores implements OnInit {
     this.cargar();
   }
 
-  /** @param texto texto que se copia al portapapeles */
-  protected copiar(texto: string): void {
-    navigator.clipboard?.writeText(texto).then(() => this.avisos.ok('Copiado'), () => undefined);
+  /** Crea el proveedor (queda habilitado y sin cuenta) y lo abre. */
+  protected crear(): void {
+    const razonSocial = this.nuevoNombre().trim();
+    if (!razonSocial) {
+      return;
+    }
+    this.trabajando.set(true);
+    this.inventario.crearProveedor({ razonSocial, nit: this.nuevoNit().trim() || undefined,
+      correo: this.nuevoCorreo().trim() || undefined, telefono: this.nuevoTelefono().trim() || undefined }).subscribe({
+      next: p => {
+        this.trabajando.set(false);
+        this.nuevoAbierto.set(false);
+        this.nuevoNombre.set('');
+        this.nuevoNit.set('');
+        this.nuevoCorreo.set('');
+        this.nuevoTelefono.set('');
+        this.avisos.ok(`Proveedor ${p.razonSocial} creado.`);
+        this.cargar();
+        this.abrir(p);
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
+    });
   }
 
   /** @param estado estado del proveedor ({@code null} = todos) */

@@ -54,6 +54,21 @@ export class OrdenDetalle implements OnInit {
       && (e === 'EMITIDA' || e === 'ACEPTADA_PROVEEDOR' || e === 'EN_PREPARACION' || e === 'RECHAZADA_PROVEEDOR');
   });
   protected readonly panelCambio = signal<'ninguno' | 'cancelar' | 'version'>('ninguno');
+  /** Spec 031: el proveedor ya no tiene portal; compras registra su respuesta y le envía la orden. */
+  protected readonly gestionaOrdenes = computed(() => this.sesion.tienePermiso('ORDEN_GESTIONAR') && !this.sesion.soloLectura());
+  /** Siguiente paso del proveedor que compras puede registrar, según el estado. */
+  protected readonly pasosProveedor = computed<{ accion: 'aceptar' | 'rechazar' | 'preparar' | 'despachar'; texto: string }[]>(() => {
+    if (!this.gestionaOrdenes()) {
+      return [];
+    }
+    switch (this.orden()?.estado) {
+      case 'EMITIDA': return [{ accion: 'aceptar', texto: 'Aceptó' }, { accion: 'rechazar', texto: 'Rechazó' }];
+      case 'ACEPTADA_PROVEEDOR': return [{ accion: 'preparar', texto: 'Está preparando' }];
+      case 'EN_PREPARACION': return [{ accion: 'despachar', texto: 'Despachó' }];
+      default: return [];
+    }
+  });
+  protected readonly notaProveedor = signal('');
   protected readonly motivoCambio = signal('');
   protected readonly bodegas = signal<Bodega[]>([]);
   protected readonly versionBodega = signal<number | null>(null);
@@ -161,6 +176,43 @@ export class OrdenDetalle implements OnInit {
     }
     this.servicio.pdf(o.id).subscribe({
       next: b => descargar(b, `${o.consecutivo}-v${o.version}.pdf`),
+      error: e => this.avisos.error(e),
+    });
+  }
+
+  /** @param accion respuesta del proveedor que compras registra en su nombre */
+  protected registrarProveedor(accion: 'aceptar' | 'rechazar' | 'preparar' | 'despachar'): void {
+    const o = this.orden();
+    if (!o?.id) {
+      return;
+    }
+    if (accion === 'rechazar' && !this.notaProveedor().trim()) {
+      this.avisos.ok('Escriba el motivo del rechazo del proveedor.');
+      return;
+    }
+    this.trabajando.set(true);
+    this.servicio.registrarProveedor(o.id, accion, this.notaProveedor().trim()).subscribe({
+      next: () => {
+        this.trabajando.set(false);
+        this.notaProveedor.set('');
+        this.avisos.ok('Respuesta del proveedor registrada.');
+        this.cargar();
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
+    });
+  }
+
+  /** Envía la orden en PDF al correo del proveedor. */
+  protected enviarAlProveedor(): void {
+    const o = this.orden();
+    if (!o?.id) {
+      return;
+    }
+    this.servicio.enviarAlProveedor(o.id).subscribe({
+      next: r => this.avisos.ok(`Enviamos la orden a ${r.para}.`),
       error: e => this.avisos.error(e),
     });
   }

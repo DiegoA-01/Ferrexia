@@ -1,67 +1,68 @@
 # Plan 031
 
-Rama `feature/proveedor-sin-perfil`, sacada de `develop` actualizado **después de la 033** (proveedores elegidos en la
-solicitud). Migración propuesta **V51**. Decisión **D14** debe estar tomada. Agregar la verificación anti-bot se pregunta
-antes (regla de `AGENTS.md`), aunque se propone hacerla con una llamada HTTP sin librerías nuevas.
+Rama `feature/proveedor-sin-perfil`, sacada de `develop` (`ee83248`) el 2026-11-26. Migración **V54**. D14 tomada:
+el portal se retira y el anti-bot es Cloudflare Turnstile por HTTP, sin dependencias nuevas. No espera a la 033.
 
 ## Lo que hay hoy (revisado en el código)
-- **Registro público:** `POST /api/portal/registro/{empresa}` (y `/categorias`) crea el proveedor PENDIENTE y un usuario con
-  rol PROVEEDOR; compras lo habilita, rechaza o suspende (`/api/proveedores/{id}/habilitar|rechazar|suspender`).
-- **Portal con sesión:** `/api/portal/proveedor` (perfil, evaluaciones, categorías), `/api/portal/rfqs` (RFQ a las que fue
-  invitado) y `/api/portal/rfqs/{rfqId}/cotizacion` (ver, guardar, subir archivo, enviar). El proveedor también ve sus
-  órdenes y pagos.
-- `proveedor.nit` es NOT NULL y único por empresa. No hay alta interna de proveedor (salvo la mínima si la 026 llegó
-  antes).
-- `RateLimitFilter` limita 20 POST por minuto por IP a login, refresh y registro.
+- **Alta corta del proveedor:** ya existe desde la 026 (`ProveedorNuevoRequest`, solo `razonSocial` obligatorio, queda
+  HABILITADO y sin usuario); `proveedor.nit` ya es NULL (V49).
+- **Registro público:** `POST /api/portal/registro/{empresa}` crea proveedor PENDIENTE y usuario PROVEEDOR.
+- **Portal con sesión** (`PORTAL_PROVEEDOR`): perfil, catálogo, RFQ invitadas, cotización (ver, guardar, archivo,
+  enviar), órdenes (aceptar, rechazar, preparar, despachar), facturas, pagos y recepciones.
+- La recepción solo acepta órdenes DESPACHADAS o RECIBIDAS_PARCIAL: sin portal, alguien de compras debe registrar los
+  pasos del proveedor.
+- `RateLimitFilter` limita 20 POST por minuto por IP a login, refresh y registro. `EmailClient` envía correos (hoy al
+  log) con adjunto; `OrdenPdfGenerador` arma el PDF de la orden.
 
 ## Backend
-1. **Proveedor sin cuenta:** `POST /api/proveedores` (ADMIN_COMPRAS, COMPRADOR) con `razonSocial` obligatorio y NIT,
-   contacto, correo, teléfono y categorías opcionales. Queda HABILITADO y sin usuario. V51: `proveedor.nit` NULL (si la 026
-   no lo hizo) y `proveedor.whatsapp VARCHAR(20) NULL`.
-2. **Enlace de cotización (V51):** tabla `enlace_cotizacion (id, empresa_id, rfq_id, proveedor_id, token_hash CHAR(64),
-   vence_en, usado_en, creado_por_usuario_id, creado_en)`, único por `token_hash`. El token es aleatorio de 256 bits; en la
-   base solo queda su SHA-256 (igual que los refresh tokens).
-   - Al abrir la RFQ se genera un enlace por proveedor invitado, con vencimiento = fecha de cierre de la RFQ.
-   - Se envía por correo (si hay) y queda disponible para copiar y mandar por WhatsApp desde la RFQ
-     (`GET /api/rfqs/{id}/enlaces`, solo compras).
-   - `POST /api/rfqs/{id}/enlaces/{proveedorId}/regenerar` invalida el anterior.
-3. **Endpoints públicos** bajo `/api/publico/cotizar/{token}` (sin sesión; el `AuthFilter` resuelve la empresa desde el
-   enlace, como hoy el registro por código):
-   - `GET`: datos de la RFQ (productos, cantidades, fecha límite) y nombre de la empresa; nada más.
-   - `PUT`: guardar borrador de la cotización (precio, impuesto, plazo por línea).
-   - `POST /archivo`: adjuntar PDF o imagen (mismas reglas de `DocumentoService`: 10 MB, firma real).
-   - `POST /enviar`: envía; el enlace queda `usado_en` y cerrado.
-   - Enlace vencido, usado o inventado: 404 genérico (no se revela cuál de los tres).
-4. **Protección:**
-   - `RateLimitFilter` incluye `/api/publico/**` (por IP y por token).
-   - Campo trampa en el formulario (si llega con valor, se descarta en silencio).
-   - Verificación anti-bot con Cloudflare Turnstile por HTTP (`RestClient`, sin dependencia nueva) en `POST /enviar`; la
-     clave secreta en `TURNSTILE_SECRET` (si falta en desarrollo, se omite con un aviso en el log; en `prod` es
-     obligatoria).
-5. **Cotización:** el resto no cambia (sobre cerrado, lectura con IA, análisis). `Cotizacion` guarda `origen = ENLACE`.
-6. **Portal viejo:** según D14, los endpoints del portal y del registro público se dejan de mostrar en la interfaz y
-   responden 410 `PORTAL_RETIRADO` detrás de una propiedad `app.portal.habilitado=false`; los usuarios PROVEEDOR existentes
-   se desactivan con una tarea de la migración (sin borrar datos).
-7. **Órdenes y pagos al proveedor:** se envían como PDF por correo (la exportación de la orden a PDF ya existe).
+1. **V54:** tabla `enlace_cotizacion (id, empresa_id, rfq_id, proveedor_id, version, vence_en, usado_en,
+   creado_por_usuario_id, creado_en)`, única por `(rfq_id, proveedor_id)`. Desactiva los usuarios con `proveedor_id`
+   (`activo = 0`, sube `version_sesion`) y revoca sus refresh tokens. Sin permisos nuevos: los enlaces usan
+   `RFQ_GESTIONAR` y los pasos de la orden `ORDEN_GESTIONAR`.
+2. **Token del enlace:** `{id}.{firma}`, donde la firma es HMAC-SHA256 de `id:empresa:version` con una clave derivada
+   del secreto del JWT (`JwtUtil.firmar`). En la base no queda nada que sirva para armar el enlace; compras lo puede
+   volver a copiar porque se recalcula. Regenerar sube la versión y el anterior deja de servir.
+3. **`EnlaceCotizacionService`:** al abrir la RFQ (`RfqService.abrir`) crea un enlace por invitado con
+   `vence_en` = fecha límite y lo envía por correo si el proveedor tiene; `GET /api/rfqs/{id}/enlaces` y
+   `POST /api/rfqs/{id}/enlaces/{proveedorId}/regenerar` (RFQ_GESTIONAR). URL pública con `app.url-publica`
+   (`PUBLIC_URL`).
+4. **Endpoints públicos** `/api/publico/cotizar/{token}`: el `AuthFilter` valida la firma con una consulta sin empresa
+   (JDBC por id), fija la empresa del enlace y deja el enlace en la petición. `GET` (empresa, RFQ, líneas, borrador y la
+   clave pública de Turnstile), `PUT` (borrador), `POST /archivo` y `POST /enviar` (cierra el enlace). Vencido (fecha o
+   RFQ que ya no está abierta), usado o inventado: el mismo 404 (`NO_ENCONTRADO`, "El enlace no es válido o ya no está
+   disponible") para todos. `CotizacionService` recibe
+   el proveedor como parámetro (de la sesión en el portal, del enlace aquí); `DocumentoService.subirDesdeEnlace` guarda
+   el archivo sin usuario.
+5. **Protección:** `RateLimitFilter` cubre `/api/publico/**` (todos los métodos), contando por IP y por enlace. Campo
+   trampa `sitioWeb`: si llega con valor se responde como enviado sin guardar nada. `TurnstileVerificador` llama a
+   `siteverify` con `TURNSTILE_SECRET`; sin clave se omite con aviso, salvo con `app.turnstile.obligatorio=true`
+   (perfil `prod`), donde responde 409 `ANTIBOT_NO_CONFIGURADO`.
+6. **Retiro del portal:** `PortalRetiradoFilter` responde 410 `PORTAL_RETIRADO` a `/api/portal/**` cuando
+   `app.portal.habilitado=false` (por defecto). Las pruebas del portal lo prenden en su configuración.
+7. **Órdenes:** `POST /api/ordenes/{id}/proveedor/{aceptar|rechazar|preparar|despachar}` (ORDEN_GESTIONAR) reusa las
+   transiciones de `OrdenProveedorService` con la nota "registrado por compras". `POST /api/ordenes/{id}/enviar-proveedor`
+   manda el PDF de la orden al correo del proveedor (409 `PROVEEDOR_SIN_CORREO`). Al registrar un pago se avisa al
+   proveedor por correo si tiene.
 
 ## Frontend
-- **Proveedores:** botón "Nuevo proveedor" con formulario corto (solo nombre obligatorio).
-- **RFQ:** sección "Enlaces para cotizar" con un enlace por invitado, botones "Copiar", "Enviar por WhatsApp" (abre
-  `https://wa.me/...` con el texto) y "Regenerar".
-- **Página pública** `/cotizar/:token` (fuera del área con sesión): productos de la RFQ, campos por línea, archivo, widget
-  de Turnstile y "Enviar cotización". Mensaje claro si el enlace no sirve.
-- Se quitan del menú y de las rutas el portal del proveedor y el registro público (según D14).
+- **Proveedores:** botón "Nuevo proveedor" con el formulario corto (si aún no está en la pantalla).
+- **RFQ:** sección "Enlaces para cotizar" con estado por invitado y "Copiar", "WhatsApp" (`https://wa.me/...`) y
+  "Regenerar".
+- **Página pública** `/cotizar/:token` (fuera del área con sesión): productos, precio, impuesto y plazo por línea,
+  archivo, widget de Turnstile, campo trampa oculto y "Enviar cotización". Mensaje claro si el enlace no sirve.
+- **Orden:** botones "Registrar respuesta del proveedor" y "Enviar al proveedor".
+- Se quitan del menú y de las rutas el portal del proveedor y el registro público; el inicio de sesión ya no ofrece
+  registrarse como proveedor. nginx permite el script y el marco de `challenges.cloudflare.com`.
 
 ## Pruebas
-- `EnlaceCotizacionServiceTest`: generar guarda solo el hash; regenerar invalida el anterior; vencido, usado e inventado dan
-  404 igual.
-- Endpoints públicos: guardar, adjuntar y enviar; segundo envío 404; campo trampa descarta; Turnstile falso rechaza (con un
-  `RestClient` simulado).
-- `RateLimitFilterTest` con `/api/publico/**`.
-- `AislamientoEmpresasTest`: el token de una RFQ de A nunca muestra ni guarda datos de B; compras de B no ve los enlaces de
-  A.
-- Frontend: página pública (sin sesión), enlaces en la RFQ, nuevo proveedor.
-- E2E: cotizar por enlace de punta a punta (con Turnstile en modo de prueba).
+- `EnlaceCotizacionServiceTest`: generar al abrir, firma válida, regenerar invalida el anterior; vencido, usado e
+  inventado dan el mismo 404.
+- `CotizacionPublicaControllerTest`: ver, guardar, adjuntar y enviar; campo trampa; Turnstile que rechaza.
+- `TurnstileVerificadorTest`, `RateLimitFilterTest` con `/api/publico/**`, `PortalRetiradoFilterTest`.
+- `OrdenControllerTest`: pasos del proveedor por compras y envío del PDF.
+- `AislamientoEmpresasTest`: el enlace de una RFQ de A nunca muestra ni guarda datos de B, y compras de B no ve ni
+  regenera los enlaces de A; punta a punta de cotizar por enlace.
+- Frontend: página pública, enlaces en la RFQ, acciones de la orden, menú sin portal.
 
-Verificación final: `./mvnw verify`, `npm test`, `npm run build`, e2e y revisión en Docker (crear proveedor solo con
-nombre, abrir RFQ, cotizar desde el enlace en una ventana privada, analizar).
+Verificación final: `./mvnw verify`, `npm test`, tipos regenerados y revisión en Docker (crear proveedor solo con nombre,
+abrir RFQ, cotizar desde el enlace en una ventana privada, analizar, emitir la orden y registrar el despacho).

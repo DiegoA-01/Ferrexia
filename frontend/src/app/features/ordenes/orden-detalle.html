@@ -11,7 +11,10 @@
           <sc-estado [valor]="o.estado" />
           @if (factura(); as f) { <span class="chip" [class.ambar]="f.estado === 'EN_REVISION'" [class.verde]="f.estado !== 'EN_REVISION'">Factura {{ f.estado | etiqueta | lowercase }}</span> }
           <button type="button" class="boton chico" (click)="descargarPdf()"><span class="material-symbols-outlined">download</span> PDF</button>
-          <button type="button" class="boton chico" (click)="enviarPorCorreo()"><span class="material-symbols-outlined">mail</span> Enviar por correo</button>
+          <button type="button" class="boton chico" (click)="enviarPorCorreo()"><span class="material-symbols-outlined">mail</span> Enviarme por correo</button>
+          @if (gestionaOrdenes()) {
+            <button type="button" class="boton chico" (click)="enviarAlProveedor()"><span class="material-symbols-outlined">forward_to_inbox</span> Enviar al proveedor</button>
+          }
           @if (puedeCambiar()) {
             <button type="button" class="boton chico" (click)="abrirCambio('version')"><span class="material-symbols-outlined">edit_note</span> Nueva versión</button>
             <button type="button" class="boton chico peligro" (click)="abrirCambio('cancelar')">Cancelar orden</button>
@@ -22,6 +25,21 @@
         </div>
       </div>
     </div>
+
+    @if (pasosProveedor().length) {
+      <section class="tarjeta respuesta-proveedor">
+        <h2>Respuesta del proveedor</h2>
+        <p class="texto-2">El proveedor ya no entra al sistema: registre aquí lo que le respondió (queda en el historial como registrado por compras).</p>
+        <div class="campo"><label for="np">Nota (guía, comentario o motivo del rechazo)</label>
+          <input id="np" class="entrada" maxlength="500" [ngModel]="notaProveedor()" (ngModelChange)="notaProveedor.set($event)"></div>
+        <div class="fila margen-arriba">
+          @for (p of pasosProveedor(); track p.accion) {
+            <button type="button" class="boton" [class.primario]="p.accion !== 'rechazar'" [class.peligro]="p.accion === 'rechazar'"
+                    [disabled]="trabajando()" (click)="registrarProveedor(p.accion)">{{ p.texto }}</button>
+          }
+        </div>
+      </section>
+    }
 
     @if (panelCambio() === 'cancelar') {
       <section class="tarjeta">

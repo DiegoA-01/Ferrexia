@@ -94,6 +94,19 @@ public class CotizacionService {
     }
 
     /**
+     * Borrador o cotización de un proveedor para la RFQ, si existe (página pública del enlace, spec 031).
+     *
+     * @param rfqId       RFQ
+     * @param proveedorId proveedor del enlace
+     * @return cotización o {@code null} si aún no empieza
+     */
+    @Transactional(readOnly = true)
+    public CotizacionResponse deProveedor(Long rfqId, Long proveedorId) {
+        return cotizacionRepository.findByRfq_IdAndProveedor_Id(rfqId, proveedorId).map(CotizacionResponse::of)
+                .orElse(null);
+    }
+
+    /**
      * Crea o actualiza el borrador con los datos del formulario (reemplaza las líneas) y recalcula montos.
      *
      * @param rfqId RFQ
@@ -103,8 +116,22 @@ public class CotizacionService {
      */
     @Transactional
     public CotizacionResponse guardar(Long rfqId, CotizacionRequest req) {
-        Rfq rfq = rfqAbiertaParaMi(rfqId);
-        Cotizacion c = borradorPropio(rfq);
+        return guardar(rfqId, proveedorDeSesion(), req);
+    }
+
+    /**
+     * Crea o actualiza el borrador de un proveedor dado (desde el portal o desde su enlace, spec 031).
+     *
+     * @param rfqId       RFQ
+     * @param proveedorId proveedor que cotiza
+     * @param req         datos validados
+     * @return borrador actualizado
+     * @throws NegocioException si la RFQ no acepta cotizaciones, ya la envió o una línea no es de la RFQ
+     */
+    @Transactional
+    public CotizacionResponse guardar(Long rfqId, Long proveedorId, CotizacionRequest req) {
+        Rfq rfq = rfqAbiertaPara(rfqId, proveedorId);
+        Cotizacion c = borradorDe(rfq, proveedorId);
         c.setMoneda(req.moneda() == null ? "COP" : req.moneda());
         c.setPlazoEntregaDias(req.plazoEntregaDias());
         c.setGarantiaMeses(req.garantiaMeses());
@@ -130,9 +157,28 @@ public class CotizacionService {
      */
     @Transactional
     public CotizacionResponse subirArchivo(Long rfqId, MultipartFile archivo) {
-        Rfq rfq = rfqAbiertaParaMi(rfqId);
-        Cotizacion c = borradorPropio(rfq);
+        Rfq rfq = rfqAbiertaPara(rfqId, proveedorDeSesion());
+        Cotizacion c = borradorDe(rfq, proveedorDeSesion());
         DocumentoResponse doc = documentoService.subir(EntidadDocumento.COTIZACION, c.getId(), archivo);
+        c.setDocumentoOriginalId(doc.id());
+        c.setOrigen(OrigenCotizacion.ARCHIVO);
+        return CotizacionResponse.of(c);
+    }
+
+    /**
+     * Sube el documento de la cotización desde el enlace público (sin usuario; el enlace ya se validó, spec 031).
+     *
+     * @param rfqId       RFQ
+     * @param proveedorId proveedor del enlace
+     * @param archivo     archivo del proveedor
+     * @return borrador con el documento enlazado
+     * @throws NegocioException si la RFQ no acepta cotizaciones o ya la envió
+     */
+    @Transactional
+    public CotizacionResponse subirArchivoDesdeEnlace(Long rfqId, Long proveedorId, MultipartFile archivo) {
+        Rfq rfq = rfqAbiertaPara(rfqId, proveedorId);
+        Cotizacion c = borradorDe(rfq, proveedorId);
+        DocumentoResponse doc = documentoService.subirDesdeEnlace(EntidadDocumento.COTIZACION, c.getId(), archivo);
         c.setDocumentoOriginalId(doc.id());
         c.setOrigen(OrigenCotizacion.ARCHIVO);
         return CotizacionResponse.of(c);
@@ -148,8 +194,21 @@ public class CotizacionService {
      */
     @Transactional
     public CotizacionResponse enviar(Long rfqId) {
-        Rfq rfq = rfqAbiertaParaMi(rfqId);
-        Cotizacion c = cotizacionRepository.findByRfq_IdAndProveedor_Id(rfqId, proveedorDeSesion())
+        return enviar(rfqId, proveedorDeSesion());
+    }
+
+    /**
+     * Envía la cotización de un proveedor dado (desde el portal o desde su enlace, spec 031).
+     *
+     * @param rfqId       RFQ
+     * @param proveedorId proveedor que cotiza
+     * @return cotización ENVIADA
+     * @throws NegocioException si la RFQ ya no acepta cotizaciones, ya se envió o está incompleta
+     */
+    @Transactional
+    public CotizacionResponse enviar(Long rfqId, Long proveedorId) {
+        Rfq rfq = rfqAbiertaPara(rfqId, proveedorId);
+        Cotizacion c = cotizacionRepository.findByRfq_IdAndProveedor_Id(rfqId, proveedorId)
                 .orElseThrow(() -> new NoEncontradoException("Aún no ha cotizado esta RFQ"));
         exigirBorrador(c);
         if (c.getOrigen() == OrigenCotizacion.ARCHIVO ? c.getDocumentoOriginalId() == null : c.getLineas().isEmpty()) {
@@ -189,15 +248,15 @@ public class CotizacionService {
     // ----------------------------------------------------------------- apoyo
 
     /**
-     * Bloquea la RFQ y verifica que el proveedor de la sesión pueda cotizarla ahora.
+     * Bloquea la RFQ y verifica que el proveedor pueda cotizarla ahora.
      *
-     * @param rfqId RFQ
+     * @param rfqId       RFQ
+     * @param proveedorId proveedor que cotiza
      * @return RFQ bloqueada con líneas e invitados
      * @throws NoEncontradoException si no existe o el proveedor no está invitado (no se revela que existe)
      * @throws NegocioException      si no está ABIERTA o ya pasó la fecha límite
      */
-    private Rfq rfqAbiertaParaMi(Long rfqId) {
-        Long proveedorId = proveedorDeSesion();
+    private Rfq rfqAbiertaPara(Long rfqId, Long proveedorId) {
         rfqRepository.bloquear(rfqId).orElseThrow(() -> new NoEncontradoException("RFQ", rfqId));
         Rfq rfq = rfqRepository.findWithDetalleById(rfqId)
                 .filter(r -> r.getEstado().visibleParaProveedor() && r.estaInvitado(proveedorId))
@@ -210,14 +269,14 @@ public class CotizacionService {
     }
 
     /**
-     * Borrador del proveedor de la sesión para la RFQ; lo crea si no existe.
+     * Borrador del proveedor para la RFQ; lo crea si no existe.
      *
-     * @param rfq RFQ abierta
+     * @param rfq         RFQ abierta
+     * @param proveedorId proveedor que cotiza
      * @return cotización en BORRADOR (guardada, con id)
      * @throws NegocioException si ya la envió
      */
-    private Cotizacion borradorPropio(Rfq rfq) {
-        Long proveedorId = proveedorDeSesion();
+    private Cotizacion borradorDe(Rfq rfq, Long proveedorId) {
         Cotizacion c = cotizacionRepository.findByRfq_IdAndProveedor_Id(rfq.getId(), proveedorId).orElseGet(() -> {
             Cotizacion nueva = new Cotizacion();
             nueva.setRfq(rfq);

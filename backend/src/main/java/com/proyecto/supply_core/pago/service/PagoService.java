@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.proyecto.supply_core.notificacion.email.EmailClient;
 import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
 import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
@@ -97,6 +98,7 @@ public class PagoService {
     private final EmpresaRepository empresaRepository;
     private final FacturaService facturaService;
     private final SolicitudCompraRepository solicitudRepository;
+    private final EmailClient emailClient;
 
     /**
      * @param pagoRepository         pagos
@@ -110,13 +112,15 @@ public class PagoService {
      * @param empresaRepository      tope de anticipos de la empresa
      * @param facturaService         factura que respalda el pago final
      * @param solicitudRepository    solicitud de una orden directa de contrato (segregación)
+     * @param emailClient            aviso por correo al proveedor (spec 031: ya no tiene portal)
      */
     public PagoService(PagoRepository pagoRepository, OrdenCompraRepository ordenRepository,
             AdjudicacionRepository adjudicacionRepository, AprobacionSolicitudRepository aprobacionRepository,
             UsuarioRepository usuarioRepository, DocumentoService documentoService, AuditoriaService auditoriaService,
             NotificacionService notificacionService, EmpresaRepository empresaRepository,
-            FacturaService facturaService, SolicitudCompraRepository solicitudRepository) {
+            FacturaService facturaService, SolicitudCompraRepository solicitudRepository, EmailClient emailClient) {
         this.solicitudRepository = solicitudRepository;
+        this.emailClient = emailClient;
         this.empresaRepository = empresaRepository;
         this.facturaService = facturaService;
         this.pagoRepository = pagoRepository;
@@ -411,7 +415,7 @@ public class PagoService {
     }
 
     /**
-     * Avisa a los usuarios del proveedor y al comprador que emitió la orden.
+     * Avisa al proveedor (por correo, si tiene; spec 031) y al comprador que emitió la orden.
      *
      * @param o       orden
      * @param evento  evento
@@ -420,6 +424,17 @@ public class PagoService {
     private void avisar(OrdenCompra o, EventoNotificacion evento, String mensaje) {
         usuarioRepository.findByProveedorId(o.getProveedor().getId())
                 .forEach(u -> notificacionService.notificar(u.getId(), evento, mensaje));
+        String correo = o.getProveedor().getCorreoContacto();
+        if (correo != null && !correo.isBlank()) {
+            try {
+                emailClient.enviar(correo, "Orden " + o.getConsecutivo() + ": " + mensaje,
+                        "Hola " + o.getProveedor().getRazonSocial() + ",\n\n" + mensaje + " (orden " + o.getConsecutivo()
+                                + ").\nCualquier duda, comuníquese con nuestro equipo de compras.");
+            } catch (RuntimeException e) {
+                log.warn("No se pudo avisar por correo al proveedor de la orden {}: {}", o.getConsecutivo(),
+                        e.getMessage());
+            }
+        }
         if (o.getUsuarioId() != null) {
             notificacionService.notificar(o.getUsuarioId(), evento, mensaje);
         }

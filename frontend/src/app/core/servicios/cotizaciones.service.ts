@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { Adjudicacion, Analisis, Bodega, Cotizacion, LineaDigitada, Orden, Pagina, Pesos, Procesamiento, Rfq, RfqDatos, RfqResumen } from '../api/modelos';
+import { Adjudicacion, Analisis, Bodega, Cotizacion, EnlaceCotizacion, LineaDigitada, Orden, Pagina, Pesos, Procesamiento, Rfq, RfqDatos, RfqResumen } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
 /** RFQ, análisis con IA, adjudicación y emisión de la orden. */
@@ -57,6 +57,21 @@ export class CotizacionesService {
    */
   cerrarRfq(id: number): Observable<Rfq> {
     return this.http.post<Rfq>(api(`/api/rfqs/${id}/cerrar`), {});
+  }
+
+  /** @param rfqId RFQ; enlaces para cotizar sin cuenta, uno por invitado (spec 031) */
+  enlaces(rfqId: number): Observable<EnlaceCotizacion[]> {
+    return this.http.get<EnlaceCotizacion[]>(api(`/api/rfqs/${rfqId}/enlaces`));
+  }
+
+  /**
+   * Regenera el enlace de un proveedor: el anterior deja de servir y el nuevo se le envía por correo.
+   *
+   * @param rfqId       RFQ
+   * @param proveedorId proveedor invitado
+   */
+  regenerarEnlace(rfqId: number, proveedorId: number): Observable<EnlaceCotizacion> {
+    return this.http.post<EnlaceCotizacion>(api(`/api/rfqs/${rfqId}/enlaces/${proveedorId}/regenerar`), {});
   }
 
   /** @param rfqId RFQ */

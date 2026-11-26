@@ -83,6 +83,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Función retirada a propósito (por ejemplo, el portal del proveedor).
+     *
+     * @param ex excepción lanzada por un filtro
+     * @return 410 con el código propio del retiro
+     */
+    @ExceptionHandler(RecursoRetiradoException.class)
+    public ResponseEntity<ErrorResponse> retirado(RecursoRetiradoException ex) {
+        return responder(HttpStatus.GONE, ErrorResponse.of(ex.getCodigo(), ex.getMessage()));
+    }
+
+    /**
      * Autenticado pero sin permiso.
      *
      * @param ex excepción lanzada por el interceptor de roles o un Service

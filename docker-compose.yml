@@ -54,6 +54,10 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
       JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET en .env (32 caracteres o mas)}
       CORS_ORIGINS: ${PUBLIC_URL:-http://localhost:8088}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8088}
+      # Anti-bot del enlace de cotización (Cloudflare Turnstile). Sin clave, en prod no se aceptan cotizaciones por enlace.
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET:-}
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
       # Primer dueño de la plataforma: solo se crea si todavía no existe uno.
       PLATAFORMA_ADMIN_CORREO: ${PLATAFORMA_ADMIN_CORREO:?Falta PLATAFORMA_ADMIN_CORREO en .env}
       PLATAFORMA_ADMIN_PASSWORD: ${PLATAFORMA_ADMIN_PASSWORD:?Falta PLATAFORMA_ADMIN_PASSWORD en .env (12 a 72 caracteres)}

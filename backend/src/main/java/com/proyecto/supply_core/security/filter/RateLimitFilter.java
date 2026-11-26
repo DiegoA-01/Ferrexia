@@ -22,8 +22,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Limita las peticiones por IP a las rutas públicas sensibles (login, renovación y registro de
- * proveedores) para frenar fuerza bruta y registros masivos. Ventana fija de un minuto, en memoria.
+ * Limita las peticiones por IP a las rutas públicas sensibles (login, renovación, registro de
+ * proveedores y cotizar con un enlace, este último también por enlace) para frenar fuerza bruta y registros masivos. Ventana fija de un minuto, en memoria.
  * <p>Con varias instancias del backend el límite sería por instancia; para repartirlo haría falta
  * Redis. Usa {@code getRemoteAddr()}: detrás de un proxy de confianza hay que configurarlo para que
  * entregue la IP real del cliente.</p>
@@ -36,6 +36,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final List<String> RUTAS_LIMITADAS = List.of("/api/auth/login", "/api/auth/refresh",
             "/api/auth/recuperar", "/api/auth/restablecer", "/api/auth/mfa", "/api/portal/registro/**",
             "/api/plataforma/auth/**", "/api/autorizaciones");
+    /** Cotizar con un enlace (spec 031): se limita con todo método, por IP y por enlace. */
+    private static final String PREFIJO_ENLACE = "/api/publico/cotizar/";
 
     private final int limitePorMinuto;
     private final HandlerExceptionResolver exceptionResolver;
@@ -67,6 +69,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String ruta = request.getRequestURI().substring(request.getContextPath().length());
+        if (ruta.startsWith(PREFIJO_ENLACE)) {
+            return "OPTIONS".equalsIgnoreCase(request.getMethod());
+        }
         return !"POST".equalsIgnoreCase(request.getMethod())
                 || RUTAS_LIMITADAS.stream().noneMatch(p -> matcher.match(p, ruta));
     }
@@ -83,7 +88,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain chain) throws ServletException, IOException {
-        if (excedeLimite(request.getRemoteAddr(), System.currentTimeMillis())) {
+        long ahora = System.currentTimeMillis();
+        String ruta = request.getRequestURI().substring(request.getContextPath().length());
+        boolean excede = excedeLimite(request.getRemoteAddr(), ahora);
+        if (ruta.startsWith(PREFIJO_ENLACE)) {
+            // también por enlace: varias IP no pueden martillar el mismo enlace
+            String resto = ruta.substring(PREFIJO_ENLACE.length());
+            String enlace = resto.contains("/") ? resto.substring(0, resto.indexOf('/')) : resto;
+            excede = excedeLimite("enlace:" + enlace, ahora) || excede;
+        }
+        if (excede) {
             response.setHeader("Retry-After", "60");
             exceptionResolver.resolveException(request, response, null, new DemasiadasPeticionesException(
                     "Demasiadas solicitudes, espere un minuto e intente de nuevo"));

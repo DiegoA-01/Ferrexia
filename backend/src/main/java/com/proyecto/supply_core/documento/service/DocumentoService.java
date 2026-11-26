@@ -89,6 +89,36 @@ public class DocumentoService {
     public DocumentoResponse subir(EntidadDocumento entidad, Long entidadId, MultipartFile archivo) {
         UsuarioAutenticado usuario = SesionActual.usuario();
         regla(entidad).validarSubida(entidadId, usuario);
+        return guardar(entidad, entidadId, archivo, usuario.id());
+    }
+
+    /**
+     * Adjunta un archivo sin usuario, desde el enlace público de cotización (spec 031). Quien llama ya validó el
+     * enlace y que el registro admite el archivo; aquí se aplican las mismas reglas de tamaño y tipo real.
+     *
+     * @param entidad   tipo de registro
+     * @param entidadId id del registro
+     * @param archivo   archivo recibido
+     * @return metadata del documento creado
+     * @throws ParametroInvalidoException si el archivo está vacío, es muy grande o su tipo no se acepta
+     */
+    @Transactional
+    public DocumentoResponse subirDesdeEnlace(EntidadDocumento entidad, Long entidadId, MultipartFile archivo) {
+        regla(entidad); // la entidad debe admitir documentos
+        return guardar(entidad, entidadId, archivo, null);
+    }
+
+    /**
+     * Valida, guarda el archivo y su metadata.
+     *
+     * @param entidad   tipo de registro
+     * @param entidadId id del registro
+     * @param archivo   archivo recibido
+     * @param usuarioId quien lo sube ({@code null} desde un enlace público)
+     * @return metadata del documento creado
+     */
+    private DocumentoResponse guardar(EntidadDocumento entidad, Long entidadId, MultipartFile archivo,
+            Long usuarioId) {
         TipoArchivo tipo = validarArchivo(archivo);
 
         String clave;
@@ -106,7 +136,7 @@ public class DocumentoService {
         d.setTamanoBytes(archivo.getSize());
         d.setEntidadTipo(entidad.name());
         d.setEntidadId(entidadId);
-        d.setSubidoPorUsuarioId(usuario.id());
+        d.setSubidoPorUsuarioId(usuarioId);
         Documento guardado = documentoRepository.save(d);
         auditoriaService.exito(AccionAuditoria.DOCUMENTO_SUBIR, EntidadAuditada.DOCUMENTO, guardado.getId(),
                 entidad + " " + entidadId + ": " + guardado.getNombreArchivo() + " (" + guardado.getTamanoBytes() + " bytes)");

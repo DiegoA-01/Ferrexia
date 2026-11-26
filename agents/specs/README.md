@@ -60,7 +60,7 @@ decisiones y se aprueban antes de escribir el plan.
 | [028-variantes-producto](028-variantes-producto/spec.md) | 3 | Atributos y variantes con código, precio y stock propios | `feature/variantes-producto` | 026 | Persona 2 | Hecha (V50); falta revisión en Docker |
 | [029-anular-factura-metodo-pago](029-anular-factura-metodo-pago/spec.md) | 3 | Anular factura de un turno cerrado y cambiar el método de pago | `feature/anular-factura-metodo-pago` | 006, 022 | Persona 1 | Hecha (V51); falta revisión en Docker |
 | [030-venta-sin-stock](030-venta-sin-stock/spec.md) | 4 | Vender sin existencia con permiso, aviso y reporte | `feature/venta-sin-stock` | 004, 022 | Persona 1 | Hecha (V52); falta revisión en Docker |
-| [031-proveedor-sin-perfil](031-proveedor-sin-perfil/spec.md) | 4 | Proveedor sin cuenta que cotiza con un enlace de un solo uso y anti-bot | `feature/proveedor-sin-perfil` | 033 | Persona 2 | Propuesta (D14) |
+| [031-proveedor-sin-perfil](031-proveedor-sin-perfil/spec.md) | 4 | Proveedor sin cuenta que cotiza con un enlace de un solo uso y anti-bot | `feature/proveedor-sin-perfil` | — | Persona 2 | Hecha (V54); falta revisión en Docker |
 | [032-domicilios](032-domicilios/spec.md) | 4 | Venta a domicilio, domiciliarios, estados y dinero contraentrega | `feature/domicilios` | 004, 021 | Persona 1 | Hecha (V53); falta revisión en Docker |
 | [033-solicitudes-compra-mejoradas](033-solicitudes-compra-mejoradas/spec.md) | 4 | Proveedor específico o abierta, historial y edición, alertas que bloquean | `feature/solicitudes-compra-mejoradas` | — | Persona 2 | Propuesta |
 | [034-reportes-ventas-ampliados](034-reportes-ventas-ampliados/spec.md) | 4 | Ventas por categoría, empleado, producto, medio de pago, tipo de servicio y caja | `feature/reportes-ventas-ampliados` | 009, 019, 023, 032 | Persona 1 | Propuesta |
@@ -89,7 +89,7 @@ referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real
 | D11 | ¿Qué pasa con los planes? | Se quitan los planes. Al crear una empresa, el dueño de la plataforma marca en un panel los módulos que necesita; después los prende o apaga uno por uno. Las empresas que ya existían quedan con todos los módulos. Las tablas de planes se conservan sin uso. | Tomada (2026-11-25, por el equipo: sin planes, módulos por empresa) | 024 |
 | D12 | ¿Las sedes pasan a ser empresas separadas con un super administrador? | Grupo de empresas aisladas con un super administrador que cambia de empresa sin volver a ingresar. Faltan las tres preguntas de la spec 035. | **Pendiente: aclarar** | 035 |
 | D13 | ¿Se permite vender sin existencia? (revisa D1) | Sí, solo con permiso y motivo, con aviso y reporte. Falta elegir: stock negativo marcado o faltante pendiente sin bajar de cero. | Tomada (2026-11-26: faltante pendiente, el stock nunca baja de cero; permiso para Dueño, Administrador y Supervisor) | 030 |
-| D14 | ¿El proveedor deja de tener cuenta? | Sí: cotiza con un enlace de un solo uso, solo el nombre obligatorio, límite de peticiones y anti-bot. El portal se deja de usar. | Recomendada | 031 |
+| D14 | ¿El proveedor deja de tener cuenta? | Sí: cotiza con un enlace de un solo uso, solo el nombre obligatorio, límite de peticiones y anti-bot. El portal se deja de usar. | Tomada (2026-11-26: tal como está, portal retirado; anti-bot con Turnstile por HTTP; no espera a la 033) | 031 |
 | D15 | ¿Retiros y gastos sin PIN? | Con el permiso, sin PIN; sin el permiso, PIN del supervisor como hoy. | Tomada (2026-11-25, tal como está) | 025 |
 | D16 | ¿Se puede cambiar el método de pago de una factura? | Sí en facturas POS, con permiso y motivo, ajustando la caja; nunca en facturas electrónicas DIAN. | Tomada (2026-11-26, tal como está; permisos para Dueño, Administrador y Supervisor, el cajero con PIN) | 029 |
 | D17 | ¿Se puede superar el stock máximo? | Sí, con alerta; no bloquea. | Tomada (2026-11-25, tal como está) | 026 |
@@ -130,7 +130,8 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V51 | `feature/anular-factura-metodo-pago` | Cambio del método de pago: `venta_pago_cambio`, tipo de caja `AJUSTE_PAGO`, acción `CAMBIAR_PAGO` y permisos de anular de otro turno y cambiar pago (spec 029) |
 | V52 | `feature/venta-sin-stock` | Vender sin existencia: `venta_sin_existencia` (faltante pendiente), permiso `VENTA_SIN_EXISTENCIA` y evento de aviso (spec 030) |
 | V53 | `feature/domicilios` | Domicilios: `domicilio`, `domicilio_evento`, `producto.es_servicio`, `venta.tipo_servicio`, medio `CONTRAENTREGA`, caja `COBRO_DOMICILIO` y permisos (spec 032) |
-| V54 en adelante | libre | Se reserva al empezar cada spec |
+| V54 | `feature/proveedor-sin-perfil` | Proveedor sin perfil: `enlace_cotizacion` y usuarios PROVEEDOR desactivados (spec 031) |
+| V55 en adelante | libre | Se reserva al empezar cada spec |
 
 **Numeración propuesta en los planes 018 a 035 (no es reserva):** V41 (020), V42 (021), V43 y V44 (022), V45 (023),
 V46 (025), V47 (026), V48 (028), V49 (029), V50 (030), V51 (031), V52 (032), V53 (033), V54 (035). Las specs 018, 019,
