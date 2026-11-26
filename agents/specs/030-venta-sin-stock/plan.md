@@ -1,53 +1,45 @@
 # Plan 030
 
-Rama `feature/venta-sin-stock`, sacada de `develop` actualizado **después de la 022**. Migración propuesta **V50**.
-Decisión **D13** debe estar tomada (qué pasa con el stock).
+Rama `feature/venta-sin-stock`, sacada de `develop` actualizado (`c41d935`, con la 029). Migración **V52** (reservada en el
+índice). D13 tomada el 2026-11-26: faltante pendiente.
 
 ## Lo que hay hoy (revisado en el código)
-- `VentaService` descuenta el stock con una salida por producto, en orden de id, a través de
-  `MovimientoInventarioService`; si alguno no alcanza, `STOCK_INSUFICIENTE` (409) deshace toda la venta.
-- `MovimientoInventarioService` es el único que cambia el stock y **nunca** lo deja negativo (regla que no se negocia en
-  `CLAUDE.md`, probada con 20 salidas concurrentes).
-- Decisión D1 de ventas: no vender sin stock.
+- `VentaService.confirmar` descuenta el stock con una salida por producto, en orden de id, por
+  `MovimientoInventarioService.registrarSalidaVenta`; si alguno no alcanza, `STOCK_INSUFICIENTE` (409) deshace la venta.
+- `MovimientoInventarioService.aplicar` es el único que cambia el stock: bloquea la fila de stock y nunca la deja
+  negativa.
+- La anulación (spec 006 y 029) devuelve al stock lo vendido por producto; la devolución mete lo devuelto.
 
-## Opción recomendada para D13: faltante pendiente (el stock nunca baja de cero)
-Así no se rompe la regla del stock. La alternativa (stock negativo marcado) obliga a cambiar
-`MovimientoInventarioService`, el kardex, el costo promedio y la reorden, y debilita una garantía que hoy está probada.
-
-## Backend
-1. **V50:** tabla `venta_sin_existencia (id, empresa_id, venta_id, venta_linea_id, producto_id, bodega_id, cantidad,
-   motivo, estado ENUM('PENDIENTE','REGULARIZADA','ANULADA'), regularizada_en, regularizada_por_movimiento_id, creado_en)`
-   con `@TenantId`. Evento `VENTA_SIN_EXISTENCIA` sembrado por empresa.
-2. **Venta:** `LineaVentaRequest` suma `sinExistencia` (bool) y `motivoSinExistencia`. En `VentaService`, para una línea
-   marcada:
-   - exige el permiso `VENTA_SIN_EXISTENCIA` (si no, 403);
-   - descuenta lo que haya (`min(disponible, cantidad)`) con la salida normal y registra la diferencia como
-     `venta_sin_existencia` PENDIENTE;
-   - el costo de la parte faltante usa el costo promedio vigente (spec 008) y se marca como estimado.
-   Una línea **no** marcada sigue rechazando con `STOCK_INSUFICIENTE` como hoy.
-3. **Regularización:** cuando entra mercancía de ese producto a esa bodega (recepción, ajuste de entrada o traslado de
-   entrada), `MovimientoInventarioService` llama a `RegularizacionService`, que descuenta los faltantes pendientes más
-   viejos primero con salidas `SALIDA_VENTA` que apuntan a la venta original, en la misma transacción. Así el stock nunca
-   queda negativo y el kardex cuenta la verdad.
-4. **Anulación o devolución** de una venta con faltante pendiente: el faltante pasa a ANULADA (no se devuelve stock que
-   nunca salió).
-5. **Aviso:** al crear un faltante, notificación a compras y a bodega (`VENTA_SIN_EXISTENCIA`).
-6. **Reporte:** `GET /api/reportes/ventas-sin-existencia?desde&hasta&productoId&estado` (supervisor, admin, compras,
-   auditor) con producto, cantidad, cajero, caja, motivo, estado y fecha de regularización.
+## Diseño (D13: faltante pendiente; el stock nunca baja de cero)
+1. **V52:** tabla `venta_sin_existencia (id, empresa_id, venta_id, producto_id, bodega_id, usuario_id, cantidad,
+   pendiente, motivo, estado ENUM('PENDIENTE','REGULARIZADA','ANULADA'), creado_en, regularizada_en)` con `@TenantId`;
+   permiso `VENTA_SIN_EXISTENCIA` (Dueño, Administrador, Supervisor de ventas); evento `VENTA_SIN_EXISTENCIA` en
+   `config_notificacion` de las empresas que ya existen.
+2. **Venta:** `LineaVentaRequest` suma `sinExistencia` y `motivoSinExistencia`. Si un producto tiene alguna línea
+   marcada: sin el permiso, 403; con él, `MovimientoInventarioService.registrarSalidaVentaConFaltante` descuenta
+   `min(disponible, cantidad)` y registra la diferencia como faltante PENDIENTE, y avisa a compras y bodega. Una línea
+   marcada sin motivo da 400. Una línea sin marcar sigue con 409 `STOCK_INSUFICIENTE`.
+3. **Regularización:** al final de toda entrada (`aplicar` con bodega de destino), los faltantes pendientes de ese
+   producto en esa bodega, del más viejo al más nuevo, se descuentan con una `SALIDA_VENTA` que apunta a su venta, hasta
+   donde alcance el stock. Todo en la misma transacción y con la fila de stock bloqueada: nunca queda negativo.
+4. **Anulación:** antes de devolver el stock se anulan los faltantes pendientes de la venta y solo vuelve lo que salió
+   (vendido − pendiente). **Devolución:** lo devuelto de un producto primero descuenta el pendiente de esa venta y solo el
+   resto entra al stock.
+5. **Reporte:** `GET /api/reportes/ventas-sin-existencia?desde&hasta&productoId&estado` (permiso `REPORTE_VENTAS`).
+6. **Respuesta de la venta:** cada línea dice si tuvo faltante (`sinExistencia`) para mostrarlo en el detalle.
 
 ## Frontend
-- **POS:** si un producto no alcanza, en vez de solo el error, aparece "No hay existencia suficiente (hay 2). ¿Vender igual?"
-  con el motivo ("No registrado", "Se consigue afuera", "Otro") solo para quien tenga el permiso.
-- **Reportes › Ventas sin existencia** con filtros y estado.
+- **POS:** si al cobrar el backend responde `STOCK_INSUFICIENTE` y la sesión tiene el permiso, aparece "No hay existencia
+  suficiente de X. ¿Vender igual?" con el motivo; al confirmar, se reenvía con las líneas de ese producto marcadas. Sin el
+  permiso, el error de siempre.
+- **Reportes › Ventas sin existencia** con filtros de fecha y estado.
 
 ## Pruebas
-- `VentaServiceTest`: línea marcada con permiso vende y crea el faltante por la diferencia; sin permiso 403; sin marcar
-  sigue 409.
-- `RegularizacionServiceTest`: una recepción regulariza los faltantes en orden, parcial y total; el stock nunca queda
-  negativo; concurrencia de dos recepciones.
-- Anulación con faltante pendiente lo marca ANULADA.
-- `AislamientoEmpresasTest`: faltantes y reporte de A no se ven en B.
-- Frontend: aviso en el POS con motivo; reporte.
+- Prueba de punta a punta contra MySQL (`AislamientoEmpresasTest`): sin permiso 403, sin marcar 409, con permiso vende
+  y crea el faltante por la diferencia; una entrada lo regulariza parcial y luego total sin dejar el stock negativo; la
+  anulación anula lo pendiente y devuelve solo lo que salió; el aviso llega a compras; B no ve el faltante ni el reporte.
+- `MovimientoInventarioServiceTest` (o nueva) para la regularización en orden.
+- Frontend: diálogo del POS con motivo y reporte.
 
-Verificación final: `./mvnw verify`, `npm test`, `npm run build`, e2e y revisión en Docker (vender sin existencia, recibir
-la mercancía y ver el faltante regularizado).
+Verificación final: `./mvnw verify`, `npm test`, tipos, e2e y revisión en Docker (vender sin existencia, recibir la
+mercancía y ver el faltante regularizado).

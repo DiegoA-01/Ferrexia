@@ -112,6 +112,24 @@ describe('Reportes de ventas', () => {
     req.flush(new Blob(['xlsx']));
   });
 
+  it('ventas sin existencia (spec 030): filtra por estado y muestra lo pendiente', () => {
+    crear(['SUPERVISOR_VENTAS']);
+    backend.expectOne(r => r.url === '/api/reportes/ventas').flush(reporte);
+    c()['elegir']('sinExistencia');
+    backend.expectOne(r => r.url === '/api/reportes/ventas-sin-existencia').flush([
+      { id: 1, consecutivo: 'C1-000009', fecha: '2026-11-26T10:00:00', producto: 'Cable 12', codigo: 'CAB-12', unidad: 'm',
+        cajero: 'Pedro', caja: 'Caja 1', cantidad: 3, pendiente: 1, motivo: 'No registrado', estado: 'PENDIENTE' }]);
+    fixture.detectChanges();
+    expect(texto()).toContain('C1-000009');
+    expect(texto()).toContain('No registrado');
+    expect(texto()).toContain('Pendiente');
+    c()['estadoSinExistencia'].set('REGULARIZADA');
+    c()['consultar']();
+    const r = backend.expectOne(x => x.url === '/api/reportes/ventas-sin-existencia');
+    expect(r.request.params.get('estado')).toBe('REGULARIZADA');
+    r.flush([]);
+  });
+
   it('exporta con los mismos filtros de la pantalla', () => {
     crear(['SUPERVISOR_VENTAS']);
     backend.expectOne(r => r.url === '/api/reportes/ventas').flush(reporte);

@@ -18,7 +18,9 @@ const cotizacion = (extra: Partial<CotizacionVenta> = {}): CotizacionVenta => ({
 });
 const sesion = (roles: string[]) => ({ provide: SesionService,
   useValue: { tieneRol: (r: string[]) => r.some(x => roles.includes(x)), tieneModulo: () => true, soloLectura: () => false,
-    empresa: signal(null) } });
+    empresa: signal(null),
+    // spec 030: el supervisor (y quien tenga el permiso suelto) vende sin existencia
+    tienePermiso: (p: string) => p === 'VENTA_SIN_EXISTENCIA' && roles.includes('SUPERVISOR_VENTAS') } });
 
 describe('Punto de venta', () => {
   let fixture: ComponentFixture<PuntoDeVenta>;
@@ -129,6 +131,44 @@ describe('Punto de venta', () => {
     // carrito nuevo, clave nueva
     expect(c()['vacio']()).toBe(true);
     expect(c()['clave']()).not.toBe(clave);
+  });
+
+  it('sin existencia: con el permiso ofrece vender igual con motivo y reenvía con las líneas marcadas (spec 030)', () => {
+    crear(['CAJERO', 'SUPERVISOR_VENTAS']);
+    escanear();
+    cotizar(cotizacion({ cambio: 0 }));
+    conEfectivo();
+    const clave = c()['clave']();
+    c()['confirmar']();
+    backend.expectOne('/api/ventas').flush({ codigo: 'STOCK_INSUFICIENTE', mensaje: 'Stock insuficiente de CAB-12: disponible 0' },
+      { status: 409, statusText: 'Conflict' });
+    c()['cobrando'].set(true);
+    fixture.detectChanges();
+    expect(texto()).toContain('¿Vender igual?');
+    expect(texto()).toContain('disponible 0');
+    c()['motivoElegido'].set('Otro');
+    c()['motivoOtro'].set(' ');
+    c()['venderSinExistencia']();
+    backend.expectNone('/api/ventas');
+    c()['motivoElegido'].set('Se consigue afuera');
+    c()['venderSinExistencia']();
+    const r = backend.expectOne('/api/ventas');
+    expect(r.request.headers.get('Idempotency-Key')).toBe(clave);
+    expect(r.request.body.lineas[0]).toEqual(expect.objectContaining({ productoId: 7, sinExistencia: true, motivoSinExistencia: 'Se consigue afuera' }));
+    r.flush({ id: 51, consecutivo: 'C1-000002', totalAPagar: 3700, cambio: 0 });
+    backend.expectOne('/api/ventas/51/tiquete').flush({ copia: false, venta: { consecutivo: 'C1-000002', lineas: [], pagos: [] } });
+    backend.expectOne('/api/turnos/actual').flush(turno);
+    expect(c()['motivoSinExistencia']()).toBeNull();
+  });
+
+  it('sin existencia: sin el permiso solo se ve el error', () => {
+    crear(['CAJERO']);
+    escanear();
+    cotizar(cotizacion({ cambio: 0 }));
+    conEfectivo();
+    c()['confirmar']();
+    backend.expectOne('/api/ventas').flush({ codigo: 'STOCK_INSUFICIENTE', mensaje: 'Stock insuficiente' }, { status: 409, statusText: 'Conflict' });
+    expect(c()['sinExistencia']()).toBeNull();
   });
 
   it('un descuento sobre el límite pide el PIN del supervisor antes de cobrar', () => {

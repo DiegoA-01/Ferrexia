@@ -340,7 +340,7 @@ class AislamientoEmpresasTest {
             }
         });
         assertEquals(List.of(), diferencias);
-        assertEquals(112, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 de la V47 + 2 de la V51
+        assertEquals(113, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 (V47) + 2 (V51) + 1 (V52)
         assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM rol WHERE es_plantilla AND empresa_id IS NULL", Integer.class));
     }
 
@@ -3647,6 +3647,159 @@ class AislamientoEmpresasTest {
             jdbc.update("DELETE FROM venta WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM movimiento_inventario WHERE empresa_id IN (?, ?) AND referencia_tipo IN ('VENTA', 'DEVOLUCION_VENTA')",
                     empresaA, empresaB);
+            jdbc.update("DELETE FROM autorizacion_supervisor WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM turno_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM precio_producto WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("UPDATE stock_producto_bodega SET cantidad = ? WHERE producto_id = ? AND bodega_id = ?", stockAntes,
+                    productoA, bodegaA);
+            jdbc.update("UPDATE producto SET costo_referencia = NULL, costo_promedio = NULL WHERE id = ?", productoA);
+            jdbc.update("UPDATE usuario SET pin_supervisor_hash = NULL, pin_intentos_fallidos = 0, pin_bloqueado_hasta = NULL "
+                    + "WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+        }
+    }
+
+    @Test
+    void laVentaSinExistenciaDejaUnFaltanteQueSeRegularizaSoloSinStockNegativoNiCruzarEmpresas() throws Exception {
+        // Spec 030 (D13): vender sin existencia con permiso y motivo; el stock nunca baja de cero
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        com.fasterxml.jackson.databind.ObjectMapper lector = new com.fasterxml.jackson.databind.ObjectMapper();
+        String duenoA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        String cajeroA = token(empresaA, usuarioA2, "CAJERO");
+        String conPermiso = token(empresaA, usuarioA2, "CAJERO", "SUPERVISOR_VENTAS");
+        String bodegueroA = token(empresaA, usuarioA, "ALMACENISTA");
+        String duenoB = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+        Long sedeA = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaA);
+        java.math.BigDecimal stockAntes = jdbc.queryForObject("SELECT COALESCE(SUM(cantidad), 0) FROM stock_producto_bodega "
+                + "WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA);
+        java.util.function.Supplier<java.math.BigDecimal> stock = () -> jdbc.queryForObject("SELECT cantidad FROM "
+                + "stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA);
+        java.util.function.Function<Long, java.math.BigDecimal> pendiente = venta -> jdbc.queryForObject(
+                "SELECT COALESCE(SUM(pendiente), 0) FROM venta_sin_existencia WHERE venta_id = ?", java.math.BigDecimal.class, venta);
+        java.util.function.Function<Long, String> estado = venta -> jdbc.queryForObject(
+                "SELECT estado FROM venta_sin_existencia WHERE venta_id = ?", String.class, venta);
+        try {
+            long generalA = lector.readTree(mvc.perform(get("/api/ventas/listas").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andReturn().getResponse().getContentAsString()).get(0).get("id").asLong();
+            jdbc.update("UPDATE producto SET costo_referencia = 6000, costo_promedio = 6000, vendible = 1 WHERE id = ?", productoA);
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA + ",\"precio\":10000}"))
+                    .andExpect(status().isOk());
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 2) "
+                    + "ON DUPLICATE KEY UPDATE cantidad = 2", empresaA, productoA, bodegaA);
+            long caja = lector.readTree(mvc.perform(post("/api/cajas").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"nombre\":\"Caja faltantes\",\"sedeId\":" + sedeA + ",\"bodegaId\":" + bodegaA
+                                    + ",\"prefijoConsecutivo\":\"F3\",\"topeEfectivo\":0}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            long turno = lector.readTree(mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content("{\"cajaId\":" + caja + ",\"baseApertura\":50000}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(put("/api/autorizaciones/mi-pin").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content("{\"passwordActual\":\"" + CLAVE + "\",\"pin\":\"123456\"}")).andExpect(status().isNoContent());
+            java.util.function.BiFunction<String, Long, String> pin = (accion, ventaId) -> {
+                try {
+                    return lector.readTree(mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                                    .contentType(json).content("{\"correo\":\"admin@mismo.com\",\"pin\":\"123456\",\"accion\":\""
+                                            + accion + "\",\"turnoId\":" + turno + ",\"referenciaId\":" + ventaId + "}"))
+                            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("token").asText();
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            };
+            String venta = "{\"lineas\":[{\"productoId\":" + productoA + ",\"cantidad\":%d%s}],"
+                    + "\"pagos\":[{\"medio\":\"EFECTIVO\",\"monto\":%d}]}";
+            String marcada = ",\"sinExistencia\":true,\"motivoSinExistencia\":\"No registrado\"";
+            java.util.function.BiFunction<String, String, org.springframework.test.web.servlet.ResultActions> vender = (quien, cuerpo) -> {
+                try {
+                    return mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, quien)
+                            .header("Idempotency-Key", "se-" + java.util.UUID.randomUUID()).contentType(json).content(cuerpo));
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            };
+            int avisosAntes = jdbc.queryForObject("SELECT COUNT(*) FROM notificacion WHERE evento = 'VENTA_SIN_EXISTENCIA' "
+                    + "AND empresa_id = ?", Integer.class, empresaA);
+
+            // 1) sin marcar sigue el 409; marcada sin permiso 403; marcada sin motivo 400
+            vender.apply(cajeroA, venta.formatted(5, "", 50000)).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("STOCK_INSUFICIENTE"));
+            vender.apply(cajeroA, venta.formatted(5, marcada, 50000)).andExpect(status().isForbidden());
+            vender.apply(conPermiso, venta.formatted(5, ",\"sinExistencia\":true", 50000)).andExpect(status().isBadRequest());
+
+            // 2) con permiso: salen las 2 que hay y quedan 3 pendientes; se avisa a compras y bodega
+            long venta1 = lector.readTree(vender.apply(conPermiso, venta.formatted(5, marcada, 50000))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            assertEquals(0, java.math.BigDecimal.ZERO.compareTo(stock.get()), "el stock no baja de cero");
+            assertEquals(0, new java.math.BigDecimal("3").compareTo(pendiente.apply(venta1)));
+            assertEquals("PENDIENTE", estado.apply(venta1));
+            assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM notificacion WHERE evento = 'VENTA_SIN_EXISTENCIA' "
+                    + "AND empresa_id = ?", Integer.class, empresaA) > avisosAntes);
+
+            // 3) entra mercancía: primero se descuenta el faltante (parcial y luego total)
+            String ajuste = "{\"productoId\":" + productoA + ",\"tipo\":\"AJUSTE_POSITIVO\",\"bodegaDestinoId\":" + bodegaA
+                    + ",\"cantidad\":%d,\"motivo\":\"Llegó la mercancía\"}";
+            mvc.perform(post("/api/inventario/movimientos").header(HttpHeaders.AUTHORIZATION, bodegueroA).contentType(json)
+                    .content(ajuste.formatted(2))).andExpect(status().isCreated());
+            assertEquals(0, java.math.BigDecimal.ZERO.compareTo(stock.get()));
+            assertEquals(0, java.math.BigDecimal.ONE.compareTo(pendiente.apply(venta1)));
+            mvc.perform(post("/api/inventario/movimientos").header(HttpHeaders.AUTHORIZATION, bodegueroA).contentType(json)
+                    .content(ajuste.formatted(4))).andExpect(status().isCreated());
+            assertEquals(0, new java.math.BigDecimal("3").compareTo(stock.get()));
+            assertEquals("REGULARIZADA", estado.apply(venta1));
+            assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM movimiento_inventario WHERE tipo = 'SALIDA_VENTA' "
+                    + "AND referencia_tipo = 'VENTA' AND referencia_id = ?", Integer.class, venta1), "la venta y sus dos descuentos");
+
+            // 4) anular una venta con faltante: el faltante se anula y solo vuelve lo que salió
+            long venta2 = lector.readTree(vender.apply(conPermiso, venta.formatted(4, marcada, 40000))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            assertEquals(0, java.math.BigDecimal.ONE.compareTo(pendiente.apply(venta2)));
+            mvc.perform(post("/api/ventas/" + venta2 + "/anular").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"motivo\":\"El cliente desistió\",\"autorizacion\":\"" + pin.apply("ANULAR_VENTA", venta2) + "\"}"))
+                    .andExpect(status().isOk());
+            assertEquals("ANULADA", estado.apply(venta2));
+            assertEquals(0, new java.math.BigDecimal("3").compareTo(stock.get()), "vuelven las 3 que salieron, no la que faltaba");
+
+            // 5) devolución: lo devuelto descuenta primero el faltante y solo el resto entra
+            long venta3 = lector.readTree(vender.apply(conPermiso, venta.formatted(4, marcada, 40000))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            long linea3 = jdbc.queryForObject("SELECT id FROM venta_linea WHERE venta_id = ?", Long.class, venta3);
+            mvc.perform(post("/api/devoluciones").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"ventaId\":" + venta3 + ",\"motivo\":\"No le sirvió\",\"formaReembolso\":\"EFECTIVO\","
+                                    + "\"lineas\":[{\"ventaLineaId\":" + linea3 + ",\"cantidad\":2,\"estadoProducto\":\"BUENO\"}],"
+                                    + "\"autorizacion\":\"" + pin.apply("DEVOLUCION", venta3) + "\"}"))
+                    .andExpect(status().isCreated());
+            assertEquals("ANULADA", estado.apply(venta3));
+            assertEquals(0, java.math.BigDecimal.ONE.compareTo(stock.get()), "de 2 devueltas, 1 cubre el faltante y 1 entra");
+
+            // 6) reporte: cada faltante con su estado; B no ve nada de A
+            mvc.perform(get("/api/reportes/ventas-sin-existencia").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(3))
+                    .andExpect(jsonPath("$[0].estado").value("ANULADA"))
+                    .andExpect(jsonPath("$[2].estado").value("REGULARIZADA"))
+                    .andExpect(jsonPath("$[2].cantidad").value(3.0))
+                    .andExpect(jsonPath("$[2].motivo").value("No registrado"));
+            mvc.perform(get("/api/reportes/ventas-sin-existencia").param("estado", "PENDIENTE").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.length()").value(0));
+            mvc.perform(get("/api/reportes/ventas-sin-existencia").header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM venta_sin_existencia WHERE empresa_id = ?", Integer.class,
+                    empresaB));
+            assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM venta_sin_existencia WHERE empresa_id = ?", Integer.class,
+                    empresaA));
+        } finally {
+            jdbc.update("DELETE FROM venta_sin_existencia WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM notificacion WHERE evento = 'VENTA_SIN_EXISTENCIA' AND empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE l FROM devolucion_venta_linea l JOIN devolucion_venta d ON d.id = l.devolucion_id "
+                    + "WHERE d.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM devolucion_venta WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE p FROM venta_pago p JOIN venta v ON v.id = p.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE l FROM venta_linea l JOIN venta v ON v.id = l.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM venta WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_inventario WHERE empresa_id IN (?, ?) AND (referencia_tipo IN ('VENTA', "
+                    + "'DEVOLUCION_VENTA') OR motivo = 'Llegó la mercancía')", empresaA, empresaB);
+            jdbc.update("DELETE FROM auditoria WHERE empresa_id IN (?, ?) AND accion = 'INVENTARIO_AJUSTE'", empresaA, empresaB);
             jdbc.update("DELETE FROM autorizacion_supervisor WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM turno_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);

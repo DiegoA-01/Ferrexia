@@ -276,6 +276,14 @@ public class VentaService {
         ListaPrecio lista = listaDe(cliente);
         BigDecimal limite = limiteService.limiteDe(SesionActual.usuario().roles());
         List<LineaPreparada> lineas = preparar(req.lineas(), lista, limite);
+        // Spec 030 (D13): vender sin existencia exige el permiso; el motivo es el de la primera línea marcada del producto
+        Map<Long, String> sinExistencia = new HashMap<>();
+        req.lineas().stream().filter(LineaVentaRequest::esSinExistencia)
+                .forEach(l -> sinExistencia.putIfAbsent(l.productoId(), l.motivoSinExistencia().trim()));
+        if (!sinExistencia.isEmpty() && !SesionActual.usuario().tienePermiso(Permisos.VENTA_SIN_EXISTENCIA)) {
+            throw new com.proyecto.supply_core.common.exception.AccesoDenegadoException(
+                    "Vender sin existencia necesita el permiso de su administrador");
+        }
 
         // Descuentos y precios bajo el mínimo: un permiso del supervisor por cada tipo, que se gasta aquí
         Long autorizaDescuento = lineas.stream().anyMatch(LineaPreparada::pasaLimite)
@@ -342,11 +350,19 @@ public class VentaService {
         }
         ventaRepository.saveAndFlush(v);
 
-        // Stock: una salida por producto, en orden de id (si alguno no alcanza, la excepción deshace todo)
+        // Stock: una salida por producto, en orden de id (si alguno no alcanza, la excepción deshace todo). Un producto
+        // marcado para vender sin existencia (spec 030) saca lo que haya y deja la diferencia como faltante pendiente.
         Map<Long, BigDecimal> porProducto = new TreeMap<>();
         lineas.forEach(l -> porProducto.merge(l.producto().getId(), l.cantidadProducto(), BigDecimal::add));
-        porProducto.forEach((productoId, cantidad) -> movimientoInventarioService.registrarSalidaVenta(productoId,
-                v.getBodegaId(), cantidad, REFERENCIA, v.getId()));
+        porProducto.forEach((productoId, cantidad) -> {
+            if (sinExistencia.containsKey(productoId)) {
+                movimientoInventarioService.registrarSalidaVentaConFaltante(productoId, v.getBodegaId(), cantidad,
+                        v.getId(), sinExistencia.get(productoId));
+            } else {
+                movimientoInventarioService.registrarSalidaVenta(productoId, v.getBodegaId(), cantidad, REFERENCIA,
+                        v.getId());
+            }
+        });
 
         if (credito.signum() > 0) {
             carteraService.crearCuenta(v, cliente, credito);

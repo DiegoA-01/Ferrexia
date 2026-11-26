@@ -270,9 +270,29 @@ public class DevolucionService {
                         x.getCantidadUnidadProducto(), BigDecimal::add);
             }
         }
-        entradas.forEach((productoId, porBodega) -> porBodega.forEach((bodegaId, cantidad) ->
+        // Spec 030: lo devuelto descuenta primero el faltante pendiente de la venta (esa parte nunca salió del stock)
+        Map<Long, BigDecimal> devueltoPorProducto = new TreeMap<>();
+        for (DevolucionVentaLinea x : d.getLineas()) {
+            devueltoPorProducto.merge(lineas.get(x.getVentaLineaId()).getProductoId(), x.getCantidadUnidadProducto(),
+                    BigDecimal::add);
+        }
+        devueltoPorProducto.forEach((productoId, cantidad) -> {
+            BigDecimal descontado = movimientoInventarioService.descontarFaltanteDevuelto(v.getId(), productoId, cantidad);
+            Map<Long, BigDecimal> porBodega = entradas.get(productoId);
+            if (descontado.signum() > 0 && porBodega != null) {
+                for (Map.Entry<Long, BigDecimal> e : porBodega.entrySet()) {
+                    BigDecimal q = e.getValue().min(descontado);
+                    e.setValue(e.getValue().subtract(q));
+                    descontado = descontado.subtract(q);
+                }
+            }
+        });
+        entradas.forEach((productoId, porBodega) -> porBodega.forEach((bodegaId, cantidad) -> {
+            if (cantidad.signum() > 0) {
                 movimientoInventarioService.registrarDevolucionCliente(productoId, bodegaId, cantidad,
-                        "Devolución " + d.getConsecutivo() + " de " + v.getConsecutivo() + ": " + motivo, d.getId())));
+                        "Devolución " + d.getConsecutivo() + " de " + v.getConsecutivo() + ": " + motivo, d.getId());
+            }
+        }));
 
         if (resto.signum() > 0) {
             if (medio != null) {
