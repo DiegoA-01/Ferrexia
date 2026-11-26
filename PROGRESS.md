@@ -1,12 +1,11 @@
 # Ferrexia (antes Supply-Core) — Progreso
 
-> **Última actualización: 2026-11-25 (tarde).** El proyecto sigue en el repositorio `DiegoA-01/Ferrexia` (Supply-Core quedó
-> como histórico). Estado: **specs 000 a 021 hechas y mezcladas en `develop`** (`8f3f4b6`, PR #26): Ventas y Caja completo,
-> menú por categorías, ajustes del POS, interfaz general, "Mi turno" con facturas y categorías, menú reorganizado y
-> empresa y sedes simples. **La 022 está hecha**: Parte A mezclada (V43, PR #27) y Parte B en la rama
-> `feature/permisos-parte-b` (V44, PR pendiente): roles propios, plantilla Administrador, permisos sueltos y PIN del
-> personal. **Faltan las specs 023 a 035** (ver la **sección 8**, que manda sobre las anteriores). Migraciones: 44 (V1 a
-> V44), **próxima V45**.
+> **Última actualización: 2026-11-26.** El proyecto sigue en el repositorio `DiegoA-01/Ferrexia` (Supply-Core quedó como
+> histórico). Estado: **specs 000 a 027 mezcladas en `develop`** (`9f7e18d`, PR #29). Hechas y verificadas: 000 a 022
+> (la 022, permisos por acción, roles propios y PIN del personal, en #27 y #28). **Mezcladas pero sin cerrar: 023 a 027**
+> (PR #29, de Martin): les faltan la revisión en Docker, la aprobación y marcar sus criterios, y la 026 tiene una decisión
+> abierta. **Faltan las specs 028 a 035** (ver la **sección 8**, que manda sobre las anteriores). Migraciones: 49 (V1 a
+> V49), **próxima V50**.
 > Pruebas: backend 838 en verde (1 omitida, Gemini en vivo); frontend 267; e2e de Playwright con 4 pruebas en el CI.
 > Las secciones 0 a 7 se dejan como historia.
 
@@ -630,7 +629,7 @@ de aceptación verificados → rama propia desde `develop` → PR que crea y mez
 
 ---
 
-## 8. Ferrexia: estado al 2026-11-25 y lo que sigue (esta sección manda sobre las anteriores)
+## 8. Ferrexia: estado al 2026-11-26 y lo que sigue (esta sección manda sobre las anteriores)
 
 ### Repositorio y forma de trabajo
 - El proyecto pasó a **`https://github.com/DiegoA-01/Ferrexia`** (rama de trabajo `develop`; `main` sigue en el commit
@@ -655,6 +654,13 @@ de aceptación verificados → rama propia desde `develop` → PR que crea y mez
 | 019 | Menú reorganizado: reportes de ventas en Reportes, Precios y margen en Ventas, Importación de datos en Configuración | — | #23 |
 | 020 | Empresa y sedes simples: código de ingreso automático al crear la empresa, sede con enlace de Google Maps ("Ver en el mapa") | V41 | #24 |
 | 021 | Mi turno: facturas del turno paginadas (reimprimir, detalle), gasto e ingreso con categoría, categorías en Cajas y turnos, lo esperado solo para el supervisor (D20 opción A: cierre ciego) | V42 | #26 |
+| 022 Parte A | Permisos por acción: 97 permisos, `@RequierePermiso` en 58 controladores, los 12 roles como plantillas, `usuario_permiso`, prueba de equivalencia (310 endpoints × 12 roles) | V43 | #27 |
+| 022 Parte B | Roles propios por empresa, plantilla Administrador, permisos sueltos por persona, reglas de los servicios por permiso, PIN de 6 dígitos del personal y clave fuerte para quien administra (D10), pantalla Roles, ficha de permisos, menú y rutas por permiso | V44 | #28 |
+| 023 | Cierre contando billetes y monedas y ventas por turno | V45 | #29 |
+| 024 | Sin planes: los módulos se eligen al crear la empresa (D11) | V46 | #29 |
+| 025 | El dueño vende, cajas por persona, retiros y gastos sin PIN con permiso (D15); el Dueño y el Administrador cotizan | V47, V48 | #29 |
+| 026 | Producto completo: impuesto, proveedor y fecha del costo, alta al vuelo, aviso de stock máximo (D17) | V49 | #29 |
+| 027 | Venta ágil: categorías en el POS y el pedido, cliente y pago en un paso | — | #29 |
 | Docker | El proyecto de Compose y las imágenes pasan a llamarse `ferrexia` (ver "Docker" más abajo) | — | #23 |
 
 Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agents/specs/018-mi-turno-claro/revision-flujo-cajas.md`.
@@ -668,49 +674,59 @@ Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agen
   que aclararla antes de todo).
 - Numeración propuesta de migraciones en los planes: V41 (020) a V54 (035); cada rama la reserva al empezar.
 
-### Specs: hechas y faltantes (corte 2026-11-25, para retomar tras compactar)
-**Hechas y mezcladas en `develop`:** 000 a 020. Las últimas: 011 a 015 (#12 a #16), 016 (V40, #19), 017 (#20), 018 (#22),
-019 (#23) y 020 (V41, #24). Detalle y verificación de cada una en su `spec.md` (criterios marcados) y su `tasks.md`.
+### Specs: hechas y faltantes (corte 2026-11-26, para retomar tras compactar)
+**Hechas y verificadas en `develop`:** 000 a 022. Las últimas: 016 (V40, #19), 017 (#20), 018 (#22), 019 (#23),
+020 (V41, #24), 021 (V42, #26) y 022 (V43 y V44, #27 y #28). Detalle en su `spec.md` (criterios marcados) y su `tasks.md`.
 
-**Faltan 022 a 035 (todas en Propuesta, con `plan.md` y `tasks.md` escritos; ninguna empezada). La 021 ya está hecha en su rama:**
+**Mezcladas pero sin cerrar (PR #29, rama `feature/cierre-por-denominacion` de Martin):** el código está en `develop`, pero
+cada `spec.md` sigue "En construcción" y sin criterios marcados.
 
-| Spec | Qué entrega | Responsable | Decisión que la bloquea | Migración propuesta |
-|---|---|---|---|---|
-| 022 Permisos y plantillas de rol | **Hecha**: Parte A (V43, #27) y Parte B (V44, rama `feature/permisos-parte-b`) | Persona 2 | D10 y D18 tomadas | V43, V44 |
-| 023 Cierre por denominación | Contar el efectivo por billetes y monedas al cerrar | Persona 1 | — | V45 |
-| 024 Planes simbólicos | Todos los módulos para todos los planes; el plan queda como etiqueta | Persona 2 | D11 | — |
-| 025 Caja con permisos | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | Persona 1 | D15 (y la 022) | V46 |
-| 026 Producto completo | Categoría y proveedor al vuelo, impuesto, unidad, stock máximo, proveedor y fecha del costo | Persona 2 | D17 | V47 |
-| 027 Venta ágil | Categorías en el pedido y el POS; cliente y pago en un paso | Persona 1 | — (depende de 016) | — |
-| 028 Variantes de producto | Variantes (talla, color, medida) de un mismo producto | Persona 2 | — | V48 |
-| 029 Anular factura y método de pago | Anular factura de un turno cerrado y cambiar el método de pago | Persona 1 | D16 (y la 022) | V49 |
-| 030 Venta sin stock | Vender sin existencia con permiso, aviso y reporte | Persona 1 | D13 (y la 022) | V50 |
-| 031 Proveedor sin perfil | Cotizar con enlace de un solo uso y anti-bot, sin cuenta | Persona 2 | D14 (depende de 033) | V51 |
-| 032 Domicilios | Venta a domicilio, domiciliarios, estados, contraentrega | Persona 1 | D19 | V52 |
-| 033 Solicitudes de compra mejoradas | Mejoras de solicitudes, alertas con excepción por permiso | Persona 2 | D21 | V53 |
-| 034 Reportes de ventas ampliados | Más reportes de ventas | Persona 1 | — | — |
-| 035 Sedes con super administrador | Grupo de empresas con un super administrador | Persona 2 | D12 (hay que aclararla antes) | V54 |
+| Spec | Migración | Qué le falta |
+|---|---|---|
+| 023 Cierre por denominación | V45 | Revisión en Docker y marcar criterios |
+| 024 Planes simbólicos | V46 | Revisión en Docker y marcar criterios |
+| 025 Caja con permisos | V47, V48 | Ya revisada en Docker: falta la aprobación y marcar criterios |
+| 026 Producto completo | V49 | **Decidir qué pasa con la unidad de un producto que ya tiene movimientos**; revisión y criterios |
+| 027 Venta ágil | — | Revisión en Docker y marcar criterios |
 
-Las decisiones D10 a D21 están en `agents/specs/README.md`, casi todas en "Recomendada": hay que tomarlas antes de aprobar
-la spec que bloquean. Las migraciones de la tabla son la numeración propuesta en los planes; cada rama la reserva en el
-índice al empezar (la próxima libre es V42).
+**Faltan (en Propuesta, con `plan.md` y `tasks.md`; ninguna empezada). La migración se reserva al empezar (próxima libre V50):**
+
+| Spec | Qué entrega | Responsable | Decisión que la bloquea |
+|---|---|---|---|
+| 028 Variantes de producto | Variantes (talla, color, medida) de un mismo producto | Persona 2 | — (ver si choca con la unidad de la 026) |
+| 029 Anular factura y método de pago | Anular factura de un turno cerrado y cambiar el método de pago | Persona 1 | D16 |
+| 030 Venta sin stock | Vender sin existencia con permiso, aviso y reporte | Persona 1 | D13 (falta elegir stock negativo o faltante pendiente) |
+| 031 Proveedor sin perfil | Cotizar con enlace de un solo uso y anti-bot, sin cuenta | Persona 2 | D14 (depende de 033) |
+| 032 Domicilios | Venta a domicilio, domiciliarios, estados, contraentrega | Persona 1 | D19 |
+| 033 Solicitudes de compra mejoradas | Mejoras de solicitudes, alertas con excepción por permiso | Persona 2 | D21 |
+| 034 Reportes de ventas ampliados | Más reportes de ventas | Persona 1 | — |
+| 035 Sedes con super administrador | Grupo de empresas con un super administrador | Persona 2 | D12 (hay que aclararla antes) |
+
+Las decisiones abiertas están en `agents/specs/README.md`: D12, D13, D14, D16, D19 y D21 (D10, D11, D15, D17, D18 y D20 ya
+se tomaron). Hay que tomarlas antes de aprobar la spec que bloquean.
 
 ### Qué sigue, en orden
-1. **Reunión de decisiones** D10 a D21 (D12 primero: hay que aclararla).
-2. **Revisar la 018 en Docker con el cajero** y leer `agents/specs/018-mi-turno-claro/revision-flujo-cajas.md`.
-3. **Fase 2:** 021 mezclada (#26; falta la revisión en Docker); 023 (Persona 1); 022 hecha (Parte B con PR pendiente) y
-   024 (Persona 2). La 022 desbloquea 025, 029 y 030. Pendiente menor de la 022: botones internos de algunas pantallas
-   que siguen mirando el rol, y los avisos por rol.
-   **Ojo:** la Parte A cambia `@RequiereRol` por `@RequierePermiso` en 58 controladores; una rama de backend abierta antes
-   de mezclarla debe pasar sus endpoints nuevos a permisos (ver `agents/specs/022-permisos-plantillas-rol/permisos.md`).
-4. **Fases 3 y 4:** 025 a 035 según `agents/plan-reunion-2.md`.
-5. Siguen abiertos de antes: paso 19 del backend (SMTP real, archivos por empresa, `permisos.sql`, OWASP), IA con
+1. **Revisión en Docker de lo mezclado** (con la demo sembrada en el stack `ferrexia`): 018 y 021 (cajero y supervisor),
+   022 (un rol propio con PIN, quitar un permiso suelto, los usuarios de la demo ven lo mismo que antes) y 023 a 027.
+   Al terminar, marcar los criterios de 023 a 027 y pasarlas a "Hecha" en el índice.
+2. **Decidir la unidad de la 026** (producto con movimientos) y aprobar la 025.
+3. **Spec 028, variantes de producto** (sin decisión pendiente; reservar V50). Revisar antes cómo encaja con la unidad de
+   la 026.
+4. **Tomar las decisiones abiertas** D13, D16, D19, D21, D14 y aclarar D12; luego 029, 030, 032, 033, 031 y 035. La 034
+   (reportes de ventas ampliados) no espera decisión y se puede hacer en paralelo.
+5. Pendientes menores de la 022: botones internos de algunas pantallas que usan listas de roles sueltas y los avisos por
+   rol (`notificarRol`), que no llegan a quien tiene un rol propio.
+6. Siguen abiertos de antes: paso 19 del backend (SMTP real, archivos por empresa, `permisos.sql`, OWASP), IA con
    cotizaciones reales, SaaS 4 y mezclar `develop` en `main`.
+**Ojo:** desde la 022 todo endpoint nuevo lleva `@RequierePermiso` (catálogo en
+`agents/specs/022-permisos-plantillas-rol/permisos.md`); un permiso nuevo se siembra en su migración y se da a los roles.
 
-### Entorno local de DiegoA-01 (2026-11-25)
-- Copia local en `develop` = `origin/develop` (`22933e9`). `backend/mvnw.cmd` aparece modificado solo por el fin de línea:
-  no se sube. Ramas locales ya mezcladas (`feature/menu-*`, `feature/inicio-categorias`, `feature/pestanas-categoria`,
-  `feature/cajas-ocupadas`, `feature/pos-ajustes-rapidos`, `feature/interfaz-general`) se pueden borrar.
+### Entorno local de DiegoA-01 (2026-11-26)
+- Copia local en `develop` = `origin/develop` (`9f7e18d`). `backend/mvnw.cmd` aparece modificado solo por el fin de línea:
+  no se sube. Hay 11 ramas locales ya mezcladas (`docs/progreso-2026-11-25`, `feature/menu-*`, `feature/inicio-categorias`,
+  `feature/pestanas-categoria`, `feature/cajas-ocupadas`, `feature/pos-ajustes-rapidos`, `feature/interfaz-general`,
+  `feature/mi-turno-movimientos`, `feature/permisos-plantillas-rol`, `feature/permisos-parte-b`) que se pueden borrar.
+- `gh` no está instalado: los PR se abren desde el enlace que da `git push`.
 - Archivos locales que git ignora: `.env` (claves del stack), `credenciales-docker.local.txt` (cuentas de la demo, con la
   cuenta `todo@ferreteriademo.local` que tiene los 11 roles internos y pide MFA la primera vez) y
   `backend/src/main/resources/application-local.yaml` (clave del MySQL local para `./mvnw test`), copiados del proyecto
