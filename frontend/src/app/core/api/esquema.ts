@@ -4271,6 +4271,12 @@ export interface components {
             stockMaximo?: number;
             costoReferencia?: number;
             rangoStockValido?: boolean;
+            /** Format: int64 */
+            tarifaImpuestoId?: number;
+            /** Format: int64 */
+            proveedorReferenciaId?: number;
+            /** Format: date */
+            costoReferenciaFecha?: string;
         };
         ProductoResponse: {
             /** Format: int64 */
@@ -4291,6 +4297,15 @@ export interface components {
             /** Format: int32 */
             diasSeguridad?: number;
             costoPromedio?: number;
+            /** Format: int64 */
+            tarifaImpuestoId?: number;
+            tarifaImpuesto?: string;
+            /** Format: int64 */
+            proveedorReferenciaId?: number;
+            proveedorReferencia?: string;
+            /** Format: date */
+            costoReferenciaFecha?: string;
+            sobreStockMaximo?: boolean;
         };
         PresupuestoUpdateRequest: {
             monto: number;
@@ -5258,6 +5273,12 @@ export interface components {
             stockMaximo?: number;
             costoReferencia?: number;
             rangoStockValido?: boolean;
+            /** Format: int64 */
+            tarifaImpuestoId?: number;
+            /** Format: int64 */
+            proveedorReferenciaId?: number;
+            /** Format: date */
+            costoReferenciaFecha?: string;
         };
         CargaMasivaResponse: {
             soloValidar?: boolean;

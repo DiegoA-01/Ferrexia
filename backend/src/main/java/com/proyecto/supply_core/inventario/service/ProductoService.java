@@ -52,6 +52,8 @@ public class ProductoService {
     private final AuditoriaService auditoriaService;
     /** Impuesto de venta por defecto de los productos nuevos; {@code null} en pruebas que no lo usan. */
     private final com.proyecto.supply_core.venta.repository.TarifaImpuestoRepository tarifaRepository;
+    /** Proveedor del costo de referencia (spec 026); {@code null} en pruebas que no lo usan. */
+    private final com.proyecto.supply_core.proveedor.repository.ProveedorRepository proveedorRepository;
 
     /**
      * @param productoRepository   acceso a productos
@@ -77,12 +79,32 @@ public class ProductoService {
      * @param auditoriaService     registro de cambios
      * @param tarifaRepository     impuesto de venta por defecto (IVA 19 %) de los productos nuevos
      */
-    @org.springframework.beans.factory.annotation.Autowired
     public ProductoService(ProductoRepository productoRepository, CategoriaProductoRepository categoriaRepository,
             UnidadMedidaRepository unidadRepository, StockProductoBodegaRepository stockRepository,
             MovimientoInventarioRepository movimientoRepository, AuditoriaService auditoriaService,
             com.proyecto.supply_core.venta.repository.TarifaImpuestoRepository tarifaRepository) {
+        this(productoRepository, categoriaRepository, unidadRepository, stockRepository, movimientoRepository,
+                auditoriaService, tarifaRepository, null);
+    }
+
+    /**
+     * @param productoRepository   acceso a productos
+     * @param categoriaRepository  acceso a categorías
+     * @param unidadRepository     acceso a unidades
+     * @param stockRepository      totales de stock (solo lectura)
+     * @param movimientoRepository para saber si el producto ya tiene movimientos
+     * @param auditoriaService     registro de cambios
+     * @param tarifaRepository     impuestos de venta de la empresa
+     * @param proveedorRepository  proveedor del costo de referencia (spec 026)
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    public ProductoService(ProductoRepository productoRepository, CategoriaProductoRepository categoriaRepository,
+            UnidadMedidaRepository unidadRepository, StockProductoBodegaRepository stockRepository,
+            MovimientoInventarioRepository movimientoRepository, AuditoriaService auditoriaService,
+            com.proyecto.supply_core.venta.repository.TarifaImpuestoRepository tarifaRepository,
+            com.proyecto.supply_core.proveedor.repository.ProveedorRepository proveedorRepository) {
         this.tarifaRepository = tarifaRepository;
+        this.proveedorRepository = proveedorRepository;
         this.productoRepository = productoRepository;
         this.categoriaRepository = categoriaRepository;
         this.unidadRepository = unidadRepository;
@@ -145,16 +167,39 @@ public class ProductoService {
     public ProductoResponse crear(ProductoRequest req) {
         Producto p = new Producto();
         p.setCodigo(normalizarCodigo(req.codigo()));
-        if (tarifaRepository != null) {
-            // como en la migración V29: los productos nuevos arrancan con IVA 19 %; se cambia en Precios y margen
+        if (req.tarifaImpuestoId() != null) {
+            p.setTarifaImpuesto(tarifa(req.tarifaImpuestoId()));
+        } else if (tarifaRepository != null) {
+            // como en la migración V29: sin elegir, los productos nuevos arrancan con IVA 19 %
             tarifaRepository.findByCodigo("IVA19").ifPresent(p::setTarifaImpuesto);
         }
         aplicar(p, req.nombre(), req.descripcion(), categoria(req.categoriaId()), unidad(req.unidadMedidaId()),
                 req.stockMinimo(), req.stockMaximo(), req.costoReferencia());
+        if (req.proveedorReferenciaId() != null) {
+            p.setProveedorReferencia(proveedor(req.proveedorReferenciaId()));
+        }
+        // spec 026: el costo de referencia lleva su fecha; si no se escribe, es la de hoy
+        p.setCostoReferenciaFecha(req.costoReferenciaFecha() != null ? req.costoReferenciaFecha()
+                : req.costoReferencia() != null ? java.time.LocalDate.now() : null);
         Producto guardado = productoRepository.save(p);
         auditoriaService.exito(AccionAuditoria.PRODUCTO_CREAR, EntidadAuditada.PRODUCTO, guardado.getId(),
-                "codigo=" + guardado.getCodigo() + ", unidad=" + guardado.getUnidadMedida().getCodigo());
+                "codigo=" + guardado.getCodigo() + ", unidad=" + guardado.getUnidadMedida().getCodigo()
+                        + (guardado.getTarifaImpuesto() == null ? "" : ", impuesto=" + guardado.getTarifaImpuesto().getCodigo())
+                        + (guardado.getProveedorReferencia() == null ? ""
+                                : ", proveedorReferencia=" + guardado.getProveedorReferencia().getId()));
         return ProductoResponse.of(guardado, cero());
+    }
+
+    /**
+     * Productos activos con stock máximo y un total por encima de él (spec 026, D17: no bloquea, solo avisa).
+     *
+     * @return productos sobre el máximo con su stock total
+     */
+    @Transactional(readOnly = true)
+    public List<ProductoResponse> sobreStockMaximo() {
+        List<Producto> productos = productoRepository.sobreStockMaximo();
+        Map<Long, BigDecimal> totales = totales(productos);
+        return productos.stream().map(p -> ProductoResponse.of(p, totales.getOrDefault(p.getId(), cero()))).toList();
     }
 
     /**
@@ -183,6 +228,16 @@ public class ProductoService {
         aplicar(p, req.nombre(), req.descripcion(), categoria(req.categoriaId()),
                 cambiaUnidad ? unidad(req.unidadMedidaId()) : p.getUnidadMedida(),
                 req.stockMinimo(), req.stockMaximo(), req.costoReferencia());
+        // spec 026: impuesto, proveedor y fecha del costo; lo que no se envía no cambia
+        if (req.tarifaImpuestoId() != null) {
+            p.setTarifaImpuesto(tarifa(req.tarifaImpuestoId()));
+        }
+        if (req.proveedorReferenciaId() != null) {
+            p.setProveedorReferencia(proveedor(req.proveedorReferenciaId()));
+        }
+        if (req.costoReferenciaFecha() != null) {
+            p.setCostoReferenciaFecha(req.costoReferenciaFecha());
+        }
         auditoriaService.exito(AccionAuditoria.PRODUCTO_EDITAR, EntidadAuditada.PRODUCTO, id,
                 "antes: " + antes + " | después: " + describir(p));
         return ProductoResponse.of(p, stockRepository.totalDeProducto(id));
@@ -295,6 +350,28 @@ public class ProductoService {
      */
     private UnidadMedida unidad(Long id) {
         return unidadRepository.findById(id).orElseThrow(() -> new NoEncontradoException("Unidad de medida", id));
+    }
+
+    /**
+     * @param id impuesto de venta
+     * @return la tarifa activa de la empresa ({@code @TenantId} deja fuera las de otras)
+     * @throws NegocioException {@code TARIFA_INVALIDA} si no es de la empresa o está inactiva
+     */
+    private com.proyecto.supply_core.venta.entity.TarifaImpuesto tarifa(Long id) {
+        return (tarifaRepository == null ? java.util.Optional.<com.proyecto.supply_core.venta.entity.TarifaImpuesto>empty()
+                : tarifaRepository.findById(id)).filter(com.proyecto.supply_core.venta.entity.TarifaImpuesto::isActivo)
+                .orElseThrow(() -> new NegocioException("TARIFA_INVALIDA", "Elija un impuesto activo de la empresa"));
+    }
+
+    /**
+     * @param id proveedor
+     * @return el proveedor de la empresa ({@code @TenantId} deja fuera los de otras)
+     * @throws NegocioException {@code PROVEEDOR_INVALIDO} si no es de la empresa
+     */
+    private com.proyecto.supply_core.proveedor.entity.Proveedor proveedor(Long id) {
+        return (proveedorRepository == null ? java.util.Optional.<com.proyecto.supply_core.proveedor.entity.Proveedor>empty()
+                : proveedorRepository.findById(id))
+                .orElseThrow(() -> new NegocioException("PROVEEDOR_INVALIDO", "El proveedor no es de la empresa"));
     }
 
     /**

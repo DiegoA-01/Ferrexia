@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Bodega, CargaMasiva, Categoria, CorreoExportacion, Movimiento, MovimientoNuevo, RegistroMovimiento, StockBodega, InventarioResumen, Pagina, Producto, ProductoEnSede, ProductoNuevo, Reabastecimiento, ResumenSede, Solicitud, SugerenciaReorden, UnidadMedida,
+  Bodega, CargaMasiva, Categoria, CorreoExportacion, Movimiento, MovimientoNuevo, RegistroMovimiento, StockBodega, InventarioResumen, Pagina, Producto, ProductoEnSede, ProductoNuevo, Proveedor, Reabastecimiento, ResumenSede, Solicitud, SugerenciaReorden, UnidadMedida,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -65,6 +65,27 @@ export class InventarioService {
 
   categorias(): Observable<Categoria[]> {
     return this.http.get<Categoria[]>(api('/api/categorias'), { params: parametros({ activo: true }) });
+  }
+
+  /** @param nombre categoría nueva, creada desde el formulario del producto (spec 026) */
+  crearCategoria(nombre: string): Observable<Categoria> {
+    return this.http.post<Categoria>(api('/api/categorias'), { nombre });
+  }
+
+  /** Proveedores habilitados para elegir el del costo de referencia (spec 026). */
+  proveedoresHabilitados(): Observable<Pagina<Proveedor>> {
+    return this.http.get<Pagina<Proveedor>>(api('/api/proveedores'),
+      { params: parametros({ estado: 'HABILITADO', size: 100, sort: 'razonSocial,asc' }) });
+  }
+
+  /** @param datos alta corta de un proveedor desde el producto (spec 026): solo el nombre es obligatorio */
+  crearProveedor(datos: { razonSocial: string; nit?: string; correo?: string; telefono?: string }): Observable<Proveedor> {
+    return this.http.post<Proveedor>(api('/api/proveedores'), datos);
+  }
+
+  /** Productos por encima de su stock máximo (spec 026, D17). */
+  sobreMaximo(): Observable<Producto[]> {
+    return this.http.get<Producto[]>(api('/api/productos/sobre-maximo'));
   }
 
   unidades(): Observable<UnidadMedida[]> {

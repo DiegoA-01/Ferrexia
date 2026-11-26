@@ -29,10 +29,13 @@
         <div class="campo"><label for="codigo">Código</label><input id="codigo" class="entrada" formControlName="codigo"></div>
         <div class="campo"><label for="nombre">Nombre</label><input id="nombre" class="entrada" formControlName="nombre"></div>
         <div class="campo"><label for="cat">Categoría</label>
-          <select id="cat" class="entrada" formControlName="categoriaId">
-            <option [ngValue]="0" disabled>Elige</option>
-            @for (c of categorias(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
-          </select></div>
+          <div class="con-boton">
+            <select id="cat" class="entrada" formControlName="categoriaId">
+              <option [ngValue]="0" disabled>Elige</option>
+              @for (c of categorias(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+            </select>
+            <button type="button" class="boton chico" (click)="abrirAlVuelo('categoria')">Nueva</button>
+          </div></div>
         <div class="campo"><label for="uni">Unidad</label>
           <select id="uni" class="entrada" formControlName="unidadMedidaId">
             <option [ngValue]="0" disabled>Elige</option>
@@ -41,6 +44,41 @@
         <div class="campo"><label for="min">Stock mínimo</label><input scCifra [decimales]="4" id="min" min="0" class="entrada num" formControlName="stockMinimo"></div>
         <div class="campo"><label for="max">Stock máximo</label><input scCifra [decimales]="4" id="max" min="0" class="entrada num" formControlName="stockMaximo"></div>
         <div class="campo"><label for="costo">Costo de referencia</label><input scCifra id="costo" min="0" class="entrada num" formControlName="costoReferencia"></div>
+        @if (impuestos().length) {
+          <div class="campo"><label for="imp">Impuesto de venta</label>
+            <select id="imp" class="entrada" formControlName="tarifaImpuestoId">
+              <option [ngValue]="null">{{ editandoId() ? 'Sin cambiar' : 'Sin elegir (queda IVA 19 %)' }}</option>
+              @for (t of impuestos(); track t.id) { <option [ngValue]="t.id">{{ t.nombre }}</option> }
+            </select></div>
+        }
+        <div class="campo"><label for="prov">Proveedor del costo</label>
+          <div class="con-boton">
+            <select id="prov" class="entrada" formControlName="proveedorReferenciaId">
+              <option [ngValue]="null">Sin proveedor</option>
+              @for (p of proveedores(); track p.id) { <option [ngValue]="p.id">{{ p.razonSocial }}</option> }
+            </select>
+            <button type="button" class="boton chico" (click)="abrirAlVuelo('proveedor')">Nuevo</button>
+          </div></div>
+        <div class="campo"><label for="fcosto">Fecha del costo</label>
+          <input id="fcosto" type="date" class="entrada" [max]="hoy" formControlName="costoReferenciaFecha">
+          <span class="ayuda">Si la dejas vacía y hay costo, se toma la de hoy. Las recepciones la actualizan.</span></div>
+        @if (alVuelo(); as tipo) {
+          <div class="al-vuelo" role="group" [attr.aria-label]="tipo === 'categoria' ? 'Nueva categoría' : 'Nuevo proveedor'">
+            <strong>{{ tipo === 'categoria' ? 'Nueva categoría' : 'Nuevo proveedor' }}</strong>
+            <span class="ayuda">Lo que ya escribiste del producto no se pierde.</span>
+            <input class="entrada" [attr.aria-label]="tipo === 'categoria' ? 'Nombre de la categoría' : 'Nombre del proveedor'"
+              [placeholder]="tipo === 'categoria' ? 'Nombre de la categoría' : 'Nombre o razón social'"
+              [ngModel]="nombreNuevo()" [ngModelOptions]="{ standalone: true }" (ngModelChange)="nombreNuevo.set($event)">
+            @if (tipo === 'proveedor') {
+              <input class="entrada" aria-label="NIT del proveedor (opcional)" placeholder="NIT (opcional)"
+                [ngModel]="nitNuevo()" [ngModelOptions]="{ standalone: true }" (ngModelChange)="nitNuevo.set($event)">
+            }
+            <div class="fila">
+              <button type="button" class="boton primario chico" (click)="guardarAlVuelo()">Guardar y elegir</button>
+              <button type="button" class="boton chico" (click)="alVuelo.set(null)">Cancelar</button>
+            </div>
+          </div>
+        }
         <div class="fila fin"><button type="submit" class="boton primario" [disabled]="trabajando()">{{ editandoId() ? 'Guardar cambios' : 'Crear producto' }}</button>
           <button type="button" class="boton" (click)="panel.set('ninguno')">Cancelar</button></div>
       </form>
@@ -132,8 +170,9 @@
   <section class="tarjeta sin-relleno">
     <div class="filtros">
       <div class="pastillas">
-        <button type="button" class="pastilla" [class.activa]="!soloBajo()" (click)="filtrarBajo(false)">Todos</button>
-        <button type="button" class="pastilla" [class.activa]="soloBajo()" (click)="filtrarBajo(true)">Bajo el mínimo · {{ totalBajo() }}</button>
+        <button type="button" class="pastilla" [class.activa]="!soloBajo() && !soloSobreMaximo()" (click)="soloSobreMaximo.set(false); filtrarBajo(false)">Todos</button>
+        <button type="button" class="pastilla" [class.activa]="soloBajo()" (click)="soloSobreMaximo.set(false); filtrarBajo(true)">Bajo el mínimo · {{ totalBajo() }}</button>
+        <button type="button" class="pastilla" [class.activa]="soloSobreMaximo()" (click)="soloSobreMaximo.set(true); soloBajo() && filtrarBajo(false)">Sobre el máximo · {{ totalSobreMaximo() }}</button>
       </div>
       <select class="entrada categoria" aria-label="Categoría" [ngModel]="categoriaId()" (ngModelChange)="filtrarCategoria($event)">
         <option [ngValue]="null">Todas las categorías</option>
@@ -147,7 +186,7 @@
             @if (resumen()) { <th class="num">Valor</th> }<th>Estado</th>@if (esAdminCompras()) { <th></th> }</tr>
         </thead>
         <tbody>
-          @for (f of filas() ?? []; track f.productoId) {
+          @for (f of filasVisibles(); track f.productoId) {
             <tr>
               <td><strong>{{ f.nombre }}</strong><span class="sub">{{ f.codigo }} · {{ f.unidad }}</span></td>
               <td class="oculto-movil">{{ f.categoria }}</td>

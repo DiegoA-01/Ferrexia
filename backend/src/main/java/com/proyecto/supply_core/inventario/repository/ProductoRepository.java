@@ -92,4 +92,19 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
             order by p.codigo
             """)
     List<Producto> bajoStockMinimo();
+
+    /**
+     * Productos activos con stock máximo cuyo total entre bodegas lo supera (spec 026, D17).
+     *
+     * @return productos sobre el máximo, por código
+     */
+    @EntityGraph(attributePaths = { "categoria", "unidadMedida" })
+    @Query("""
+            select p from Producto p
+            where p.activo = true and p.stockMaximo is not null
+              and p.stockMaximo < (select coalesce(sum(s.cantidad), 0) from StockProductoBodega s
+                                   where s.producto = p)
+            order by p.codigo
+            """)
+    List<Producto> sobreStockMaximo();
 }

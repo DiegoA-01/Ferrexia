@@ -185,6 +185,26 @@ class MovimientoInventarioServiceTest {
                 new BigDecimal("4"), min)); // 3 → 4, subió
     }
 
+    /** Spec 026 (D17): superar el máximo no bloquea; se avisa solo al cruzarlo con una entrada. */
+    @Test
+    void cruzoMaximoSoloAlPasarElUmbralConUnaEntrada() {
+        BigDecimal max = new BigDecimal("10");
+        assertTrue(MovimientoInventarioService.cruzoMaximo(TipoMovimiento.AJUSTE_POSITIVO, new BigDecimal("3"),
+                new BigDecimal("12"), max)); // 9 → 12
+        assertTrue(MovimientoInventarioService.cruzoMaximo(TipoMovimiento.AJUSTE_POSITIVO, new BigDecimal("2"),
+                new BigDecimal("12"), max)); // 10 → 12: estar justo en el máximo no es estar sobre él
+        assertFalse(MovimientoInventarioService.cruzoMaximo(TipoMovimiento.AJUSTE_POSITIVO, new BigDecimal("1"),
+                new BigDecimal("13"), max)); // 12 → 13, ya estaba sobre
+        assertFalse(MovimientoInventarioService.cruzoMaximo(TipoMovimiento.AJUSTE_POSITIVO, new BigDecimal("1"),
+                new BigDecimal("10"), max)); // 9 → 10, no lo pasa
+        assertFalse(MovimientoInventarioService.cruzoMaximo(TipoMovimiento.TRASLADO, new BigDecimal("5"),
+                new BigDecimal("12"), max)); // un traslado no cambia el total
+        assertFalse(MovimientoInventarioService.cruzoMaximo(TipoMovimiento.SALIDA_CONSUMO, new BigDecimal("1"),
+                new BigDecimal("11"), max)); // una salida nunca cruza hacia arriba
+        assertFalse(MovimientoInventarioService.cruzoMaximo(TipoMovimiento.AJUSTE_POSITIVO, new BigDecimal("50"),
+                new BigDecimal("60"), null)); // sin máximo no hay aviso
+    }
+
     @Test
     void productoOBodegaInactivosOInexistentesSeRechazan() {
         producto.setActivo(false);

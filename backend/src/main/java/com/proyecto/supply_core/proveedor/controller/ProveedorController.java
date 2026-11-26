@@ -3,13 +3,16 @@ package com.proyecto.supply_core.proveedor.controller;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
@@ -19,6 +22,7 @@ import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.proveedor.dto.ActualizarProveedorRequest;
 import com.proyecto.supply_core.proveedor.dto.EvaluacionResponse;
 import com.proyecto.supply_core.proveedor.dto.MotivoRequest;
+import com.proyecto.supply_core.proveedor.dto.ProveedorNuevoRequest;
 import com.proyecto.supply_core.proveedor.dto.ProveedorResponse;
 import com.proyecto.supply_core.proveedor.enums.EstadoProveedor;
 import com.proyecto.supply_core.proveedor.service.EvaluacionProveedorService;
@@ -68,6 +72,18 @@ public class ProveedorController {
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long categoriaId,
             @PageableDefault(size = 20, sort = "creadoEn", direction = Sort.Direction.DESC) Pageable pageable) {
         return proveedorService.buscar(texto, estado, categoriaId, pageable);
+    }
+
+    /**
+     * Alta interna y corta de un proveedor (spec 026): solo el nombre es obligatorio y queda habilitado.
+     *
+     * @param request nombre y, si se tienen, NIT, correo y teléfono
+     * @return proveedor creado (HTTP 201)
+     */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProveedorResponse crear(@Valid @RequestBody ProveedorNuevoRequest request) {
+        return proveedorService.crearInterno(request);
     }
 
     /**

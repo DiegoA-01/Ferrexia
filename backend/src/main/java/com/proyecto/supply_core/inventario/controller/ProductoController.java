@@ -77,6 +77,16 @@ public class ProductoController {
     }
 
     /**
+     * Productos activos por encima de su stock máximo (spec 026, D17: se permite, pero se avisa).
+     *
+     * @return productos sobre el máximo
+     */
+    @GetMapping("/sobre-maximo")
+    public List<ProductoResponse> sobreMaximo() {
+        return productoService.sobreStockMaximo();
+    }
+
+    /**
      * Detalle de un producto.
      *
      * @param id id positivo

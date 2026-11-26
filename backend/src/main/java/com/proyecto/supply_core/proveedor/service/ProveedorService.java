@@ -88,6 +88,34 @@ public class ProveedorService {
     }
 
     /**
+     * Alta interna y corta de un proveedor (spec 026): solo el nombre es obligatorio. Queda HABILITADO, revisado por
+     * quien lo crea y sin usuario del portal (cotiza por otros medios o se le crea el acceso después).
+     *
+     * @param req nombre y, si se tienen, NIT, correo y teléfono
+     * @return proveedor creado
+     * @throws NegocioException {@code NIT_DUPLICADO} si otro proveedor de la empresa ya tiene ese NIT
+     */
+    @Transactional
+    public ProveedorResponse crearInterno(com.proyecto.supply_core.proveedor.dto.ProveedorNuevoRequest req) {
+        String nit = textoOpcional(req.nit());
+        if (nit != null && proveedorRepository.existsByNitIgnoreCase(nit)) {
+            throw new NegocioException("NIT_DUPLICADO", "Ya existe un proveedor con el NIT " + nit);
+        }
+        Proveedor p = new Proveedor();
+        p.setRazonSocial(req.razonSocial().trim());
+        p.setNit(nit);
+        p.setCorreoContacto(req.correo() == null || req.correo().isBlank() ? null : normalizarCorreo(req.correo()));
+        p.setTelefono(textoOpcional(req.telefono()));
+        p.setEstado(EstadoProveedor.HABILITADO);
+        p.setRevisadoPorUsuarioId(SesionActual.usuario().id());
+        p.setRevisadoEn(LocalDateTime.now());
+        Proveedor guardado = proveedorRepository.save(p);
+        auditoriaService.exito(AccionAuditoria.PROVEEDOR_REGISTRAR, EntidadAuditada.PROVEEDOR, guardado.getId(),
+                "alta interna (spec 026): razonSocial=" + guardado.getRazonSocial() + "; nit=" + guardado.getNit());
+        return ProveedorResponse.of(guardado);
+    }
+
+    /**
      * Registra un proveedor desde el portal (ruta pública).
      * <p>El request ya llega validado: NIT y correo únicos, categorías activas, contraseña segura.
      * Si dos registros simultáneos usan el mismo NIT o correo, el UNIQUE de la BD responde 409.</p>

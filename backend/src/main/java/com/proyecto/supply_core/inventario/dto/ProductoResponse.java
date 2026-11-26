@@ -24,11 +24,19 @@ import com.proyecto.supply_core.inventario.entity.Producto;
  * @param plazoEntregaDias días hábiles de entrega propios ({@code null} = usa el de la empresa)
  * @param diasSeguridad    días hábiles de colchón propios ({@code null} = usa el de la empresa)
  * @param costoPromedio    costo promedio ponderado ({@code null} si aún no tiene compras)
+ * @param tarifaImpuestoId impuesto de venta ({@code null} si no tiene)
+ * @param tarifaImpuesto   nombre del impuesto de venta ({@code null} si no tiene)
+ * @param proveedorReferenciaId proveedor del costo de referencia (spec 026) o {@code null}
+ * @param proveedorReferencia   razón social de ese proveedor o {@code null}
+ * @param costoReferenciaFecha  fecha del costo de referencia (spec 026) o {@code null}
+ * @param sobreStockMaximo {@code true} si tiene máximo y {@code stockTotal > stockMaximo} (D17: avisa, no bloquea)
  */
 public record ProductoResponse(Long id, String codigo, String nombre, String descripcion,
         CategoriaResponse categoria, UnidadMedidaResponse unidadMedida, BigDecimal stockMinimo,
         BigDecimal stockMaximo, BigDecimal costoReferencia, boolean activo, BigDecimal stockTotal,
-        boolean bajoStockMinimo, Integer plazoEntregaDias, Integer diasSeguridad, BigDecimal costoPromedio) {
+        boolean bajoStockMinimo, Integer plazoEntregaDias, Integer diasSeguridad, BigDecimal costoPromedio,
+        Long tarifaImpuestoId, String tarifaImpuesto, Long proveedorReferenciaId, String proveedorReferencia,
+        java.time.LocalDate costoReferenciaFecha, boolean sobreStockMaximo) {
 
     /**
      * Convierte la entidad en DTO (requiere categoría y unidad cargadas).
@@ -42,6 +50,12 @@ public record ProductoResponse(Long id, String codigo, String nombre, String des
                 CategoriaResponse.of(p.getCategoria()), UnidadMedidaResponse.of(p.getUnidadMedida()),
                 p.getStockMinimo(), p.getStockMaximo(), p.getCostoReferencia(), p.isActivo(), stockTotal,
                 p.isActivo() && stockTotal.compareTo(p.getStockMinimo()) < 0, p.getPlazoEntregaDias(),
-                p.getDiasSeguridad(), p.getCostoPromedio());
+                p.getDiasSeguridad(), p.getCostoPromedio(),
+                p.getTarifaImpuesto() == null ? null : p.getTarifaImpuesto().getId(),
+                p.getTarifaImpuesto() == null ? null : p.getTarifaImpuesto().getNombre(),
+                p.getProveedorReferencia() == null ? null : p.getProveedorReferencia().getId(),
+                p.getProveedorReferencia() == null ? null : p.getProveedorReferencia().getRazonSocial(),
+                p.getCostoReferenciaFecha(),
+                p.getStockMaximo() != null && stockTotal.compareTo(p.getStockMaximo()) > 0);
     }
 }

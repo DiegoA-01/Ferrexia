@@ -10,6 +10,8 @@ public enum EventoNotificacion {
     PROVEEDOR_PENDIENTE("Proveedor pendiente de aprobación"),
     /** Un producto quedó por debajo de su stock mínimo (destino: COMPRADOR). */
     STOCK_BAJO_MINIMO("Producto bajo stock mínimo"),
+    /** Spec 026 (D17): una entrada dejó un producto por encima de su stock máximo (no se bloquea). */
+    STOCK_SOBRE_MAXIMO("Producto sobre el stock máximo"),
     /** Una sede quedó bajo su mínimo propio o sin existencias, aunque el total de la empresa alcance (destino:
      *  COMPRADOR y ALMACENISTA). */
     STOCK_BAJO_SEDE("Una sede se quedó corta de un producto"),

@@ -49,7 +49,8 @@ public class Proveedor {
     private String razonSocial;
 
     /** Sin puntos ni espacios; dígito de verificación opcional tras guion (900123456-7). */
-    @Column(nullable = false, length = 30)
+    /** NIT; opcional desde la spec 026 (alta corta de un proveedor desde el producto, V49). */
+    @Column(length = 30)
     private String nit;
 
     @Column(name = "correo_contacto", length = 150)

@@ -382,6 +382,15 @@ public class MovimientoInventarioService {
                                 + producto.getStockMinimo().toPlainString());
             }
         }
+        // spec 026 (D17): superar el máximo no bloquea; se avisa a compras al cruzarlo
+        if (cruzoMaximo(tipo, cantidad, total, producto.getStockMaximo())) {
+            log.info("Producto {} sobre el stock máximo: total {} > máximo {}", producto.getCodigo(),
+                    total.toPlainString(), producto.getStockMaximo().toPlainString());
+            notificacionService.notificarRol(Roles.COMPRADOR, EventoNotificacion.STOCK_SOBRE_MAXIMO,
+                    "El producto " + producto.getCodigo() + " - " + producto.getNombre()
+                            + " quedó sobre el stock máximo: total " + total.toPlainString() + " > máximo "
+                            + producto.getStockMaximo().toPlainString());
+        }
         return new RegistroMovimientoResponse(MovimientoResponse.of(guardado), total, bajoMinimo);
     }
 
@@ -403,6 +412,24 @@ public class MovimientoInventarioService {
             totalAntes = totalAhora.subtract(cantidad);
         }
         return totalAhora.compareTo(minimo) < 0 && totalAntes.compareTo(minimo) >= 0;
+    }
+
+    /**
+     * Indica si una entrada hizo que el total pasara de "en o bajo el máximo" a "sobre el máximo" (spec 026, D17). Así
+     * se avisa una sola vez al cruzar el umbral y no en cada entrada posterior.
+     *
+     * @param tipo       tipo de movimiento
+     * @param cantidad   cantidad movida
+     * @param totalAhora total del producto después del movimiento
+     * @param maximo     stock máximo del producto ({@code null} = sin máximo)
+     * @return {@code true} si antes del movimiento no estaba sobre el máximo y ahora sí
+     */
+    static boolean cruzoMaximo(TipoMovimiento tipo, BigDecimal cantidad, BigDecimal totalAhora, BigDecimal maximo) {
+        if (maximo == null || !tipo.usaDestino() || tipo.usaOrigen()) {
+            return false;
+        }
+        BigDecimal totalAntes = totalAhora.subtract(cantidad);
+        return totalAhora.compareTo(maximo) > 0 && totalAntes.compareTo(maximo) <= 0;
     }
 
     /**

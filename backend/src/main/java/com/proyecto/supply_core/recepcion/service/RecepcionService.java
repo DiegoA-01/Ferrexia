@@ -183,6 +183,9 @@ public class RecepcionService {
                 movimientoService.registrarEntradaCompra(producto.getId(), bodega.getId(), l.getCantidadAceptada(),
                         costo, REFERENCIA, guardada.getId());
                 producto.setCostoReferencia(l.getOrdenLinea().getPrecioUnitario());
+                // spec 026: el costo de referencia guarda de qué proveedor y de qué fecha salió
+                producto.setProveedorReferencia(o.getProveedor());
+                producto.setCostoReferenciaFecha(java.time.LocalDate.now());
             }
         }
 

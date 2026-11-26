@@ -1,7 +1,8 @@
 # 026 - Crear un producto completo sin salir del formulario
 
-**Estado:** Propuesta · **Rama:** `feature/producto-completo` · **Depende de:** 001 · **Responsable:** Persona 2 ·
-**Puntos de la reunión 2:** 27, 29, 30, 31, 33, 35 · **Migración:** posible (se reserva al empezar) · **Decisión:** D17
+**Estado:** En construcción (2026-11-25) · **Rama:** `feature/cierre-por-denominacion` · **Depende de:** 001 ·
+**Responsable:** Persona 2 · **Puntos de la reunión 2:** 27, 29, 30, 31, 33, 35 · **Migración:** V49 · **Decisión:** D17
+(tomada) · **Pendiente:** regla para cambiar la unidad de un producto con movimientos
 
 ## Objetivo
 Que crear un producto se haga en un solo paso, con todo lo que el negocio necesita: categoría y proveedor aunque aún no

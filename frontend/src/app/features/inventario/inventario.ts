@@ -2,9 +2,12 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { Categoria, InventarioItem, InventarioResumen, Producto, SugerenciaReorden, UnidadMedida } from '../../core/api/modelos';
+import {
+  Categoria, InventarioItem, InventarioResumen, Producto, Proveedor, SugerenciaReorden, TarifaImpuesto, UnidadMedida,
+} from '../../core/api/modelos';
 import { NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { InventarioService } from '../../core/servicios/inventario.service';
+import { VentasService } from '../../core/servicios/ventas.service';
 import { iso } from '../../core/servicios/reportes.service';
 import { Avisos, descargar } from '../../core/ui/avisos';
 import { SesionService } from '../../core/sesion/sesion.service';
@@ -25,6 +28,7 @@ type Fila = Pick<InventarioItem, 'productoId' | 'codigo' | 'nombre' | 'categoria
 })
 export class Inventario implements OnInit {
   private readonly servicio = inject(InventarioService);
+  private readonly ventas = inject(VentasService);
   private readonly avisos = inject(Avisos);
   protected readonly sesion = inject(SesionService);
 
@@ -57,7 +61,23 @@ export class Inventario implements OnInit {
     stockMinimo: [0, [Validators.required, Validators.min(0)]],
     stockMaximo: [null as number | null],
     costoReferencia: [null as number | null],
+    // spec 026: impuesto, proveedor y fecha del costo de referencia
+    tarifaImpuestoId: [null as number | null],
+    proveedorReferenciaId: [null as number | null],
+    costoReferenciaFecha: [null as string | null],
   });
+
+  /** Spec 026: impuestos de venta y proveedores para el formulario, y el alta corta "Nueva" encima del formulario. */
+  protected readonly impuestos = signal<TarifaImpuesto[]>([]);
+  protected readonly proveedores = signal<Proveedor[]>([]);
+  protected readonly alVuelo = signal<'categoria' | 'proveedor' | null>(null);
+  protected readonly nombreNuevo = signal('');
+  protected readonly nitNuevo = signal('');
+  /** Spec 026 (D17): filtro de productos por encima del máximo. */
+  protected readonly soloSobreMaximo = signal(false);
+  protected readonly totalSobreMaximo = computed(() => (this.filas() ?? []).filter(f => this.sobreMaximo(f)).length);
+  protected readonly filasVisibles = computed(() => (this.filas() ?? []).filter(f => !this.soloSobreMaximo() || this.sobreMaximo(f)));
+  protected readonly hoy = iso(new Date());
 
   ngOnInit(): void {
     this.servicio.categorias().subscribe({ next: l => this.categorias.set(l), error: () => undefined });
@@ -83,12 +103,58 @@ export class Inventario implements OnInit {
     return Math.min(100, Math.round(((f.stock ?? 0) / tope) * 100));
   }
 
+  /** @param f fila @returns si tiene máximo y su stock lo pasa (D17: se permite, se avisa) */
+  protected sobreMaximo(f: Fila): boolean {
+    return f.stockMaximo != null && (f.stock ?? 0) > f.stockMaximo;
+  }
+
   /** @param f fila */
   protected estado(f: Fila): { texto: string; tono: string } {
     if ((f.stock ?? 0) <= 0) {
       return { texto: 'Sin existencias', tono: 'rojo' };
     }
+    if (this.sobreMaximo(f)) {
+      return { texto: 'Sobre el máximo', tono: 'azul' };
+    }
     return f.bajoMinimo ? { texto: 'Bajo el mínimo', tono: 'ambar' } : { texto: 'Normal', tono: 'verde' };
+  }
+
+  /** @param tipo abre el alta corta de una categoría o un proveedor, sin perder lo escrito en el producto */
+  protected abrirAlVuelo(tipo: 'categoria' | 'proveedor'): void {
+    this.alVuelo.set(tipo);
+    this.nombreNuevo.set('');
+    this.nitNuevo.set('');
+  }
+
+  /** Guarda la categoría o el proveedor nuevo y lo deja elegido en el formulario del producto (spec 026). */
+  protected guardarAlVuelo(): void {
+    const nombre = this.nombreNuevo().trim();
+    if (!nombre) {
+      this.avisos.ok('Escribe el nombre.');
+      return;
+    }
+    if (this.alVuelo() === 'categoria') {
+      this.servicio.crearCategoria(nombre).subscribe({
+        next: c => {
+          this.categorias.update(l => [...l, c].sort((a, b) => (a.nombre ?? '').localeCompare(b.nombre ?? '')));
+          this.nuevo.controls.categoriaId.setValue(c.id!);
+          this.alVuelo.set(null);
+          this.avisos.ok(`Categoría ${c.nombre} creada y elegida.`);
+        },
+        error: e => this.avisos.error(e),
+      });
+      return;
+    }
+    const nit = this.nitNuevo().trim();
+    this.servicio.crearProveedor({ razonSocial: nombre, nit: nit || undefined }).subscribe({
+      next: p => {
+        this.proveedores.update(l => [...l, p].sort((a, b) => (a.razonSocial ?? '').localeCompare(b.razonSocial ?? '')));
+        this.nuevo.controls.proveedorReferenciaId.setValue(p.id!);
+        this.alVuelo.set(null);
+        this.avisos.ok(`Proveedor ${p.razonSocial} creado y elegido.`);
+      },
+      error: e => this.avisos.error(e),
+    });
   }
 
   /** @param p panel que se abre (o se cierra si ya estaba abierto) */
@@ -96,7 +162,9 @@ export class Inventario implements OnInit {
     this.panel.set(this.panel() === p ? 'ninguno' : p);
     if (p === 'nuevo') {
       this.editandoId.set(null);
-      this.nuevo.reset({ codigo: '', nombre: '', categoriaId: 0, unidadMedidaId: 0, stockMinimo: 0, stockMaximo: null, costoReferencia: null });
+      this.nuevo.reset({ codigo: '', nombre: '', categoriaId: 0, unidadMedidaId: 0, stockMinimo: 0, stockMaximo: null, costoReferencia: null,
+        tarifaImpuestoId: null, proveedorReferenciaId: null, costoReferenciaFecha: null });
+      this.alVuelo.set(null);
       this.cargarUnidades();
     }
     if (p === 'inactivos' && this.panel() === 'inactivos') {
@@ -116,7 +184,10 @@ export class Inventario implements OnInit {
         this.nuevo.reset({
           codigo: p.codigo ?? '', nombre: p.nombre ?? '', categoriaId: p.categoria?.id ?? 0, unidadMedidaId: p.unidadMedida?.id ?? 0,
           stockMinimo: p.stockMinimo ?? 0, stockMaximo: p.stockMaximo ?? null, costoReferencia: p.costoReferencia ?? null,
+          tarifaImpuestoId: p.tarifaImpuestoId ?? null, proveedorReferenciaId: p.proveedorReferenciaId ?? null,
+          costoReferenciaFecha: p.costoReferenciaFecha ?? null,
         });
+        this.alVuelo.set(null);
         this.panel.set('nuevo');
       },
       error: e => this.avisos.error(e),
@@ -159,6 +230,13 @@ export class Inventario implements OnInit {
     if (!this.unidades().length) {
       this.servicio.unidades().subscribe({ next: l => this.unidades.set(l), error: () => undefined });
     }
+    // spec 026: impuestos y proveedores para el formulario (si el rol no los ve, quedan vacíos y no se muestran)
+    if (!this.impuestos().length) {
+      this.ventas.impuestos().subscribe({ next: l => this.impuestos.set(l.filter(t => t.activo !== false)), error: () => undefined });
+    }
+    if (!this.proveedores().length) {
+      this.servicio.proveedoresHabilitados().subscribe({ next: p => this.proveedores.set(p.contenido ?? []), error: () => undefined });
+    }
   }
 
   private cargarInactivos(): void {
@@ -183,7 +261,9 @@ export class Inventario implements OnInit {
       return;
     }
     const v = this.nuevo.getRawValue();
-    const datos = { ...v, stockMaximo: v.stockMaximo ?? undefined, costoReferencia: v.costoReferencia ?? undefined };
+    const datos = { ...v, stockMaximo: v.stockMaximo ?? undefined, costoReferencia: v.costoReferencia ?? undefined,
+      tarifaImpuestoId: v.tarifaImpuestoId ?? undefined, proveedorReferenciaId: v.proveedorReferenciaId ?? undefined,
+      costoReferenciaFecha: v.costoReferenciaFecha || undefined };
     const id = this.editandoId();
     this.trabajando.set(true);
     (id ? this.servicio.actualizarProducto(id, datos) : this.servicio.crear(datos)).subscribe({

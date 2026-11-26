@@ -237,4 +237,31 @@ class ProveedorServiceTest {
     private void sesion(UsuarioAutenticado u) {
         request.setAttribute(SesionActual.ATRIBUTO, u);
     }
+
+    /** Spec 026: alta corta desde el producto, solo con el nombre; queda habilitado y revisado por quien lo crea. */
+    @Test
+    void elAltaInternaSoloPideElNombreYQuedaHabilitado() {
+        var r = service.crearInterno(new com.proyecto.supply_core.proveedor.dto.ProveedorNuevoRequest(
+                "  Ferretería El Clavo ", "", null, null));
+
+        var guardado = org.mockito.ArgumentCaptor.forClass(Proveedor.class);
+        verify(proveedores).save(guardado.capture());
+        assertEquals("Ferretería El Clavo", guardado.getValue().getRazonSocial());
+        assertEquals(null, guardado.getValue().getNit());
+        assertEquals(EstadoProveedor.HABILITADO, guardado.getValue().getEstado());
+        assertEquals(1L, guardado.getValue().getRevisadoPorUsuarioId());
+        assertEquals(40L, r.id());
+    }
+
+    /** El NIT, si se escribe, no se puede repetir en la empresa. */
+    @Test
+    void elAltaInternaConUnNitRepetidoSeRechaza() {
+        when(proveedores.existsByNitIgnoreCase("900111222")).thenReturn(true);
+
+        var e = assertThrows(NegocioException.class, () -> service.crearInterno(
+                new com.proyecto.supply_core.proveedor.dto.ProveedorNuevoRequest("Otro", "900111222", null, null)));
+
+        assertEquals("NIT_DUPLICADO", e.getCodigo());
+        verify(proveedores, never()).save(any());
+    }
 }

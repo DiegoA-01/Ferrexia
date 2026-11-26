@@ -2396,6 +2396,39 @@ class AislamientoEmpresasTest {
             mvc.perform(get("/api/ventas/productos?categoriaId=" + categoriaA).header(HttpHeaders.AUTHORIZATION, cajeroB))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.length()").value(0));
+            // spec 026: proveedor al vuelo (solo el nombre) y producto completo; un proveedor de B no sirve en A
+            String comprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+            String comprasB = token(empresaB, usuarioB, "ADMIN_COMPRAS");
+            long proveedorA026 = new com.fasterxml.jackson.databind.ObjectMapper().readTree(mvc.perform(post("/api/proveedores")
+                            .header(HttpHeaders.AUTHORIZATION, comprasA).contentType(json).content("{\"razonSocial\":\"Fuga 026 A\"}"))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.estado").value("HABILITADO"))
+                    .andReturn().getResponse().getContentAsString()).get("id").asLong();
+            long proveedorB026 = new com.fasterxml.jackson.databind.ObjectMapper().readTree(mvc.perform(post("/api/proveedores")
+                            .header(HttpHeaders.AUTHORIZATION, comprasB).contentType(json).content("{\"razonSocial\":\"Fuga 026 B\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            Long unidadA = jdbc.queryForObject("SELECT unidad_medida_id FROM producto WHERE id = ?", Long.class, productoA);
+            String nuevo026 = "{\"codigo\":\"FUGA-026\",\"nombre\":\"Producto 026\",\"categoriaId\":" + categoriaA
+                    + ",\"unidadMedidaId\":" + unidadA + ",\"stockMinimo\":1,\"stockMaximo\":5,\"costoReferencia\":1000,"
+                    + "\"proveedorReferenciaId\":%d}";
+            mvc.perform(post("/api/productos").header(HttpHeaders.AUTHORIZATION, comprasA).contentType(json)
+                            .content(nuevo026.formatted(proveedorB026)))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PROVEEDOR_INVALIDO"));
+            long producto026 = new com.fasterxml.jackson.databind.ObjectMapper().readTree(mvc.perform(post("/api/productos")
+                            .header(HttpHeaders.AUTHORIZATION, comprasA).contentType(json).content(nuevo026.formatted(proveedorA026)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.proveedorReferencia").value("Fuga 026 A"))
+                    .andExpect(jsonPath("$.costoReferenciaFecha").exists())
+                    .andReturn().getResponse().getContentAsString()).get("id").asLong();
+            // D17: con más stock que el máximo, el producto sale en "sobre el máximo" de A y nunca en B
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 9)",
+                    empresaA, producto026, bodegaA);
+            mvc.perform(get("/api/productos/sobre-maximo").header(HttpHeaders.AUTHORIZATION, comprasA))
+                    .andExpect(jsonPath("$[?(@.id==" + producto026 + ")].sobreStockMaximo").value(org.hamcrest.Matchers.hasItem(true)));
+            mvc.perform(get("/api/productos/sobre-maximo").header(HttpHeaders.AUTHORIZATION, comprasB))
+                    .andExpect(jsonPath("$[?(@.id==" + producto026 + ")]").isEmpty());
+            jdbc.update("DELETE FROM stock_producto_bodega WHERE producto_id = ?", producto026);
+            jdbc.update("DELETE FROM producto WHERE id = ?", producto026);
+            jdbc.update("DELETE FROM proveedor WHERE id IN (?, ?)", proveedorA026, proveedorB026);
             // el cajero busca, pero no ve márgenes ni fija precios
             mvc.perform(get("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, cajeroA))
                     .andExpect(status().isForbidden());
@@ -2611,6 +2644,12 @@ class AislamientoEmpresasTest {
                     .andExpect(status().isNotFound());
             mvc.perform(get("/api/cajas/mias").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "CAJERO")))
                     .andExpect(jsonPath("$[?(@.id==" + cajaId + ")]").isEmpty());
+            // la ficha del trabajador muestra sus cajas; la persona de A no existe para B
+            mvc.perform(get("/api/cajas/de-usuario/" + usuarioA2).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                    .andExpect(jsonPath("$[0].nombre").value("Caja 1"));
+            mvc.perform(get("/api/cajas/de-usuario/" + usuarioA2).header(HttpHeaders.AUTHORIZATION, duenoB2))
+                    .andExpect(status().isNotFound());
             assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM caja_usuario WHERE empresa_id = ?", Integer.class, empresaA));
             assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM caja_usuario WHERE empresa_id = ?", Integer.class, empresaB));
             jdbc.update("UPDATE caja SET activa = FALSE WHERE id = ?", caja2);
