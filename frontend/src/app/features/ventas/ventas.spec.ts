@@ -12,12 +12,19 @@ import { Ventas } from './ventas';
 
 const resumen: VentaResumen = { id: 5, consecutivo: 'C1-000005', estado: 'CONFIRMADA', caja: 'Caja 1', cliente: 'Consumidor final', cajero: 'Pedro', totalAPagar: 18500 };
 const pagina = <T>(l: T[]) => ({ contenido: l, pagina: 0, tamano: 20, totalElementos: l.length, totalPaginas: 1 });
-const sesion = (roles: string[]) => ({ provide: SesionService,
-  useValue: { tieneRol: (r: string[]) => r.some(x => roles.includes(x)), soloLectura: () => false, empresa: signal(null),
-    // spec 029: Dueño y Supervisor anulan de otro turno y cambian pagos sin PIN
-    tienePermiso: (p: string) => (['VENTA_ANULAR_OTRO_TURNO', 'VENTA_CAMBIAR_PAGO'].includes(p)
-      && roles.some(x => x === 'ADMIN_SISTEMA' || x === 'SUPERVISOR_VENTAS'))
-      || (p === 'VENTA_VER_TODAS' && roles.some(x => ['ADMIN_SISTEMA', 'SUPERVISOR_VENTAS', 'AUDITOR'].includes(x))) } });
+/** Permisos que da cada rol en estas pruebas (si se pasan `permisos`, solo valen esos). */
+const permisosDe = (roles: string[]) => new Set<string>([
+  ...(roles.some(x => ['CAJERO', 'SUPERVISOR_VENTAS'].includes(x)) ? ['VENTA_COBRAR', 'DEVOLUCION_REGISTRAR'] : []),
+  // spec 029: Dueño y Supervisor anulan de otro turno y cambian pagos sin PIN
+  ...(roles.some(x => x === 'ADMIN_SISTEMA' || x === 'SUPERVISOR_VENTAS') ? ['VENTA_ANULAR_OTRO_TURNO', 'VENTA_CAMBIAR_PAGO'] : []),
+  ...(roles.some(x => ['ADMIN_SISTEMA', 'SUPERVISOR_VENTAS', 'AUDITOR'].includes(x)) ? ['VENTA_VER_TODAS'] : []),
+]);
+const sesion = (roles: string[], permisos?: string[]) => {
+  const dados = permisos ? new Set(permisos) : permisosDe(roles);
+  return { provide: SesionService,
+    useValue: { tieneRol: (r: string[]) => r.some(x => roles.includes(x)), soloLectura: () => false, empresa: signal(null),
+      tienePermiso: (p: string) => dados.has(p) } };
+};
 const limites = [{ rol: 'CAJERO', descuentoMaximoPct: 5 }, { rol: 'SUPERVISOR_VENTAS', descuentoMaximoPct: 15 }, { rol: 'VENDEDOR', descuentoMaximoPct: 5 }];
 
 describe('Ventas', () => {
@@ -27,12 +34,13 @@ describe('Ventas', () => {
   const texto = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
 
   /** @param roles roles de la sesión; @param turno turno abierto de quien tiene caja */
-  const crear = (roles: string[], turno: object | null = null) => {
-    TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), sesion(roles)] });
+  const crear = (roles: string[], turno: object | null = null, permisos?: string[]) => {
+    TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), sesion(roles, permisos)] });
     backend = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Ventas);
     fixture.detectChanges();
-    if (roles.some(r => r === 'CAJERO' || r === 'SUPERVISOR_VENTAS')) {
+    const dados = permisos ?? [...permisosDe(roles)];
+    if (dados.includes('VENTA_COBRAR') || dados.includes('DEVOLUCION_REGISTRAR')) {
       const actual = backend.expectOne('/api/turnos/actual');
       if (turno) {
         actual.flush(turno);
@@ -60,18 +68,82 @@ describe('Ventas', () => {
     expect(c()['esDueno']()).toBe(false);
   });
 
-  it('spec 036: el detalle se despliega en la misma fila y se cierra con el mismo botón', () => {
+  it('el detalle se abre en una ventana flotante (no en la fila) y se cierra con el botón y con Escape', () => {
     crear(['SUPERVISOR_VENTAS']);
+    const raiz = fixture.nativeElement as HTMLElement;
+    expect(raiz.querySelector('[role="dialog"]')).toBeNull();
     c()['ver'](resumen);
     backend.expectOne('/api/ventas/5').flush({ ...resumen, lineas: [], pagos: [] });
     fixture.detectChanges();
-    const filas = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.tabla > tbody > tr')];
-    expect(filas[0].classList).toContain('abierta');
-    expect(filas[1].classList).toContain('fila-detalle');
-    expect(filas[1].querySelector('.detalle')).not.toBeNull();
+    const dialogo = raiz.querySelector('[role="dialog"]')!;
+    expect(dialogo).not.toBeNull();
+    expect(dialogo.getAttribute('aria-modal')).toBe('true');
+    expect(dialogo.querySelector('#t-detalle')!.textContent).toContain('Venta C1-000005');
+    expect(raiz.querySelectorAll('.tabla > tbody > tr').length).toBe(1);
+    expect(raiz.querySelector('.tabla .detalle')).toBeNull();
+    expect(raiz.querySelector('.tabla button')!.textContent).toContain('Detalle');
+    // botón cerrar (X)
+    (dialogo.querySelector('button[aria-label="Cerrar la ventana"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(raiz.querySelector('[role="dialog"]')).toBeNull();
+    // Escape
     c()['ver'](resumen);
-    backend.expectNone('/api/ventas/5');
-    expect(c()['detalle']()).toBeNull();
+    backend.expectOne('/api/ventas/5').flush({ ...resumen, lineas: [], pagos: [] });
+    fixture.detectChanges();
+    expect(raiz.querySelector('[role="dialog"]')).not.toBeNull();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    expect(raiz.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('el clic en el fondo cierra la ventana solo si no hay una corrección a medias', () => {
+    crear(['CAJERO'], { id: 4, estado: 'ABIERTO' });
+    const raiz = fixture.nativeElement as HTMLElement;
+    c()['ver'](resumen);
+    backend.expectOne('/api/ventas/5').flush({ ...resumen, turnoId: 4, turnoAbierto: true, totalDevuelto: 0, lineas: [], pagos: [] });
+    fixture.detectChanges();
+    c()['empezar']('anular');
+    fixture.detectChanges();
+    (raiz.querySelector('.velo-venta') as HTMLElement).click();
+    fixture.detectChanges();
+    expect(raiz.querySelector('[role="dialog"]')).not.toBeNull();
+    c()['correccion'].set(null);
+    fixture.detectChanges();
+    (raiz.querySelector('.modal-venta') as HTMLElement).click();
+    expect(raiz.querySelector('[role="dialog"]')).not.toBeNull();
+    (raiz.querySelector('.velo-venta') as HTMLElement).click();
+    fixture.detectChanges();
+    expect(raiz.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('Anular lo decide VENTA_COBRAR y Devolver DEVOLUCION_REGISTRAR, no el rol', () => {
+    const venta = { ...resumen, turnoId: 4, turnoAbierto: true, totalDevuelto: 0,
+      lineas: [{ id: 11, nombre: 'Cable', cantidad: 5, cantidadDevuelta: 0, totalLinea: 18500 }], pagos: [] };
+    const abrir = () => {
+      c()['ver'](resumen);
+      backend.expectOne('/api/ventas/5').flush(venta);
+      fixture.detectChanges();
+    };
+    const botones = () => [...(fixture.nativeElement as HTMLElement).querySelectorAll('[role="dialog"] button')].map(b => b.textContent!.trim());
+    // el Dueño (ADMIN_SISTEMA) con solo VENTA_COBRAR y su turno abierto anula, pero no devuelve
+    crear(['ADMIN_SISTEMA'], { id: 4, estado: 'ABIERTO' }, ['VENTA_COBRAR', 'VENTA_VER_TODAS']);
+    abrir();
+    expect(botones()).toContain('Anular');
+    expect(botones()).not.toContain('Devolver');
+    backend.verify();
+    TestBed.resetTestingModule();
+    // con solo DEVOLUCION_REGISTRAR devuelve, pero no anula
+    crear(['BODEGUERO'], { id: 4, estado: 'ABIERTO' }, ['DEVOLUCION_REGISTRAR']);
+    abrir();
+    expect(botones()).toContain('Devolver');
+    expect(botones()).not.toContain('Anular');
+    backend.verify();
+    TestBed.resetTestingModule();
+    // sin los permisos no ve ninguno (aunque el rol sea CAJERO) y ni siquiera pide el turno
+    crear(['CAJERO'], null, ['VENTA_VER_TODAS']);
+    abrir();
+    expect(botones()).not.toContain('Anular');
+    expect(botones()).not.toContain('Devolver');
   });
 
   it('con permiso anula una factura de un turno cerrado sin PIN y ve el historial de pagos (spec 029)', () => {

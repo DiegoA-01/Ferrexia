@@ -46,14 +46,16 @@ const ROLES_LIMITE: Record<string, string> = { CAJERO: 'Cajero', SUPERVISOR_VENT
   selector: 'sc-ventas',
   imports: [Cifra, FormsModule, RouterLink, PesosPipe, NumeroPipe, FechaPipe, AutorizacionPin, CambioPago],
   templateUrl: './ventas.html',
+  host: { '(document:keydown.escape)': 'alEscape()' },
   styles: `
     .filtros { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--sc-borde); align-items: flex-end;
       .campo { min-width: 150px; } }
     .sub { display: block; font-size: 12px; color: var(--sc-texto-2); }
     .detalle { display: grid; gap: 12px; h2 { margin: 0; } }
-    tr.abierta td { background: var(--sc-primario-suave); }
-    tr.fila-detalle > td { padding: 0 8px 12px; background: var(--sc-primario-suave); }
-    tr.fila-detalle .detalle { margin: 0; box-shadow: none; }
+    .velo-venta { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .4); display: flex; align-items: flex-start; justify-content: center;
+      padding: 4vh 16px; overflow-y: auto; }
+    .modal-venta { width: min(960px, 100%); max-height: 92vh; overflow-y: auto; margin: 0; outline: none; }
+    @media (max-width: 600px) { .velo-venta { padding: 8px; } .modal-venta { max-height: calc(100vh - 16px); } }
     .totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 0;
       dt { font-size: 12px; color: var(--sc-texto-2); } dd { margin: 0; font-weight: 600; } }
     .limites { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
@@ -90,8 +92,10 @@ export class Ventas implements OnInit {
 
   protected readonly esDueno = computed(() => this.sesion.tieneRol(['ADMIN_SISTEMA']) && !this.sesion.soloLectura());
   protected readonly veLimites = computed(() => this.sesion.tieneRol(['ADMIN_SISTEMA', 'SUPERVISOR_VENTAS', 'AUDITOR']));
-  /** Quien tiene caja corrige ventas: anula en su turno y recibe devoluciones. */
-  protected readonly cobra = computed(() => this.sesion.tieneRol(['CAJERO', 'SUPERVISOR_VENTAS']) && !this.sesion.soloLectura());
+  /** Quien puede cobrar (anular en su turno) o recibir devoluciones necesita saber su turno abierto; lo decide el permiso, no el rol. */
+  protected readonly cobra = computed(() => this.sesion.tienePermiso('VENTA_COBRAR') && !this.sesion.soloLectura());
+  /** Permiso de devolver (el backend pide DEVOLUCION_REGISTRAR). */
+  protected readonly devuelve = computed(() => this.sesion.tienePermiso('DEVOLUCION_REGISTRAR') && !this.sesion.soloLectura());
   /** Quien no tiene VENTA_VER_TODAS ve las ventas que cobró o vendió (el aviso lo explica). */
   protected readonly soloPropias = computed(() => !this.sesion.tienePermiso('VENTA_VER_TODAS'));
   /** Consecutivos sugeridos mientras se escribe en el campo Consecutivo. */
@@ -122,7 +126,7 @@ export class Ventas implements OnInit {
   });
   protected readonly puedeDevolver = computed(() => {
     const d = this.detalle();
-    return !!d && this.cobra() && !!this.miTurno() && d.estado === 'CONFIRMADA'
+    return !!d && this.devuelve() && !!this.miTurno() && d.estado === 'CONFIRMADA'
       && (d.lineas ?? []).some(l => (l.cantidad ?? 0) > (l.cantidadDevuelta ?? 0));
   });
   protected readonly totalDevolucionValido = computed(() =>
@@ -130,7 +134,7 @@ export class Ventas implements OnInit {
     && this.lineasDevueltas().every(l => l.cantidad >= 0 && l.cantidad <= l.maximo));
 
   ngOnInit(): void {
-    if (this.cobra()) {
+    if (this.sesion.tienePermiso('VENTA_COBRAR') || this.sesion.tienePermiso('DEVOLUCION_REGISTRAR')) {
       this.caja.actual().subscribe({ next: t => this.miTurno.set(t), error: (e: HttpErrorResponse) => e.status === 404 || this.avisos.error(e) });
     }
     this.buscar();
@@ -177,19 +181,35 @@ export class Ventas implements OnInit {
 
   /** @param v venta del historial */
   protected ver(v: VentaResumen): void {
-    // spec 036: el detalle se despliega en la misma fila; oprimir otra vez lo cierra
-    if (this.detalle()?.id === v.id) {
-      this.detalle.set(null);
-      return;
-    }
+    // el detalle se abre en una ventana flotante con el foco dentro
     this.ventas.obtener(v.id!).subscribe({
       next: d => {
         this.abrir(d);
-        // lo justo para que el detalle quede a la vista, sin saltar si ya se ve
-        setTimeout(() => document.querySelector('.fila-detalle')?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }));
+        setTimeout(() => document.querySelector<HTMLElement>('.modal-venta')?.focus());
       },
       error: e => this.avisos.error(e),
     });
+  }
+
+  /** Cierra la ventana del detalle y cualquier corrección a medias. */
+  protected cerrar(): void {
+    this.detalle.set(null);
+    this.correccion.set(null);
+    this.pidiendoPin.set(false);
+  }
+
+  /** Escape cierra la ventana salvo que se esté enviando una corrección. */
+  protected alEscape(): void {
+    if (this.detalle() && !this.enviando()) {
+      this.cerrar();
+    }
+  }
+
+  /** @param e clic en el fondo: cierra solo si cayó fuera de la ventana y no hay un panel a medio llenar */
+  protected clicFondo(e: Event): void {
+    if (e.target === e.currentTarget && !this.correccion() && !this.enviando()) {
+      this.cerrar();
+    }
   }
 
   /** @param d venta a mostrar; cierra cualquier corrección a medias */
