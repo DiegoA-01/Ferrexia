@@ -89,16 +89,15 @@ public final class GrupoDtos {
      *
      * @param id            id de la empresa
      * @param razonSocial   nombre de la empresa
-     * @param codigoPublico código con el que se entra a la empresa
      */
-    public record EmpresaDeGrupoResponse(Long id, String razonSocial, String codigoPublico) {
+    public record EmpresaDeGrupoResponse(Long id, String razonSocial) {
 
         /**
          * @param e empresa
          * @return su vista dentro del grupo
          */
         public static EmpresaDeGrupoResponse of(Empresa e) {
-            return new EmpresaDeGrupoResponse(e.getId(), e.getRazonSocial(), e.getCodigoPublico());
+            return new EmpresaDeGrupoResponse(e.getId(), e.getRazonSocial());
         }
     }
 
@@ -199,10 +198,9 @@ public final class GrupoDtos {
      *
      * @param id            id de la empresa
      * @param razonSocial   nombre
-     * @param codigoPublico código de la empresa
      * @param estado        estado de su suscripción (una suspendida no deja entrar)
      */
-    public record EmpresaEntrableResponse(Long id, String razonSocial, String codigoPublico, String estado) {
+    public record EmpresaEntrableResponse(Long id, String razonSocial, String estado) {
     }
 
     /**

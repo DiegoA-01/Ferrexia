@@ -20,7 +20,7 @@ Decisión del usuario (2026-10-01): firma/verificación con **jjwt 0.13.0** (`jj
 - Pendiente: revocar sesiones al cambiar/restablecer contraseña y al desactivar usuario (hoy el corte llega al vencer el JWT, máx. 15 min); MFA.
 
 ## Login (UC-01)
-`POST /api/auth/login {empresa, correo, password}` (`empresa` = código público; el correo es único por empresa y la búsqueda del usuario ocurre dentro de ella) → buscar usuario activo, `BCrypt.matches`; error genérico "Credenciales inválidas"; inactivo → "Cuenta inactiva, contacte al administrador". Éxito: actualizar `ultimo_acceso`, auditar `LOGIN` (EXITO/FALLO con ip), devolver `{token, expiraEn, usuario:{id,nombre,roles}}`.
+`POST /api/auth/login {correo, password}` (spec 037: el correo es único en todo el sistema; con él se halla la empresa y la búsqueda del usuario ocurre dentro de ella) → buscar usuario activo, `BCrypt.matches`; error genérico "Credenciales inválidas"; inactivo → "Cuenta inactiva, contacte al administrador". Éxito: actualizar `ultimo_acceso`, auditar `LOGIN` (EXITO/FALLO con ip), devolver `{token, expiraEn, usuario:{id,nombre,roles}}`.
 
 ## Admin inicial
 `DataInitializer` (`CommandLineRunner`): si no existe usuario con rol ADMIN_SISTEMA, crearlo con `ADMIN_EMAIL`/`ADMIN_PASSWORD` de entorno, hasheado con BCrypt.

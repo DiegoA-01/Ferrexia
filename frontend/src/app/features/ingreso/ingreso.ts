@@ -7,7 +7,7 @@ import { LoginResponse } from '../../core/api/modelos';
 import { mensajeError } from '../../core/http/api';
 import { SesionService } from '../../core/sesion/sesion.service';
 
-/** Vista 1 · Ingreso por empresa (UC-01). Internos y proveedores entran por aquí; el rol decide a dónde van. */
+/** Vista 1 · Ingreso con correo y contraseña (UC-01); el correo identifica a la empresa (spec 037). Internos y proveedores entran por aquí; el rol decide a dónde van. */
 @Component({
   selector: 'sc-ingreso',
   imports: [FormsModule, ReactiveFormsModule, RouterLink],
@@ -20,7 +20,6 @@ export class Ingreso {
   private readonly ruta = inject(ActivatedRoute);
 
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    empresa: [this.sesion.ultimaEmpresa(), [Validators.required, Validators.maxLength(40)]],
     correo: ['', [Validators.required, Validators.email, Validators.maxLength(150)]],
     password: ['', [Validators.required, Validators.maxLength(72)]],
   });
@@ -38,10 +37,10 @@ export class Ingreso {
       this.form.markAllAsTouched();
       return;
     }
-    const { empresa, correo, password } = this.form.getRawValue();
+    const { correo, password } = this.form.getRawValue();
     this.enviando.set(true);
     this.error.set(null);
-    this.sesion.ingresar(empresa, correo, password).subscribe({
+    this.sesion.ingresar(correo, password).subscribe({
       next: r => {
         if (r.desafioMfa) {
           this.desafio.set(r);
@@ -87,7 +86,7 @@ export class Ingreso {
   }
 
   /** @param campo nombre del control */
-  protected invalido(campo: 'empresa' | 'correo' | 'password'): boolean {
+  protected invalido(campo: 'correo' | 'password'): boolean {
     const c = this.form.controls[campo];
     return c.invalid && c.touched;
   }

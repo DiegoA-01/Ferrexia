@@ -13,14 +13,13 @@ import com.proyecto.supply_core.plataforma.enums.EstadoSuscripcion;
  * @param id            id
  * @param razonSocial   nombre legal
  * @param nit           NIT
- * @param codigoPublico código público
  * @param plan          código del plan
  * @param planNombre    nombre del plan
  * @param estado        estado de la suscripción
  * @param motivoEstado  motivo del último cambio de estado
  * @param creadoEn      fecha de alta de la empresa
  */
-public record EmpresaPlataformaResponse(Long id, String razonSocial, String nit, String codigoPublico, String plan,
+public record EmpresaPlataformaResponse(Long id, String razonSocial, String nit, String plan,
         String planNombre, EstadoSuscripcion estado, String motivoEstado, LocalDateTime creadoEn) {
 
     /**
@@ -31,7 +30,7 @@ public record EmpresaPlataformaResponse(Long id, String razonSocial, String nit,
      * @return DTO
      */
     public static EmpresaPlataformaResponse of(Empresa e, Suscripcion s) {
-        return new EmpresaPlataformaResponse(e.getId(), e.getRazonSocial(), e.getNit(), e.getCodigoPublico(),
+        return new EmpresaPlataformaResponse(e.getId(), e.getRazonSocial(), e.getNit(),
                 s.getPlan().getCodigo(), s.getPlan().getNombre(), s.getEstado(), s.getMotivoEstado(), e.getCreadoEn());
     }
 }

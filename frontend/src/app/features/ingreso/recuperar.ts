@@ -7,7 +7,7 @@ import { PATRON_CLAVE } from '../../core/sesion/clave';
 import { SesionService } from '../../core/sesion/sesion.service';
 
 /**
- * Recuperación de una contraseña olvidada, en dos pasos y sin revelar si la cuenta existe: 1) código de empresa y correo,
+ * Recuperación de una contraseña olvidada, en dos pasos y sin revelar si la cuenta existe: 1) el correo,
  * 2) el código que llegó por correo y la contraseña nueva. El código sirve una vez y cierra las sesiones abiertas.
  */
 @Component({
@@ -20,7 +20,6 @@ export class Recuperar {
   private readonly sesion = inject(SesionService);
 
   protected readonly paso = signal<'pedir' | 'cambiar' | 'listo'>('pedir');
-  protected readonly empresa = signal(this.sesion.ultimaEmpresa());
   protected readonly correo = signal('');
   protected readonly token = signal('');
   protected readonly nueva = signal('');
@@ -34,13 +33,13 @@ export class Recuperar {
   protected readonly coinciden = computed(() => this.nueva() === this.confirmacion());
 
   protected pedir(): void {
-    if (!this.empresa().trim() || !this.correo().trim()) {
-      this.error.set('Escribe el código de tu empresa y tu correo.');
+    if (!this.correo().trim()) {
+      this.error.set('Escribe tu correo.');
       return;
     }
     this.enviando.set(true);
     this.error.set(null);
-    this.sesion.recuperar(this.empresa(), this.correo()).subscribe({
+    this.sesion.recuperar(this.correo()).subscribe({
       next: r => {
         this.enviando.set(false);
         this.aviso.set(r.mensaje ?? null);
@@ -61,7 +60,7 @@ export class Recuperar {
     }
     this.enviando.set(true);
     this.error.set(null);
-    this.sesion.restablecer(this.empresa(), this.token(), this.nueva()).subscribe({
+    this.sesion.restablecer(this.token(), this.nueva()).subscribe({
       next: () => {
         this.enviando.set(false);
         this.nueva.set('');

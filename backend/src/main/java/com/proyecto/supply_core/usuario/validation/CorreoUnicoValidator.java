@@ -1,8 +1,6 @@
 package com.proyecto.supply_core.usuario.validation;
 
-import java.util.Locale;
-
-import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
+import com.proyecto.supply_core.usuario.service.CorreoGlobal;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
@@ -10,17 +8,17 @@ import jakarta.validation.ConstraintValidatorContext;
 /** Implementa {@link CorreoUnico}. Spring lo crea e inyecta el repositorio por constructor. */
 public class CorreoUnicoValidator implements ConstraintValidator<CorreoUnico, String> {
 
-    private final UsuarioRepository usuarioRepository;
+    private final CorreoGlobal correoGlobal;
 
     /**
-     * @param usuarioRepository acceso a usuarios
+     * @param correoGlobal consulta del correo en todas las empresas
      */
-    public CorreoUnicoValidator(UsuarioRepository usuarioRepository) {
-        this.usuarioRepository = usuarioRepository;
+    public CorreoUnicoValidator(CorreoGlobal correoGlobal) {
+        this.correoGlobal = correoGlobal;
     }
 
     /**
-     * Comprueba que ningún usuario tenga ya el correo.
+     * Comprueba que ningún usuario de ninguna empresa tenga ya el correo (el interno de un super administrador no cuenta).
      *
      * @param correo  valor recibido
      * @param context contexto de validación
@@ -31,6 +29,6 @@ public class CorreoUnicoValidator implements ConstraintValidator<CorreoUnico, St
         if (correo == null || correo.isBlank()) {
             return true;
         }
-        return !usuarioRepository.existsByCorreoIgnoreCase(correo.trim().toLowerCase(Locale.ROOT));
+        return !correoGlobal.enUso(correo, null);
     }
 }

@@ -179,7 +179,7 @@ export class Usuarios implements OnInit {
       next: r => {
         this.trabajando.set(false);
         this.panel.set({ tipo: 'ninguno' });
-        this.avisos.ok(u ? `${r.nombreCompleto}: cambios guardados.` : `${r.nombreCompleto} ya puede ingresar con el código de la empresa.`);
+        this.avisos.ok(u ? `${r.nombreCompleto}: cambios guardados.` : `${r.nombreCompleto} ya puede ingresar con su correo y su contraseña.`);
         this.cargar();
       },
       error: e => {

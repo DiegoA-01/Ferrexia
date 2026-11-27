@@ -45,8 +45,8 @@ class GrupoTableroServiceTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(GrupoActual.ATRIBUTO, new GrupoAutenticado(7L, 2L, "super@grupo.com", "Super"));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
-        when(empresas.empresas()).thenReturn(List.of(new EmpresaEntrableResponse(10L, "A", "a", "ACTIVA"),
-                new EmpresaEntrableResponse(11L, "B", "b", "ACTIVA")));
+        when(empresas.empresas()).thenReturn(List.of(new EmpresaEntrableResponse(10L, "A", "ACTIVA"),
+                new EmpresaEntrableResponse(11L, "B", "ACTIVA")));
         cifras();
     }
 

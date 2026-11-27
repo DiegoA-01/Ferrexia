@@ -55,7 +55,8 @@ class UsuarioServiceTest {
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final SesionUsuarioService sesiones = mock(SesionUsuarioService.class);
     private final MfaUsuarioService mfa = mock(MfaUsuarioService.class);
-    private final UsuarioService service = new UsuarioService(usuarios, roles, encoder, auditoria, sesiones, mfa);
+    private final CorreoGlobal correoGlobal = mock(CorreoGlobal.class);
+    private final UsuarioService service = new UsuarioService(usuarios, roles, encoder, auditoria, sesiones, mfa, correoGlobal);
     private Usuario admin;
 
     @BeforeEach
@@ -103,7 +104,7 @@ class UsuarioServiceTest {
 
     @Test
     void editarConCorreoDeOtroUsuarioSeRechaza() {
-        when(usuarios.existsByCorreoIgnoreCaseAndIdNot("ana@demo.com", ADMIN_ID)).thenReturn(true);
+        when(correoGlobal.enUso("ana@demo.com", ADMIN_ID)).thenReturn(true);
         var ex = assertThrows(NegocioException.class, () -> service.actualizar(ADMIN_ID,
                 new UsuarioUpdateRequest("Admin", "ana@demo.com", Set.of("ADMIN_SISTEMA"), null, null)));
         assertEquals("CORREO_DUPLICADO", ex.getCodigo());

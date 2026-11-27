@@ -8,7 +8,6 @@ import { api } from '../http/api';
 import { Acceso } from './acceso';
 
 const CLAVE_REFRESH = 'sc.refresh';
-const CLAVE_EMPRESA = 'sc.empresa';
 const CLAVE_DESDE_GRUPO = 'sc.desdeGrupo';
 
 /**
@@ -48,20 +47,18 @@ export class SesionService {
   }
 
   /**
-   * Inicia sesión con el código de la empresa. Si el usuario tiene MFA (o es administrador y debe configurarlo), la
+   * Inicia sesión solo con el correo y la contraseña (o PIN); el backend encuentra la empresa por el correo. Si el usuario tiene MFA (o es administrador y debe configurarlo), la
    * respuesta trae {@code desafioMfa} y todavía no hay sesión: falta {@link #confirmarMfa}.
    *
-   * @param empresa  código público de la empresa
    * @param correo   correo del usuario
    * @param password contraseña
    */
-  ingresar(empresa: string, correo: string, password: string): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(api('/api/auth/login'), { empresa: empresa.trim(), correo: correo.trim(), password })
+  ingresar(correo: string, password: string): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(api('/api/auth/login'), { correo: correo.trim(), password })
       .pipe(tap(r => {
         if (r.token) {
           this.guardar(r);
         }
-        this.escribir(localStorage, CLAVE_EMPRESA, empresa.trim());
       }));
   }
 
@@ -115,27 +112,20 @@ export class SesionService {
   /**
    * Pide el código de recuperación por correo. El aviso es el mismo exista o no la cuenta.
    *
-   * @param empresa código de la empresa
-   * @param correo  correo de la cuenta
+   * @param correo correo de la cuenta
    */
-  recuperar(empresa: string, correo: string): Observable<MensajeApi> {
-    return this.http.post<MensajeApi>(api('/api/auth/recuperar'), { empresa: empresa.trim(), correo: correo.trim() });
+  recuperar(correo: string): Observable<MensajeApi> {
+    return this.http.post<MensajeApi>(api('/api/auth/recuperar'), { correo: correo.trim() });
   }
 
   /**
    * Cambia la contraseña con el código recibido por correo (sirve una sola vez y cierra las sesiones abiertas).
    *
-   * @param empresa       código de la empresa
    * @param token         código recibido por correo
    * @param passwordNueva contraseña nueva
    */
-  restablecer(empresa: string, token: string, passwordNueva: string): Observable<MensajeApi> {
-    return this.http.post<MensajeApi>(api('/api/auth/restablecer'), { empresa: empresa.trim(), token: token.trim(), passwordNueva });
-  }
-
-  /** Último código de empresa usado en este navegador, para no escribirlo cada vez. */
-  ultimaEmpresa(): string {
-    return this.leer(localStorage, CLAVE_EMPRESA) ?? '';
+  restablecer(token: string, passwordNueva: string): Observable<MensajeApi> {
+    return this.http.post<MensajeApi>(api('/api/auth/restablecer'), { token: token.trim(), passwordNueva });
   }
 
   /**

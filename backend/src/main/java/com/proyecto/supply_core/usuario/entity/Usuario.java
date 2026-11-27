@@ -57,6 +57,17 @@ public class Usuario {
     @Column(nullable = false, length = 150)
     private String correo;
 
+    /**
+     * Correo en minúsculas con el que se entra y que es único en todo el sistema (V58); {@code null} para el usuario
+     * interno de un super administrador de grupo. Lo mantiene la propia entidad al guardar.
+     */
+    @Column(name = "correo_login", length = 150)
+    private String correoLogin;
+
+    /** Solo al crear: el usuario es el interno de un super administrador de grupo (spec 035) y no lleva {@code correoLogin}. */
+    @jakarta.persistence.Transient
+    private boolean internoGrupo;
+
     /** Hash BCrypt; nunca la contraseña real. */
     @Column(name = "hash_password", nullable = false)
     private String hashPassword;
@@ -121,11 +132,22 @@ public class Usuario {
             inverseJoinColumns = @JoinColumn(name = "rol_id"))
     private Set<Rol> roles = new HashSet<>();
 
-    /** Fija la fecha de creación al insertar (si no se asignó antes). */
+    /** Fija la fecha de creación al insertar (si no se asignó antes) y el correo de ingreso. */
     @PrePersist
     void alCrear() {
         if (creadoEn == null) {
             creadoEn = LocalDateTime.now();
+        }
+        if (!internoGrupo && correo != null) {
+            correoLogin = correo.trim().toLowerCase(java.util.Locale.ROOT);
+        }
+    }
+
+    /** Mantiene {@code correoLogin} al cambiar el correo (el interno de grupo sigue en {@code null}). */
+    @jakarta.persistence.PreUpdate
+    void alActualizar() {
+        if (correoLogin != null && correo != null) {
+            correoLogin = correo.trim().toLowerCase(java.util.Locale.ROOT);
         }
     }
 

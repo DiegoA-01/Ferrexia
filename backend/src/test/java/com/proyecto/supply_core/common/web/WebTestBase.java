@@ -51,6 +51,10 @@ public abstract class WebTestBase {
     @MockitoBean
     protected UsuarioRepository usuarioRepository;
 
+    /** Consulta global del correo (spec 037): el validador @CorreoUnico la usa. */
+    @MockitoBean
+    protected com.proyecto.supply_core.usuario.service.CorreoGlobal correoGlobal;
+
     /** Simulado: valida los enlaces de cotización de {@code /api/publico/cotizar/**} (spec 031). */
     @MockitoBean
     protected FirmaEnlace firmaEnlace;

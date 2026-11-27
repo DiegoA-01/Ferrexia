@@ -37,9 +37,18 @@ describe('Ingreso con segundo factor', () => {
   const texto = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
 
   const escribirYEnviar = () => {
-    fixture.componentInstance['form'].setValue({ empresa: 'demo', correo: 'ana@x.co', password: 'Secreta123' });
+    fixture.componentInstance['form'].setValue({ correo: 'ana@x.co', password: 'Secreta123' });
     fixture.componentInstance['ingresar']();
   };
+
+  it('el ingreso solo pide correo y contraseña, sin código de empresa', () => {
+    expect(texto()).not.toContain('Código de empresa');
+    expect(Object.keys(fixture.componentInstance['form'].controls)).toEqual(['correo', 'password']);
+    escribirYEnviar();
+    const r = backend.expectOne('/api/auth/login');
+    expect(r.request.body).toEqual({ correo: 'ana@x.co', password: 'Secreta123' });
+    r.flush({ desafioMfa: 'd', mfaConfigurado: true });
+  });
 
   it('si el login trae desafío no abre sesión y pide el código (con la clave si es la primera vez)', () => {
     escribirYEnviar();
@@ -119,12 +128,11 @@ describe('Recuperar contraseña', () => {
 
   it('pide el código y luego lo usa con la contraseña nueva, sin mandar Authorization', () => {
     const c = fixture.componentInstance;
-    c['empresa'].set('Ferretería Centro');
     c['correo'].set('ana@x.co');
     c['pedir']();
     const pedido = backend.expectOne('/api/auth/recuperar');
     expect(pedido.request.headers.has('Authorization')).toBe(false);
-    expect(pedido.request.body).toEqual({ empresa: 'Ferretería Centro', correo: 'ana@x.co' });
+    expect(pedido.request.body).toEqual({ correo: 'ana@x.co' });
     pedido.flush({ mensaje: 'Si la cuenta existe, te enviamos un correo' });
     expect(c['paso']()).toBe('cambiar');
 
@@ -133,7 +141,7 @@ describe('Recuperar contraseña', () => {
     c['confirmacion'].set('Nueva12345');
     c['cambiar']();
     const cambio = backend.expectOne('/api/auth/restablecer');
-    expect(cambio.request.body).toEqual({ empresa: 'Ferretería Centro', token: 'abc123', passwordNueva: 'Nueva12345' });
+    expect(cambio.request.body).toEqual({ token: 'abc123', passwordNueva: 'Nueva12345' });
     cambio.flush({ mensaje: 'ok' });
     expect(c['paso']()).toBe('listo');
   });

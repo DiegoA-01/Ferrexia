@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.common.exception.NoAutenticadoException;
 import com.proyecto.supply_core.common.tenant.EmpresaContexto;
-import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.dto.ActivarMfaRequest;
 import com.proyecto.supply_core.security.dto.ConfiguracionMfaResponse;
@@ -25,7 +24,9 @@ import com.proyecto.supply_core.security.dto.UsuarioSesionResponse;
 import com.proyecto.supply_core.security.jwt.DesafioMfaEmpresa;
 import com.proyecto.supply_core.security.service.AuthService;
 import com.proyecto.supply_core.security.service.MfaUsuarioService;
+import com.proyecto.supply_core.security.service.RefreshTokenService;
 import com.proyecto.supply_core.security.service.RecuperacionPasswordService;
+import com.proyecto.supply_core.usuario.service.CorreoGlobal;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
@@ -36,54 +37,54 @@ import jakarta.validation.Valid;
 public class AuthController {
 
     private final AuthService authService;
-    private final EmpresaRepository empresaRepository;
+    private final CorreoGlobal correoGlobal;
     private final RecuperacionPasswordService recuperacionService;
     private final MfaUsuarioService mfaService;
 
     /**
      * @param authService         lógica de login
-     * @param empresaRepository   resuelve la empresa por su código público
+     * @param correoGlobal        encuentra la empresa de un correo (único en todo el sistema)
      * @param recuperacionService recuperación de la contraseña olvidada
      * @param mfaService          segundo factor de los usuarios de empresa
      */
-    public AuthController(AuthService authService, EmpresaRepository empresaRepository,
+    public AuthController(AuthService authService, CorreoGlobal correoGlobal,
             RecuperacionPasswordService recuperacionService, MfaUsuarioService mfaService) {
         this.mfaService = mfaService;
         this.authService = authService;
-        this.empresaRepository = empresaRepository;
+        this.correoGlobal = correoGlobal;
         this.recuperacionService = recuperacionService;
     }
 
     /**
-     * Inicia sesión (ruta pública). Primero se resuelve la empresa por su código (esa consulta corre sin
-     * empresa) y el login completo corre dentro de ella: así solo se busca al usuario entre los de esa empresa.
-     * Un código inexistente responde igual que una clave mala.
+     * Inicia sesión (ruta pública). El correo es único en todo el sistema (spec 037): primero se busca su empresa
+     * (esa consulta no filtra por empresa) y el login completo corre dentro de ella. Un correo desconocido responde
+     * igual que una clave mala.
      *
-     * @param request código de empresa, correo y contraseña
+     * @param request correo y contraseña
      * @return token JWT y datos de sesión
      */
     @PostMapping("/login")
     @SecurityRequirements // Swagger no pide token aquí
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
-        Long empresaId = empresaRepository.idPorCodigoPublico(request.empresa().trim()).orElse(null);
+        Long empresaId = correoGlobal.empresaDe(request.correo()).orElse(null);
         if (empresaId == null) {
-            return authService.loginEmpresaDesconocida(request);
+            return authService.loginCorreoDesconocido(request);
         }
         return EmpresaContexto.como(empresaId, () -> authService.login(request));
     }
 
     /**
      * Pide el correo de recuperación de una contraseña olvidada (ruta pública). Responde siempre lo mismo, exista o no
-     * la empresa o el correo, para no revelar quién tiene cuenta.
+     * el correo, para no revelar quién tiene cuenta.
      *
-     * @param request código de empresa y correo
+     * @param request correo
      * @return aviso genérico
      */
     @PostMapping("/recuperar")
     @ResponseStatus(HttpStatus.ACCEPTED)
     @SecurityRequirements
     public MensajeResponse recuperar(@Valid @RequestBody RecuperarPasswordRequest request) {
-        Long empresaId = empresaRepository.idPorCodigoPublico(request.empresa().trim()).orElse(null);
+        Long empresaId = correoGlobal.empresaDe(request.correo()).orElse(null);
         if (empresaId != null) {
             EmpresaContexto.como(empresaId, () -> {
                 recuperacionService.solicitar(request.correo());
@@ -97,13 +98,13 @@ public class AuthController {
      * Cambia la contraseña con el token recibido por correo (ruta pública). El token sirve una sola vez y corta todas
      * las sesiones abiertas del usuario.
      *
-     * @param request código de empresa, token y contraseña nueva
+     * @param request token y contraseña nueva
      * @return aviso de que ya puede iniciar sesión
      */
     @PostMapping("/restablecer")
     @SecurityRequirements
     public MensajeResponse restablecer(@Valid @RequestBody ReiniciarPasswordRequest request) {
-        Long empresaId = empresaRepository.idPorCodigoPublico(request.empresa().trim())
+        Long empresaId = correoGlobal.empresaDeRecuperacion(RefreshTokenService.hash(request.token().trim()))
                 .orElseThrow(() -> new NoAutenticadoException(RecuperacionPasswordService.TOKEN_INVALIDO));
         EmpresaContexto.como(empresaId, () -> {
             recuperacionService.restablecer(request.token(), request.passwordNueva());

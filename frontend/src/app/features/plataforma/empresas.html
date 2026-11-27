@@ -2,7 +2,7 @@
   <div class="encabezado">
     <div><h1>Empresas clientes</h1><p>Tú activas la empresa y eliges sus módulos. Sus datos de compra no los ves.</p></div>
     <div class="acciones">
-      <input type="search" class="entrada buscar" placeholder="Buscar por nombre, NIT o código" aria-label="Buscar empresa"
+      <input type="search" class="entrada buscar" placeholder="Buscar por nombre o NIT" aria-label="Buscar empresa"
              [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)">
       <button type="button" class="boton primario" (click)="creando.set(!creando())"><span class="material-symbols-outlined">add</span> Nueva empresa</button>
     </div>
@@ -16,16 +16,6 @@
           @if (problema('razonSocial'); as p) { <span class="error">{{ p }}</span> }</div>
         <div class="campo"><label for="nit">NIT</label><input id="nit" class="entrada" formControlName="nit">
           @if (problema('nit'); as p) { <span class="error">{{ p }}</span> }</div>
-        <div class="campo">
-          <label class="opcion-codigo"><input type="checkbox" [checked]="codigoAMano()" (change)="alternarCodigoAMano()"> Escribir el código de ingreso a mano</label>
-          @if (codigoAMano()) {
-            <input id="cod" class="entrada" formControlName="codigoPublico" placeholder="Ferretería Centro" aria-label="Código de ingreso">
-            @if (problema('codigoPublico'); as p) { <span class="error">{{ p }}</span> }
-            <span class="ayuda">Lo escriben sus usuarios al ingresar. Puede llevar espacios, mayúsculas y números; no lleva / \ ? # %.</span>
-          } @else {
-            <span class="ayuda">El código de ingreso se arma solo con la razón social (por ejemplo "ferreteria-centro") y te lo mostramos al crear la empresa.</span>
-          }
-        </div>
         <div class="campo"><label for="est">Estado inicial</label>
           <select id="est" class="entrada" formControlName="estadoInicial"><option value="PRUEBA">En prueba</option><option value="ACTIVA">Activa</option></select></div>
         <div class="campo"><label for="an">Nombre del administrador</label><input id="an" class="entrada" formControlName="adminNombre">
@@ -72,16 +62,6 @@
     </section>
   }
 
-  @if (creada(); as c) {
-    <section class="tarjeta codigo-creado" role="status">
-      <span class="material-symbols-outlined">key</span>
-      <div><strong>{{ c.razonSocial }}</strong> quedó creada. Código de ingreso: <code>{{ c.codigo }}</code>
-        <p class="texto-chico texto-2 sin-margen">Envíaselo al administrador: lo escribe en "Código de empresa" al ingresar.</p></div>
-      <button type="button" class="boton chico" (click)="copiarCodigo(c.codigo)"><span class="material-symbols-outlined">content_copy</span> Copiar</button>
-      <button type="button" class="boton chico" (click)="creada.set(null)" aria-label="Cerrar aviso">Cerrar</button>
-    </section>
-  }
-
   <div class="rejilla kpis">
     <div class="tarjeta kpi"><div class="etiqueta">Activas</div><div class="valor">{{ conteo().activas }}</div><div class="nota">pagando su suscripción</div></div>
     <div class="tarjeta kpi"><div class="etiqueta">En prueba</div><div class="valor">{{ conteo().prueba }}</div><div class="nota">periodo de prueba</div></div>
@@ -115,7 +95,6 @@
         <div class="pares">
           <div class="par"><span>Razón social</span><span>{{ d.empresa?.razonSocial }}</span></div>
           <div class="par"><span>NIT</span><span>{{ d.empresa?.nit }}</span></div>
-          <div class="par"><span>Código de ingreso</span><span>{{ d.empresa?.codigoPublico }}</span></div>
           <div class="par"><span>Cliente desde</span><span>{{ d.empresa?.creadoEn | fecha }}</span></div>
           @if (d.administrador; as a) {
             <div class="par"><span>Administrador</span><span>{{ a.nombre }}</span></div>

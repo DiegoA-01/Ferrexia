@@ -9,7 +9,7 @@ import { Avisos } from '../../core/ui/avisos';
 
 /** Nombre de cada campo del alta para el aviso (spec 036). */
 const ETIQUETAS: Record<string, string> = {
-  razonSocial: 'Razón social', nit: 'NIT', codigoPublico: 'Código de ingreso', estadoInicial: 'Estado inicial',
+  razonSocial: 'Razón social', nit: 'NIT', estadoInicial: 'Estado inicial',
   adminNombre: 'Nombre del administrador', adminCorreo: 'Correo del administrador', adminPassword: 'Contraseña inicial',
 };
 
@@ -17,7 +17,6 @@ const ETIQUETAS: Record<string, string> = {
 const PROBLEMAS: Record<string, (e: Record<string, unknown>) => string> = {
   razonSocial: () => 'es obligatoria',
   nit: () => 'es obligatorio',
-  codigoPublico: e => e['minlength'] || e['maxlength'] ? 'entre 3 y 40 caracteres' : 'no puede llevar / \\ ? # %',
   estadoInicial: () => 'elige uno',
   adminNombre: () => 'es obligatorio',
   adminCorreo: e => e['required'] ? 'es obligatorio' : 'no es un correo válido',
@@ -52,14 +51,10 @@ export class Empresas implements OnInit {
   protected readonly busqueda = signal('');
   /** Muestra la contraseña inicial del administrador para revisarla antes de crear la empresa. */
   protected readonly verClave = signal(false);
-  /** Spec 020: el código de ingreso se genera solo; esto permite escribirlo a mano. */
-  protected readonly codigoAMano = signal(false);
-  /** Empresa recién creada y su código de ingreso, para mostrarlo y copiarlo. */
-  protected readonly creada = signal<{ razonSocial: string; codigo: string } | null>(null);
 
   protected readonly filtradas = computed(() => {
     const t = this.busqueda().trim().toLowerCase();
-    return (this.empresas() ?? []).filter(e => !t || [e.razonSocial, e.nit, e.codigoPublico].some(x => x?.toLowerCase().includes(t)));
+    return (this.empresas() ?? []).filter(e => !t || [e.razonSocial, e.nit].some(x => x?.toLowerCase().includes(t)));
   });
   protected readonly conteo = computed(() => {
     const l = this.empresas() ?? [];
@@ -71,9 +66,6 @@ export class Empresas implements OnInit {
   protected readonly nueva = inject(FormBuilder).nonNullable.group({
     razonSocial: ['', Validators.required],
     nit: ['', Validators.required],
-    // Opcional (spec 020): vacío = el backend lo genera desde la razón social. Si se escribe: texto libre (espacios,
-    // mayúsculas, tildes); solo se excluye lo que rompe la dirección del registro: / \ ? # %
-    codigoPublico: ['', [Validators.minLength(3), Validators.maxLength(40), Validators.pattern(/^[^/\\?#%\u0000-\u001f]+$/)]],
     estadoInicial: ['PRUEBA' as EstadoSuscripcion],
     adminNombre: ['', Validators.required],
     adminCorreo: ['', [Validators.required, Validators.email]],
@@ -176,23 +168,6 @@ export class Empresas implements OnInit {
     });
   }
 
-  /** Muestra u oculta el campo para escribir el código a mano; al ocultarlo se borra lo escrito. */
-  protected alternarCodigoAMano(): void {
-    const aMano = !this.codigoAMano();
-    this.codigoAMano.set(aMano);
-    if (!aMano) {
-      this.nueva.controls.codigoPublico.setValue('');
-    }
-  }
-
-  /** @param codigo código de ingreso que se copia al portapapeles */
-  protected copiarCodigo(codigo: string): void {
-    navigator.clipboard?.writeText(codigo).then(
-      () => this.avisos.ok('Código copiado.'),
-      () => this.avisos.ok(`Código de ingreso: ${codigo}`),
-    );
-  }
-
   /**
    * @param campo control del formulario de alta
    * @returns qué tiene mal ({@code null} si está bien o aún no se ha tocado)
@@ -224,18 +199,15 @@ export class Empresas implements OnInit {
     }
     this.trabajando.set(true);
     const datos = this.nueva.getRawValue();
-    const escrito = this.codigoAMano() ? datos.codigoPublico.trim() : '';
     // spec 024: sin plan; los módulos marcados en el panel son los que la empresa puede usar
-    this.servicio.crear({ ...datos, codigoPublico: escrito || undefined, modulos: [...this.modulosAlta()] }).subscribe({
+    this.servicio.crear({ ...datos, modulos: [...this.modulosAlta()] }).subscribe({
       next: d => {
         this.trabajando.set(false);
         this.creando.set(false);
         this.nueva.reset();
         this.modulosAlta.set([]);
         this.intentoCrear.set(false);
-        this.codigoAMano.set(false);
         this.detalle.set(d);
-        this.creada.set({ razonSocial: d.empresa?.razonSocial ?? '', codigo: d.empresa?.codigoPublico ?? '' });
         this.avisos.ok(`Empresa ${d.empresa?.razonSocial} creada con su administrador.`);
         this.cargar();
       },

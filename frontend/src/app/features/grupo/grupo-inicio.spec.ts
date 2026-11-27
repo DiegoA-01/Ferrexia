@@ -11,8 +11,8 @@ import { SesionService } from '../../core/sesion/sesion.service';
 import { GrupoInicio } from './grupo-inicio';
 
 const empresas = [
-  { id: 5, razonSocial: 'Ferretería Norte', codigoPublico: 'norte', estado: 'ACTIVA' },
-  { id: 6, razonSocial: 'Eléctricos Sur', codigoPublico: 'sur', estado: 'SUSPENDIDA' },
+  { id: 5, razonSocial: 'Ferretería Norte', estado: 'ACTIVA' },
+  { id: 6, razonSocial: 'Eléctricos Sur', estado: 'SUSPENDIDA' },
 ];
 const tablero = {
   desde: '2026-11-01', hasta: '2026-11-27',
@@ -55,6 +55,7 @@ describe('Zona del grupo: empresas, entrar y tablero (spec 035)', () => {
   afterEach(() => backend.verify());
 
   it('lista las empresas con su botón Entrar (deshabilitado si está suspendida)', () => {
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Código');
     const botones = [...html().querySelectorAll<HTMLButtonElement>('.empresa button')];
     expect(botones.map(b => b.textContent?.trim())).toEqual(['Entrar', 'Entrar']);
     expect(botones[0].disabled).toBe(false);

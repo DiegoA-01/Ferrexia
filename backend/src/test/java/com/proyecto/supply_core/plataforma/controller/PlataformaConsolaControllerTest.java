@@ -48,7 +48,7 @@ class PlataformaConsolaControllerTest extends WebTestBase {
     private PlataformaAuditoriaService auditoriaService;
 
     private static EmpresaPlataformaResponse empresa() {
-        return new EmpresaPlataformaResponse(8L, "Ferretería El Tornillo", "900456789-1", "el-tornillo", "BASICO",
+        return new EmpresaPlataformaResponse(8L, "Ferretería El Tornillo", "900456789-1", "BASICO",
                 "Básico", EstadoSuscripcion.ACTIVA, null, LocalDateTime.now());
     }
 
@@ -84,7 +84,7 @@ class PlataformaConsolaControllerTest extends WebTestBase {
 
         mvc.perform(get("/api/plataforma/empresas").header(HttpHeaders.AUTHORIZATION, bearerPlataforma()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].codigoPublico").value("el-tornillo"))
+                .andExpect(jsonPath("$[0].codigoPublico").doesNotExist())
                 .andExpect(jsonPath("$[0].estado").value("ACTIVA"));
         mvc.perform(get("/api/plataforma/empresas/8").header(HttpHeaders.AUTHORIZATION, bearerPlataforma()))
                 .andExpect(status().isOk())

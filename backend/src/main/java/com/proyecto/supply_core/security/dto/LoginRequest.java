@@ -5,17 +5,13 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Credenciales de inicio de sesión (UC-01).
+ * Credenciales de inicio de sesión (UC-01). El correo es único en todo el sistema (spec 037): con él se encuentra la
+ * empresa, así que ya no se manda un código de empresa.
  *
- * @param empresa  código público de la empresa a la que pertenece el usuario (p. ej. {@code demo})
  * @param correo   correo registrado
- * @param password contraseña en texto plano (solo viaja por HTTPS; nunca se guarda)
+ * @param password contraseña (o PIN) en texto plano (solo viaja por HTTPS; nunca se guarda)
  */
 public record LoginRequest(
-        @NotBlank(message = "es obligatorio")
-        @Size(max = 40, message = "máximo 40 caracteres")
-        String empresa,
-
         @NotBlank(message = "es obligatorio")
         @Email(message = "no tiene un formato de correo válido")
         @Size(max = 150, message = "máximo 150 caracteres")

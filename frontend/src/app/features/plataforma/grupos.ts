@@ -39,7 +39,7 @@ import { Avisos } from '../../core/ui/avisos';
           <h3>Empresas</h3>
           @for (e of g.empresas ?? []; track e.id) {
             <div class="linea">
-              <div><strong>{{ e.razonSocial }}</strong> <span class="texto-chico texto-2">código {{ e.codigoPublico }}</span></div>
+              <div><strong>{{ e.razonSocial }}</strong></div>
               <button type="button" class="boton chico" [disabled]="trabajando()" (click)="quitar(e.id!)">Quitar del grupo</button>
             </div>
           } @empty {

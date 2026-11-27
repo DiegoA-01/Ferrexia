@@ -99,7 +99,7 @@ class ProveedorControllerTest extends WebTestBase {
     @Test
     void registroConNitYCorreoRepetidosDevuelve400() throws Exception {
         when(proveedorRepository.existsByNitIgnoreCase("900123456-7")).thenReturn(true);
-        when(usuarioRepository.existsByCorreoIgnoreCase("ventas@tech.com")).thenReturn(true);
+        when(correoGlobal.enUso("ventas@tech.com", null)).thenReturn(true);
 
         mvc.perform(post("/api/portal/registro/demo").contentType(MediaType.APPLICATION_JSON).content(REGISTRO_VALIDO))
                 .andExpect(status().isBadRequest())

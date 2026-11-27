@@ -129,7 +129,7 @@ class UsuarioControllerTest extends WebTestBase {
 
     @Test
     void altaConCorreoYaRegistradoDevuelve400() throws Exception {
-        when(usuarioRepository.existsByCorreoIgnoreCase("ana@x.com")).thenReturn(true);
+        when(correoGlobal.enUso("ana@x.com", null)).thenReturn(true);
 
         mvc.perform(post("/api/usuarios").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_SISTEMA"))
                         .contentType(MediaType.APPLICATION_JSON).content(ALTA_VALIDA))

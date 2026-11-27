@@ -13,7 +13,7 @@ const empresas = [
 ];
 const grupo = {
   id: 10, nombre: 'Grupo Norte', activo: true,
-  empresas: [{ id: 1, razonSocial: 'Ferretería Norte', codigoPublico: 'norte' }],
+  empresas: [{ id: 1, razonSocial: 'Ferretería Norte' }],
   superAdmins: [{ id: 50, nombre: 'Dueña', correo: 'dueno@x.co', activo: true, mfaActivo: false }],
 };
 
@@ -41,6 +41,7 @@ describe('Consola: Grupos de empresas (spec 035)', () => {
   it('lista los grupos con sus empresas y super administradores', () => {
     expect(html().textContent).toContain('Grupo Norte');
     expect(html().textContent).toContain('Ferretería Norte');
+    expect(html().textContent?.toLowerCase()).not.toContain('código');
     expect(html().textContent).toContain('dueno@x.co');
     expect(html().textContent).toContain('Falta configurar el segundo factor');
   });

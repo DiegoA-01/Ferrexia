@@ -106,6 +106,7 @@ public class GrupoVinculoService {
         }
         exigirCorreoLibre(usuarioGrupoId, empresaId, correo);
         Usuario u = new Usuario();
+        u.setInternoGrupo(true); // repite su correo en cada empresa del grupo: no entra a la unicidad global (V58)
         u.setNombreCompleto(nombre.trim());
         u.setCorreo(correo.trim().toLowerCase(Locale.ROOT));
         u.setHashPassword(passwordEncoder.encode(claveAleatoria()));

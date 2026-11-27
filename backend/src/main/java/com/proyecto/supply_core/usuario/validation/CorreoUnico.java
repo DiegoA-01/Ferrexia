@@ -10,7 +10,7 @@ import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
 
 /**
- * El correo no puede estar registrado por otro usuario (sin distinguir mayúsculas ni espacios).
+ * El correo no puede estar registrado por otro usuario de ninguna empresa (sin distinguir mayúsculas ni espacios).
  * Solo para altas: en la edición el Service excluye al propio usuario.
  */
 @Documented

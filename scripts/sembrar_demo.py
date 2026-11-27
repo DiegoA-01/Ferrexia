@@ -18,7 +18,6 @@ SALIDA = RAIZ / 'credenciales-docker.local.txt'
 SALIDA_JSON = RAIZ / 'credenciales-docker.local.json'
 ENV = dict(l.split('=', 1) for l in (RAIZ / '.env').read_text(encoding='utf-8').splitlines() if '=' in l and not l.startswith('#'))
 BASE = ENV.get('PUBLIC_URL', 'http://localhost:' + ENV.get('WEB_PORT', '8088')).rstrip('/')
-CODIGO_EMPRESA = 'Ferreteria Demo'
 
 
 def clave():
@@ -82,11 +81,11 @@ def main():
     # 2. Empresa cliente con su administrador
     admin_correo, admin_clave = 'admin@ferreteriademo.local', clave()
     exigir('crear empresa', llamar('POST', '/api/plataforma/empresas', {
-        'razonSocial': 'Ferretería Demo S.A.S.', 'nit': '901234567', 'codigoPublico': CODIGO_EMPRESA,
+        'razonSocial': 'Ferretería Demo S.A.S.', 'nit': '901234567',
         'planCodigo': 'EMPRESARIAL', 'estadoInicial': 'ACTIVA',
         'adminNombre': 'Dueño Ferretería', 'adminCorreo': admin_correo, 'adminPassword': admin_clave}, tok_dueno))
     tok_admin, secreto_admin = entrar_con_mfa('/api/auth/login', '/api/auth/mfa',
-                                              {'empresa': CODIGO_EMPRESA, 'correo': admin_correo, 'password': admin_clave}, 'desafioMfa')
+                                              {'correo': admin_correo, 'password': admin_clave}, 'desafioMfa')
 
     # El dueño de la ferretería solo administra (ADMIN_SISTEMA): no recibe avisos de RFQ, cotizaciones ni proveedores.
     # Pide y lee el informe de compras, y aprueba solo las solicitudes que hace el propio jefe de compras.
@@ -120,7 +119,7 @@ def main():
             'nombreCompleto': nombre, 'correo': correo, 'password': claves[correo], 'roles': roles, 'centroCostoId': cc['id']}, tok_admin))
 
     def sesion(correo):
-        d = exigir('login ' + correo, llamar('POST', '/api/auth/login', {'empresa': CODIGO_EMPRESA, 'correo': correo, 'password': claves[correo]}))
+        d = exigir('login ' + correo, llamar('POST', '/api/auth/login', {'correo': correo, 'password': claves[correo]}))
         return d['token']
 
     # 5. Catálogo y existencias: el jefe de compras crea productos, el bodeguero mete el stock inicial
@@ -219,14 +218,14 @@ Clave:   la de PLATAFORMA_ADMIN_PASSWORD en el archivo .env
 Segundo factor (obligatorio): agrega esta llave en tu app autenticadora (tipo "clave de configuración", basada en tiempo):
   {secreto_dueno}
 
-== EMPRESA: {CODIGO_EMPRESA} (código de empresa para entrar a /app) ==
+== EMPRESA: Ferretería Demo (se entra a /app solo con correo y clave) ==
 Dueño de la ferretería (administrador de la empresa, ADMIN_SISTEMA)
 Correo:  {admin_correo}
 Clave:   {admin_clave}
 Segundo factor (obligatorio para este rol): llave para la app autenticadora:
   {secreto_admin}
 
-Usuarios con rol (sin segundo factor; entran con código de empresa, correo y clave)
+Usuarios con rol (sin segundo factor; entran con su correo y su clave)
 {'Rol':<18}{'Correo':<40}Clave
 {filas}
 PIN del supervisor de ventas (autoriza retiros, gastos y anulaciones en la caja): {pin_supervisor}
@@ -237,7 +236,7 @@ Electro Sur Ltda. ({prov_correo}): cotiza desde el enlace que se crea al abrir c
 """, encoding='utf-8')
     # Copia en JSON para las pruebas de punta a punta y de carga (spec 010); tampoco se sube a git
     SALIDA_JSON.write_text(json.dumps({
-        'base': BASE, 'empresa': CODIGO_EMPRESA, 'admin': {'correo': admin_correo, 'clave': admin_clave, 'secretoMfa': secreto_admin},
+        'base': BASE, 'admin': {'correo': admin_correo, 'clave': admin_clave, 'secretoMfa': secreto_admin},
         'cuentas': claves, 'pinSupervisor': pin_supervisor, 'caja': 'Caja 1 mostrador', 'producto': 'CEM-50',
     }, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f'\nListo. Credenciales guardadas en {SALIDA}')
