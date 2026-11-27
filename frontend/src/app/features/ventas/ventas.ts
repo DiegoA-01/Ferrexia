@@ -92,8 +92,11 @@ export class Ventas implements OnInit {
   protected readonly veLimites = computed(() => this.sesion.tieneRol(['ADMIN_SISTEMA', 'SUPERVISOR_VENTAS', 'AUDITOR']));
   /** Quien tiene caja corrige ventas: anula en su turno y recibe devoluciones. */
   protected readonly cobra = computed(() => this.sesion.tieneRol(['CAJERO', 'SUPERVISOR_VENTAS']) && !this.sesion.soloLectura());
-  /** El cajero sin otro rol de supervisión ve las ventas que él cobró (el aviso lo explica). */
-  protected readonly soloPropias = computed(() => !this.sesion.tieneRol(['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR']));
+  /** Quien no tiene VENTA_VER_TODAS ve las ventas que cobró o vendió (el aviso lo explica). */
+  protected readonly soloPropias = computed(() => !this.sesion.tienePermiso('VENTA_VER_TODAS'));
+  /** Consecutivos sugeridos mientras se escribe en el campo Consecutivo. */
+  protected readonly sugerencias = signal<string[]>([]);
+  private temporizador: ReturnType<typeof setTimeout> | null = null;
   protected readonly puedeAnular = computed(() => {
     const d = this.detalle();
     return !!d && this.cobra() && d.estado === 'CONFIRMADA' && !!d.turnoAbierto && this.miTurno()?.id === d.turnoId
@@ -138,8 +141,38 @@ export class Ventas implements OnInit {
 
   /** @param pagina página */
   protected buscar(pagina = 0): void {
+    this.sugerencias.set([]);
     this.ventas.buscar({ desde: this.desde() || null, hasta: this.hasta() || null, estado: this.estado(),
       consecutivo: this.consecutivo().trim() || null, pagina }).subscribe({ next: p => this.pagina.set(p), error: e => this.avisos.error(e) });
+  }
+
+  /**
+   * Al escribir en Consecutivo: con 2 o más caracteres y una pausa corta pide hasta 10 consecutivos que empiecen por
+   * el texto (mismas fechas y estado). Si lo escrito coincide con una sugerencia, busca esa venta.
+   *
+   * @param texto lo escrito
+   */
+  protected escribirConsecutivo(texto: string): void {
+    this.consecutivo.set(texto);
+    if (this.temporizador) {
+      clearTimeout(this.temporizador);
+    }
+    const t = texto.trim();
+    if (t.length < 2) {
+      this.sugerencias.set([]);
+      return;
+    }
+    if (this.sugerencias().includes(t)) {
+      this.buscar();
+      return;
+    }
+    this.temporizador = setTimeout(() => {
+      this.ventas.buscar({ desde: this.desde() || null, hasta: this.hasta() || null, estado: this.estado(),
+        consecutivo: t, tamano: 10 }).subscribe({
+        next: p => this.sugerencias.set((p.contenido ?? []).map(v => v.consecutivo ?? '').filter(Boolean)),
+        error: () => this.sugerencias.set([]),
+      });
+    }, 300);
   }
 
   /** @param v venta del historial */

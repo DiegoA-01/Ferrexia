@@ -3294,10 +3294,35 @@ class AislamientoEmpresasTest {
                     .andExpect(jsonPath("$.contenido[0].id").value(venta1));
             // otro cajero de la misma empresa: no ve las ventas ajenas sin consecutivo, pero sí encuentra una con él
             String otroCajero = token(empresaA, usuarioA, "CAJERO");
+            // (este usuario fue el vendedor del pedido cobrado: ve esa venta como vendida por él, ninguna más)
             mvc.perform(get("/api/ventas").header(HttpHeaders.AUTHORIZATION, otroCajero))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(0));
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(1))
+                    .andExpect(jsonPath("$.contenido[?(@.id==" + venta1 + ")]").isEmpty());
             mvc.perform(get("/api/ventas?consecutivo=v1-000001").header(HttpHeaders.AUTHORIZATION, otroCajero))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.contenido[0].id").value(venta1));
+            // el consecutivo "empieza por": el prefijo solo trae las propias; el supervisor ve todas
+            mvc.perform(get("/api/ventas?consecutivo=v1-").header(HttpHeaders.AUTHORIZATION, otroCajero))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(1))
+                    .andExpect(jsonPath("$.contenido[?(@.id==" + venta1 + ")]").isEmpty());
+            mvc.perform(get("/api/ventas?consecutivo=v1-&size=10").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(4))
+                    .andExpect(jsonPath("$.contenido[?(@.id==" + venta1 + ")]").isNotEmpty());
+            mvc.perform(get("/api/ventas?consecutivo=v1-").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(4));
+            mvc.perform(get("/api/ventas?consecutivo=zz-").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.totalElementos").value(0));
+            // CAJERO y VENDEDOR a la vez, sin ser vendedor de nada: ve lo que cobró (antes no veía ninguna)
+            String cajeroVendedor = token(empresaA, usuarioA2, "CAJERO", "VENDEDOR");
+            mvc.perform(get("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroVendedor))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(4));
+            mvc.perform(get("/api/ventas?consecutivo=v1-").header(HttpHeaders.AUTHORIZATION, cajeroVendedor))
+                    .andExpect(jsonPath("$.totalElementos").value(4));
+            // el prefijo nunca cruza de empresa
+            String duenoBPrefijo = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+            mvc.perform(get("/api/ventas?consecutivo=v1-").header(HttpHeaders.AUTHORIZATION, duenoBPrefijo))
+                    .andExpect(jsonPath("$.totalElementos").value(0));
+            mvc.perform(get("/api/ventas?consecutivo=v1-").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "CAJERO", "VENDEDOR")))
+                    .andExpect(jsonPath("$.totalElementos").value(0));
             // spec 021: sí lista las facturas de su turno abierto, con sus medios de pago; ningún otro turno
             mvc.perform(get("/api/ventas?turnoId=" + turno + "&size=20").header(HttpHeaders.AUTHORIZATION, cajeroA))
                     .andExpect(status().isOk())

@@ -18,6 +18,8 @@ export interface FiltroVentas {
   /** Turno (spec 021): el cajero solo puede pedir el suyo abierto. */
   turnoId?: number | null;
   pagina?: number;
+  /** Filas por página (por defecto 20; las sugerencias del consecutivo piden 10). */
+  tamano?: number;
 }
 
 /**
@@ -48,7 +50,7 @@ export class VentaService {
   /** @param f filtros del historial */
   buscar(f: FiltroVentas): Observable<Pagina<VentaResumen>> {
     return this.http.get<Pagina<VentaResumen>>(api('/api/ventas'), {
-      params: parametros({ desde: f.desde, hasta: f.hasta, cajaId: f.cajaId, estado: f.estado, consecutivo: f.consecutivo, turnoId: f.turnoId, page: f.pagina ?? 0, size: 20 }),
+      params: parametros({ desde: f.desde, hasta: f.hasta, cajaId: f.cajaId, estado: f.estado, consecutivo: f.consecutivo, turnoId: f.turnoId, page: f.pagina ?? 0, size: f.tamano ?? 20 }),
     });
   }
 

@@ -58,13 +58,14 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     /**
      * Historial con filtros opcionales ({@code null} = sin filtro).
      *
-     * @param cajeroId    cajero
-     * @param vendedorId  vendedor
+     * @param propio      si no es nulo, solo ventas que ese usuario cobró (cajero) o vendió (vendedor), más la que
+     *                    tenga exactamente el consecutivo {@code exacto}
+     * @param exacto      consecutivo completo que se deja ver aunque no sea del usuario {@code propio} (puede ser nulo)
      * @param cajaId      caja
      * @param turnoId     turno
      * @param clienteId   cliente
      * @param estado      estado
-     * @param consecutivo consecutivo exacto
+     * @param patron      patrón LIKE (en mayúsculas, con {@code !} como escape) para "empieza por" el consecutivo
      * @param desde       desde (incluido)
      * @param hasta       hasta (excluido)
      * @param pageable    página y orden
@@ -72,18 +73,18 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
      */
     @Query("""
             select v from Venta v
-            where (:cajeroId is null or v.cajeroUsuarioId = :cajeroId)
-              and (:vendedorId is null or v.vendedorUsuarioId = :vendedorId)
+            where (:propio is null or v.cajeroUsuarioId = :propio or v.vendedorUsuarioId = :propio
+                   or v.consecutivo = :exacto)
               and (:cajaId is null or v.cajaId = :cajaId)
               and (:turnoId is null or v.turnoId = :turnoId)
               and (:clienteId is null or v.clienteId = :clienteId)
               and (:estado is null or v.estado = :estado)
-              and (:consecutivo is null or v.consecutivo = :consecutivo)
+              and (:patron is null or upper(v.consecutivo) like :patron escape '!')
               and (:desde is null or v.confirmadaEn >= :desde)
               and (:hasta is null or v.confirmadaEn < :hasta)
             """)
-    Page<Venta> buscar(@Param("cajeroId") Long cajeroId, @Param("vendedorId") Long vendedorId,
+    Page<Venta> buscar(@Param("propio") Long propio, @Param("exacto") String exacto,
             @Param("cajaId") Long cajaId, @Param("turnoId") Long turnoId, @Param("clienteId") Long clienteId,
-            @Param("estado") EstadoVenta estado, @Param("consecutivo") String consecutivo,
+            @Param("estado") EstadoVenta estado, @Param("patron") String patron,
             @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta, Pageable pageable);
 }
