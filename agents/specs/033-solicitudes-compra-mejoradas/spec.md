@@ -1,6 +1,6 @@
 # 033 - Solicitudes de compra: proveedor elegido, historial y alertas que bloquean
 
-**Estado:** Propuesta · **Rama:** `feature/solicitudes-compra-mejoradas` · **Depende de:** pasos 10, 11 y 18-a ·
+**Estado:** Hecha (2026-11-26) · **Rama:** `fix/ajustes-prueba-usuarios` · **Depende de:** pasos 10, 11 y 18-a ·
 **Responsable:** Persona 2 · **Puntos de la reunión 2:** 37, 40, 42
 
 ## Objetivo
@@ -25,11 +25,11 @@ y se pueda corregir, y que una alerta no se pueda pasar por alto.
   excepción solo al dueño.
 
 ## Criterios de aceptación
-- [ ] La solicitud se dirige a proveedores específicos o queda abierta a todos.
-- [ ] El historial muestra cada solicitud con su detalle y recorrido.
-- [ ] En borrador o devuelta se pueden cambiar o quitar productos.
-- [ ] Con alerta de duplicada o presupuesto, la solicitud no se crea.
-- [ ] Prueba de fuga entre empresas para los proveedores elegidos.
+- [x] La solicitud se dirige a proveedores específicos o queda abierta a todos.
+- [x] El historial muestra cada solicitud con su detalle y recorrido.
+- [x] En borrador o devuelta se pueden cambiar o quitar productos.
+- [x] Con alerta de duplicada o presupuesto, la solicitud no se crea.
+- [x] Prueba de fuga entre empresas para los proveedores elegidos.
 
 ## Fuera de alcance
 - Proveedores sin cuenta (spec 031).

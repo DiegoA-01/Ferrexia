@@ -16,14 +16,18 @@ describe('Nueva solicitud: elegir productos', () => {
   let backend: HttpTestingController;
   const c = () => fixture.componentInstance as unknown as Record<string, any>;
 
-  const crear = (roles: string[]) => {
+  const crear = (roles: string[], permisos: string[] = []) => {
     TestBed.configureTestingModule({
       providers: [provideRouter([{ path: '**', children: [] }]), provideHttpClient(), provideHttpClientTesting(),
-        { provide: SesionService, useValue: { tieneRol: (r?: string[]) => !r?.length || r.some(x => roles.includes(x)) } }],
+        { provide: SesionService, useValue: {
+          tieneRol: (r?: string[]) => !r?.length || r.some(x => roles.includes(x)),
+          tienePermiso: (p: string) => permisos.includes(p),
+        } }],
     });
     backend = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(SolicitudForm);
     fixture.detectChanges();
+    backend.expectOne('/api/solicitudes/proveedores').flush([{ id: 7, razonSocial: 'Ferro Andes' }, { id: 8, razonSocial: 'Eléctricos Sur' }]);
   };
   const productos = () => backend.expectOne(r => r.url === '/api/productos');
 
@@ -102,5 +106,52 @@ describe('Nueva solicitud: elegir productos', () => {
   it('quien no administra compras no ve el botón de crear', () => {
     crear(['SOLICITANTE']);
     expect(c()['puedeCrear']()).toBe(false);
+  });
+
+  it('spec 033: a proveedores específicos exige elegir uno y envía los elegidos', () => {
+    crear(['SOLICITANTE']);
+    c()['agregar'](producto(1, 'Cemento gris 50 kg'));
+    c()['motivo'].set('Obra del cliente');
+    c()['cambiarModo']('ESPECIFICA');
+    c()['guardar']();
+    backend.expectNone('/api/solicitudes');
+
+    c()['alternarProveedor'](8);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Elegidos: Eléctricos Sur');
+    c()['guardar']();
+    const r = backend.expectOne('/api/solicitudes');
+    expect(r.request.body).toMatchObject({ modoProveedor: 'ESPECIFICA', proveedorIds: [8] });
+    r.flush({ id: 3, consecutivo: 'SOL-000003', estado: 'BORRADOR', modoProveedor: 'ESPECIFICA', proveedores: [{ id: 8, razonSocial: 'Eléctricos Sur' }], lineas: [] });
+  });
+
+  const conAlerta = () => {
+    c()['guardada'].set({ id: 3, consecutivo: 'SOL-000003', estado: 'BORRADOR', lineas: [] });
+    c()['enviar']();
+    backend.expectOne('/api/solicitudes/3/enviar').flush(
+      { codigo: 'PRESUPUESTO_EXCEDIDO', mensaje: 'Excede el presupuesto. Ajuste las cantidades' }, { status: 409, statusText: 'Conflict' });
+    fixture.detectChanges();
+  };
+
+  it('spec 033: sin el permiso, la alerta bloquea y no deja enviar con justificación', () => {
+    crear(['SOLICITANTE']);
+    conAlerta();
+    const html = fixture.nativeElement as HTMLElement;
+    expect(html.querySelector('[role=alert]')?.textContent).toContain('No se puede enviar así');
+    expect(html.querySelector('#just')).toBeNull();
+    expect(html.textContent).not.toContain('Enviar con justificación');
+    c()['enviar']();
+    backend.expectNone('/api/solicitudes/3/enviar');
+  });
+
+  it('spec 033: con el permiso SOLICITUD_EXCEPCION se puede enviar con justificación', () => {
+    crear(['ADMIN_SISTEMA'], ['SOLICITUD_EXCEPCION']);
+    conAlerta();
+    expect((fixture.nativeElement as HTMLElement).querySelector('#just')).not.toBeNull();
+    c()['justificacion'].set('Obra urgente');
+    c()['enviar']();
+    const r = backend.expectOne('/api/solicitudes/3/enviar');
+    expect(r.request.body).toEqual({ justificacionExcepcion: 'Obra urgente' });
+    r.flush({ id: 3, consecutivo: 'SOL-000003', estado: 'PENDIENTE_APROBACION' });
   });
 });

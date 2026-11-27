@@ -38,8 +38,12 @@ class SolicitudControllerTest extends WebTestBase {
     @MockitoBean
     private AprobacionSolicitudService aprobacionService;
 
+    @MockitoBean
+    private com.proyecto.supply_core.compra.solicitud.service.SolicitudRecorridoService recorridoService;
+
     private final SolicitudResponse borrador = new SolicitudResponse(1L, "SOL-000001", EstadoSolicitud.BORRADOR, 5L,
-            10L, "Papelería", LocalDate.now(), null, false, null, false, null, null, null, null, List.of(), List.of(), false);
+            10L, "Papelería", LocalDate.now(), null, false, null, false, null, null, null, null, List.of(), List.of(), false,
+            com.proyecto.supply_core.compra.solicitud.enums.ModoProveedor.ABIERTA, List.of());
 
     @BeforeEach
     void catalogosActivos() {
@@ -120,5 +124,32 @@ class SolicitudControllerTest extends WebTestBase {
                 .andExpect(status().isForbidden());
         mvc.perform(post("/api/solicitudes/0/enviar").header(HttpHeaders.AUTHORIZATION, bearer("SOLICITANTE")))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void especificaSinProveedoresSeRechazaYLaListaDeProveedoresEsDeQuienPide() throws Exception {
+        String sinProveedores = """
+                {"motivo":"Cemento","fechaRequerida":"%s","modoProveedor":"ESPECIFICA","proveedorIds":[],
+                 "lineas":[{"productoId":100,"unidadMedidaId":1,"cantidad":5}]}""".formatted(LocalDate.now().plusDays(3));
+        mvc.perform(post("/api/solicitudes").header(HttpHeaders.AUTHORIZATION, bearer("SOLICITANTE"))
+                        .contentType(MediaType.APPLICATION_JSON).content(sinProveedores))
+                .andExpect(status().isBadRequest());
+
+        when(solicitudService.proveedoresElegibles()).thenReturn(List.of(
+                new com.proyecto.supply_core.compra.solicitud.dto.ProveedorElegidoResponse(7L, "Ferro Andes")));
+        mvc.perform(get("/api/solicitudes/proveedores").header(HttpHeaders.AUTHORIZATION, bearer("SOLICITANTE")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].razonSocial").value("Ferro Andes"));
+        mvc.perform(get("/api/solicitudes/proveedores").header(HttpHeaders.AUTHORIZATION, bearer("AUDITOR")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void elRecorridoLoPideQuienVeLaSolicitud() throws Exception {
+        when(recorridoService.recorrido(1L)).thenReturn(List.of(new com.proyecto.supply_core.compra.solicitud.dto
+                .PasoRecorridoResponse(java.time.LocalDateTime.now(), "SOLICITUD", "Solicitud creada", "SOL-000001")));
+        mvc.perform(get("/api/solicitudes/1/recorrido").header(HttpHeaders.AUTHORIZATION, bearer("SOLICITANTE")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].titulo").value("Solicitud creada"));
     }
 }

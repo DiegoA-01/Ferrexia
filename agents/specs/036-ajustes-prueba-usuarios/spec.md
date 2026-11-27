@@ -1,6 +1,6 @@
 # 036 - Ajustes de la prueba con usuarios
 
-**Estado:** En construcción (2026-11-26) · **Rama:** `fix/ajustes-prueba-usuarios` · **Depende de:** 005, 012, 020, 024
+**Estado:** Hecha (2026-11-26) · **Rama:** `fix/ajustes-prueba-usuarios` · **Depende de:** 005, 012, 020, 024
 · **Responsable:** Persona 1 · **Origen:** prueba del sistema en Docker con cada rol (2026-11-26) · **Migración:** no
 
 ## Objetivo

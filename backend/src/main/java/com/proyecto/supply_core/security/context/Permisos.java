@@ -236,6 +236,8 @@ public final class Permisos {
     public static final String SOLICITUD_VER_TODAS = "SOLICITUD_VER_TODAS";
     /** Cancelar solicitudes de compra de otras personas. */
     public static final String SOLICITUD_CANCELAR_AJENA = "SOLICITUD_CANCELAR_AJENA";
+    /** Enviar una solicitud con alerta de presupuesto excedido o duplicada, con justificación (spec 033, D21). */
+    public static final String SOLICITUD_EXCEPCION = "SOLICITUD_EXCEPCION";
     /** Revocar delegaciones de aprobación de otras personas. */
     public static final String DELEGACION_REVOCAR_AJENA = "DELEGACION_REVOCAR_AJENA";
     /** Ver los pedidos internos de todas las sedes. */

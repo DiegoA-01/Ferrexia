@@ -1,5 +1,7 @@
 package com.proyecto.supply_core.compra.solicitud.controller;
 
+import java.util.List;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -20,11 +22,14 @@ import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.compra.solicitud.dto.DecisionRequest;
 import com.proyecto.supply_core.compra.solicitud.dto.EnviarSolicitudRequest;
+import com.proyecto.supply_core.compra.solicitud.dto.PasoRecorridoResponse;
+import com.proyecto.supply_core.compra.solicitud.dto.ProveedorElegidoResponse;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudRequest;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudResponse;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudResumenResponse;
 import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
 import com.proyecto.supply_core.compra.solicitud.service.AprobacionSolicitudService;
+import com.proyecto.supply_core.compra.solicitud.service.SolicitudRecorridoService;
 import com.proyecto.supply_core.compra.solicitud.service.SolicitudService;
 import com.proyecto.supply_core.security.annotation.RequierePermiso;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
@@ -45,14 +50,41 @@ public class SolicitudController {
 
     private final SolicitudService solicitudService;
     private final AprobacionSolicitudService aprobacionService;
+    private final SolicitudRecorridoService recorridoService;
 
     /**
      * @param solicitudService  ciclo de la solicitud
      * @param aprobacionService decisiones
+     * @param recorridoService  recorrido de la solicitud (spec 033)
      */
-    public SolicitudController(SolicitudService solicitudService, AprobacionSolicitudService aprobacionService) {
+    public SolicitudController(SolicitudService solicitudService, AprobacionSolicitudService aprobacionService,
+            SolicitudRecorridoService recorridoService) {
         this.solicitudService = solicitudService;
         this.aprobacionService = aprobacionService;
+        this.recorridoService = recorridoService;
+    }
+
+    /**
+     * Proveedores habilitados que se pueden elegir al pedir a proveedores específicos (spec 033).
+     *
+     * @return proveedores ordenados por nombre
+     */
+    @GetMapping("/proveedores")
+    @RequierePermiso(Permisos.SOLICITUD_GESTIONAR)
+    public List<ProveedorElegidoResponse> proveedores() {
+        return solicitudService.proveedoresElegibles();
+    }
+
+    /**
+     * Recorrido de la solicitud: aprobaciones, RFQ, cotizaciones, adjudicación, órdenes, recepciones y facturas
+     * (spec 033). Lo ve quien puede ver la solicitud.
+     *
+     * @param id id positivo
+     * @return pasos en orden de fecha
+     */
+    @GetMapping("/{id}/recorrido")
+    public List<PasoRecorridoResponse> recorrido(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
+        return recorridoService.recorrido(id);
     }
 
     /**
@@ -84,7 +116,8 @@ public class SolicitudController {
 
     /**
      * Envía la solicitud a aprobación (o queda APROBADA si ninguna política aplica). El cuerpo es opcional: con una
-     * justificación se puede enviar aunque exceda el presupuesto del centro de costo o repita un producto ya pedido.
+     * justificación, quien tenga el permiso SOLICITUD_EXCEPCION la envía aunque exceda el presupuesto o repita un
+     * producto ya pedido (spec 033, D21); a los demás esas alertas los bloquean.
      *
      * @param id      id positivo
      * @param request justificación de la excepción (opcional)

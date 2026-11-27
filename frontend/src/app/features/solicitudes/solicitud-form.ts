@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, Subject, catchError, debounceTime, map, of, switchMap } from 'rxjs';
 
-import { Categoria, Producto, Solicitud, UnidadMedida } from '../../core/api/modelos';
+import { Categoria, Producto, ProveedorElegido, Solicitud, UnidadMedida } from '../../core/api/modelos';
 import { Estado } from '../../core/formato/etiquetas';
 import { NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { codigoError, mensajeError } from '../../core/http/api';
@@ -66,6 +66,26 @@ export class SolicitudForm implements OnInit {
   protected readonly excede = signal<string | null>(null);
   protected readonly justificacion = signal('');
   protected readonly hoy = iso(new Date());
+  /** Spec 033: a quién se le pide y los proveedores elegidos. */
+  protected readonly modo = signal<'ABIERTA' | 'ESPECIFICA'>('ABIERTA');
+  protected readonly elegidos = signal<number[]>([]);
+  protected readonly proveedores = signal<ProveedorElegido[]>([]);
+  protected readonly filtroProveedor = signal('');
+  protected readonly proveedoresFiltrados = computed(() => {
+    const t = this.filtroProveedor().trim().toLowerCase();
+    return this.proveedores().filter(p => !t || (p.razonSocial ?? '').toLowerCase().includes(t));
+  });
+  /** Nombres de los elegidos (del catálogo o de la solicitud guardada). */
+  protected readonly nombresElegidos = computed(() => {
+    const nombres = new Map<number, string>();
+    (this.guardada()?.proveedores ?? []).forEach(p => nombres.set(p.id!, p.razonSocial ?? ''));
+    this.proveedores().forEach(p => nombres.set(p.id!, p.razonSocial ?? ''));
+    return this.elegidos().map(id => nombres.get(id) ?? `Proveedor ${id}`);
+  });
+  /** Spec 033 (D21): solo quien tiene el permiso puede enviar con justificación una solicitud con alerta. */
+  protected readonly puedeExceptuar = computed(() => this.sesion.tienePermiso('SOLICITUD_EXCEPCION'));
+  /** La alerta bloquea: quien no tiene el permiso no puede seguir. */
+  protected readonly bloqueada = computed(() => !!this.excede() && !this.puedeExceptuar());
 
   protected readonly editable = computed(() => {
     const e = this.guardada()?.estado;
@@ -85,6 +105,7 @@ export class SolicitudForm implements OnInit {
         this.parecidos.set(r.parecidos);
         this.cargandoLista.set(false);
       });
+    this.compras.proveedoresElegibles().subscribe({ next: l => this.proveedores.set(l), error: () => undefined });
     const id = Number(this.id());
     if (id) {
       this.compras.obtener(id).subscribe({ next: s => this.aplicar(s), error: e => this.avisos.error(e) });
@@ -184,6 +205,18 @@ export class SolicitudForm implements OnInit {
     this.sinGuardar.set(true);
   }
 
+  /** @param modo a quién se le pide (spec 033) */
+  protected cambiarModo(modo: 'ABIERTA' | 'ESPECIFICA'): void {
+    this.modo.set(modo);
+    this.sinGuardar.set(true);
+  }
+
+  /** @param id proveedor que se marca o desmarca */
+  protected alternarProveedor(id: number): void {
+    this.elegidos.update(l => (l.includes(id) ? l.filter(x => x !== id) : [...l, id]));
+    this.sinGuardar.set(true);
+  }
+
   /** @param i posición de la línea a quitar */
   protected quitar(i: number): void {
     this.lineas.update(l => l.filter((_, j) => j !== i));
@@ -196,10 +229,16 @@ export class SolicitudForm implements OnInit {
       this.avisos.ok('Completa la justificación, la fecha y al menos un producto con cantidad mayor que cero.');
       return;
     }
+    if (this.modo() === 'ESPECIFICA' && !this.elegidos().length) {
+      this.avisos.ok('Elige al menos un proveedor o deja la solicitud abierta a todos.');
+      return;
+    }
     const datos = {
       motivo: this.motivo().trim(),
       fechaRequerida: this.fecha(),
       lineas: this.lineas().map(l => ({ productoId: l.producto.id!, unidadMedidaId: l.producto.unidadMedida!.id!, cantidad: l.cantidad! })),
+      modoProveedor: this.modo(),
+      proveedorIds: this.modo() === 'ESPECIFICA' ? this.elegidos() : [],
     };
     const id = this.guardada()?.id;
     this.trabajando.set(true);
@@ -230,6 +269,9 @@ export class SolicitudForm implements OnInit {
     if (!s?.id) {
       return;
     }
+    if (this.bloqueada()) {
+      return;
+    }
     if (this.excede() && !this.justificacion().trim()) {
       this.avisos.ok('Escribe por qué se necesita aunque exceda el presupuesto.');
       return;
@@ -245,8 +287,8 @@ export class SolicitudForm implements OnInit {
         this.trabajando.set(false);
         const codigo = codigoError(e);
         if (codigo === 'PRESUPUESTO_EXCEDIDO' || codigo === 'SOLICITUD_DUPLICADA') {
-          // El backend explica el motivo; con una justificación se puede enviar igual y queda en la auditoría.
-          this.excede.set(`${mensajeError(e)}${codigo === 'PRESUPUESTO_EXCEDIDO' ? ' Si la envías como excepción, la aprueba la política de mayor monto.' : ''}`);
+          // Spec 033: el backend explica el motivo y qué hacer. Solo quien tiene el permiso la envía con justificación.
+          this.excede.set(mensajeError(e));
           return;
         }
         this.avisos.error(e);
@@ -257,6 +299,8 @@ export class SolicitudForm implements OnInit {
   private aplicar(s: Solicitud): void {
     this.guardada.set(s);
     this.motivo.set(s.motivo ?? '');
+    this.modo.set(s.modoProveedor ?? 'ABIERTA');
+    this.elegidos.set((s.proveedores ?? []).map(p => p.id!));
     if (s.fechaRequerida) {
       this.fecha.set(s.fechaRequerida);
     }

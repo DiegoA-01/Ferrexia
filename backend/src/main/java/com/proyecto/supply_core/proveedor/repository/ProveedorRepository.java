@@ -66,4 +66,12 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Long> {
             order by p.razonSocial
             """)
     List<Proveedor> findHabilitadosPorCategoria(@Param("categoriaId") Long categoriaId);
+
+    /**
+     * Proveedores en un estado, ordenados por razón social (los que se eligen en una solicitud, spec 033).
+     *
+     * @param estado estado
+     * @return proveedores
+     */
+    List<Proveedor> findByEstadoOrderByRazonSocialAsc(EstadoProveedor estado);
 }

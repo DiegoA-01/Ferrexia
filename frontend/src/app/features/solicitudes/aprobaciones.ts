@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { catchError, of } from 'rxjs';
 
-import { CentroCosto, DecisionSolicitud, Politica, Presupuesto, Solicitud, SolicitudResumen } from '../../core/api/modelos';
+import { CentroCosto, DecisionSolicitud, PasoRecorrido, Politica, Presupuesto, Solicitud, SolicitudResumen } from '../../core/api/modelos';
 import { Estado } from '../../core/formato/etiquetas';
 import { FechaPipe, NumeroPipe, PesosPipe, horasDesde } from '../../core/formato/formato';
 import { ComprasService } from '../../core/servicios/compras.service';
@@ -38,6 +38,14 @@ export class Aprobaciones implements OnInit {
   protected readonly solicitante = signal<string | null>(null);
   protected readonly observaciones = signal('');
   protected readonly enviando = signal(false);
+  /** Spec 033: recorrido de la solicitud abierta (aprobaciones, RFQ, orden, recepción, factura). */
+  protected readonly recorrido = signal<PasoRecorrido[] | null>(null);
+  /** Spec 033: a quién se le pidió la solicitud abierta. */
+  protected readonly aQuien = computed(() => {
+    const s = this.seleccionada();
+    return s?.modoProveedor === 'ESPECIFICA' ? (s.proveedores ?? []).map(p => p.razonSocial).join(', ')
+      : 'Abierta a todos los proveedores de la categoría';
+  });
   private readonly centros = signal<Map<number, CentroCosto>>(new Map());
   private readonly politicas = signal<Map<number, Politica>>(new Map());
 
@@ -96,6 +104,8 @@ export class Aprobaciones implements OnInit {
     this.observaciones.set('');
     this.presupuesto.set(null);
     this.solicitante.set(null);
+    this.recorrido.set(null);
+    this.compras.recorrido(s.id!).subscribe({ next: l => this.recorrido.set(l), error: () => this.recorrido.set([]) });
     this.compras.obtener(s.id!).subscribe({
       next: sol => {
         this.seleccionada.set(sol);
@@ -107,6 +117,12 @@ export class Aprobaciones implements OnInit {
       },
       error: e => this.avisos.error(e),
     });
+  }
+
+  /** @param tipo tipo del paso del recorrido @returns icono de Material Symbols */
+  protected icono(tipo: string | undefined): string {
+    return ({ SOLICITUD: 'description', APROBACION: 'how_to_reg', RFQ: 'request_quote', COTIZACION: 'mail',
+      ADJUDICACION: 'gavel', ORDEN: 'receipt_long', RECEPCION: 'inventory', FACTURA: 'payments' } as Record<string, string>)[tipo ?? ''] ?? 'circle';
   }
 
   /** @param s solicitud; horas desde que se envió */

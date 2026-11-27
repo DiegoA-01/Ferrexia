@@ -8,6 +8,7 @@ import java.util.List;
 import com.proyecto.supply_core.compra.solicitud.entity.AprobacionSolicitud;
 import com.proyecto.supply_core.compra.solicitud.entity.SolicitudCompra;
 import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
+import com.proyecto.supply_core.compra.solicitud.enums.ModoProveedor;
 
 /**
  * Detalle de una solicitud con sus líneas y el historial de decisiones.
@@ -30,12 +31,15 @@ import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
  * @param lineas               líneas
  * @param aprobaciones         decisiones, de la más antigua a la más reciente
  * @param apruebaDueno         si la decide el administrador de la empresa porque quien la pidió aprueba con su rol
+ * @param modoProveedor        a quién se le pide (spec 033)
+ * @param proveedores          proveedores elegidos (vacío si es abierta)
  */
 public record SolicitudResponse(Long id, String consecutivo, EstadoSolicitud estado, Long centroCostoId,
         Long usuarioSolicitanteId, String motivo, LocalDate fechaRequerida, BigDecimal montoEstimado,
         boolean montoIncompleto, Long politicaAprobacionId, boolean excedePresupuesto, String justificacionExcepcion,
         LocalDateTime escaladaEn, LocalDateTime enviadoEn, LocalDateTime creadoEn, List<LineaSolicitudResponse> lineas,
-        List<AprobacionResponse> aprobaciones, boolean apruebaDueno) {
+        List<AprobacionResponse> aprobaciones, boolean apruebaDueno, ModoProveedor modoProveedor,
+        List<ProveedorElegidoResponse> proveedores) {
 
     /**
      * Convierte la entidad (líneas con producto y unidad cargados).
@@ -45,11 +49,25 @@ public record SolicitudResponse(Long id, String consecutivo, EstadoSolicitud est
      * @return DTO
      */
     public static SolicitudResponse of(SolicitudCompra s, List<AprobacionSolicitud> aprobaciones) {
+        return of(s, aprobaciones, List.of());
+    }
+
+    /**
+     * Convierte la entidad con los proveedores elegidos ya resueltos (spec 033).
+     *
+     * @param s            solicitud
+     * @param aprobaciones historial de decisiones
+     * @param proveedores  proveedores elegidos con su nombre
+     * @return DTO
+     */
+    public static SolicitudResponse of(SolicitudCompra s, List<AprobacionSolicitud> aprobaciones,
+            List<ProveedorElegidoResponse> proveedores) {
         return new SolicitudResponse(s.getId(), s.getConsecutivo(), s.getEstado(), s.getCentroCostoId(),
                 s.getUsuarioSolicitanteId(), s.getMotivo(), s.getFechaRequerida(), s.getMontoEstimado(),
                 s.isMontoIncompleto(), s.getPoliticaAprobacionId(), s.isExcedePresupuesto(),
                 s.getJustificacionExcepcion(), s.getEscaladaEn(), s.getEnviadoEn(), s.getCreadoEn(),
                 s.getLineas().stream().map(LineaSolicitudResponse::of).toList(),
-                aprobaciones.stream().map(AprobacionResponse::of).toList(), s.isApruebaDueno());
+                aprobaciones.stream().map(AprobacionResponse::of).toList(), s.isApruebaDueno(), s.getModoProveedor(),
+                proveedores);
     }
 }

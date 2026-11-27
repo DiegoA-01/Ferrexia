@@ -249,6 +249,24 @@ class ContratoServiceTest {
     }
 
     @Test
+    void unaSolicitudAProveedoresEspecificosSoloVeContratosDeEsosProveedores() {
+        SolicitudCompra s = solicitud(EstadoSolicitud.APROBADA, "20000.00", false, linea(cable, "10"));
+        s.setModoProveedor(com.proyecto.supply_core.compra.solicitud.enums.ModoProveedor.ESPECIFICA);
+        s.getProveedorIds().add(tech.getId());
+        when(solicitudes.findWithLineasById(7L)).thenReturn(Optional.of(s));
+        Contrato elegido = contrato(1L, EstadoContrato.ACTIVO, hoy, hoy.plusDays(10), precioDe(10L, cable, "500", "0", null));
+        Contrato otro = contrato(2L, EstadoContrato.ACTIVO, hoy, hoy.plusDays(10), precioDe(20L, cable, "400", "0", null));
+        com.proyecto.supply_core.proveedor.entity.Proveedor ajeno = new com.proyecto.supply_core.proveedor.entity.Proveedor();
+        ajeno.setId(tech.getId() + 1);
+        otro.setProveedor(ajeno);
+        when(contratos.vigentesConProductos(any(), any())).thenReturn(List.of(elegido, otro));
+        when(contratos.consumo(any(), any())).thenReturn(List.of());
+
+        assertEquals(List.of(1L), service.ofertas(7L).stream().map(o -> o.contratoId()).toList());
+        assertFalse(ContratoService.proveedorPermitido(s, otro));
+    }
+
+    @Test
     void ofertasSoloDeUnaSolicitudAprobada() {
         when(solicitudes.findWithLineasById(7L))
                 .thenReturn(Optional.of(solicitud(EstadoSolicitud.EN_RFQ, "1.00", false, linea(cable, "1"))));

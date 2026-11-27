@@ -77,4 +77,20 @@ public interface OrdenCompraRepository extends JpaRepository<OrdenCompra, Long> 
             """)
     Page<OrdenCompra> buscar(@Param("texto") String texto, @Param("estado") EstadoOrden estado,
             @Param("proveedorId") Long proveedorId, Pageable pageable);
+
+    /**
+     * Órdenes vigentes de una solicitud: las directas por contrato y las que salen de adjudicar sus RFQs (recorrido,
+     * spec 033). No trae las versiones reemplazadas.
+     *
+     * @param solicitudId solicitud de origen
+     * @return órdenes con su proveedor, de la más vieja a la más nueva
+     */
+    @Query("""
+            select o from OrdenCompra o join fetch o.proveedor
+            where o.estado <> com.proyecto.supply_core.compra.orden.enums.EstadoOrden.REEMPLAZADA
+              and (o.solicitudId = :solicitudId
+                   or o.adjudicacionId in (select a.id from Adjudicacion a where a.rfq.solicitud.id = :solicitudId))
+            order by o.creadoEn, o.id
+            """)
+    List<OrdenCompra> deSolicitud(@Param("solicitudId") Long solicitudId);
 }

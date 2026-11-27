@@ -105,6 +105,30 @@
         </div>
       </section>
 
+      <section class="tarjeta" aria-labelledby="t-proveedores">
+        <h2 id="t-proveedores">¿A quién le pedimos?</h2>
+        <div class="modos" role="radiogroup" aria-label="A quién se le pide">
+          <label class="modo"><input type="radio" name="modo" [disabled]="!editable()" [checked]="modo() === 'ABIERTA'" (change)="cambiarModo('ABIERTA')">
+            <span><strong>Abierta a todos</strong><span class="texto-chico texto-2">Se invita a todos los proveedores habilitados de la categoría de cada producto.</span></span></label>
+          <label class="modo"><input type="radio" name="modo" [disabled]="!editable()" [checked]="modo() === 'ESPECIFICA'" (change)="cambiarModo('ESPECIFICA')">
+            <span><strong>Proveedores específicos</strong><span class="texto-chico texto-2">Solo a los que elijas. Compras los verá al pedir la cotización.</span></span></label>
+        </div>
+        @if (modo() === 'ESPECIFICA') {
+          @if (editable()) {
+            <input type="search" class="entrada" placeholder="Buscar proveedor" aria-label="Buscar proveedor"
+                   [ngModel]="filtroProveedor()" (ngModelChange)="filtroProveedor.set($event)">
+            <div class="lista-proveedores">
+              @for (p of proveedoresFiltrados(); track p.id) {
+                <label class="opcion-proveedor"><input type="checkbox" [checked]="elegidos().includes(p.id!)" (change)="alternarProveedor(p.id!)"> {{ p.razonSocial }}</label>
+              } @empty {
+                <p class="texto-chico texto-2">{{ proveedores().length ? 'Ningún proveedor coincide.' : 'No hay proveedores habilitados.' }}</p>
+              }
+            </div>
+          }
+          <p class="texto-chico">@if (elegidos().length) { Elegidos: <strong>{{ nombresElegidos().join(', ') }}</strong> } @else { <span class="rojo">Aún no eliges ningún proveedor.</span> }</p>
+        }
+      </section>
+
       <section class="tarjeta">
         <h2>Detalles</h2>
         <div class="formulario">
@@ -132,16 +156,24 @@
         }
 
         @if (excede(); as mensaje) {
-          <div class="aviso ambar margen"><span class="material-symbols-outlined">warning</span><div>{{ mensaje }}</div></div>
-          <div class="campo margen">
-            <label for="just">Justificación para enviarla igual</label>
-            <textarea id="just" class="entrada" [ngModel]="justificacion()" (ngModelChange)="justificacion.set($event)"></textarea>
-          </div>
+          <div class="aviso rojo margen" role="alert"><span class="material-symbols-outlined">block</span>
+            <div><strong>No se puede enviar así</strong>{{ mensaje }}</div></div>
+          @if (puedeExceptuar()) {
+            <div class="campo margen">
+              <label for="just">Justificación para enviarla como excepción</label>
+              <textarea id="just" class="entrada" [ngModel]="justificacion()" (ngModelChange)="justificacion.set($event)"></textarea>
+              <span class="ayuda">Tienes permiso para enviarla igual; queda en la auditoría.</span>
+            </div>
+          }
         }
 
         @if (editable()) {
-          <button type="button" class="boton primario bloque margen" [disabled]="trabajando()" (click)="excede() ? enviar() : guardar(true)">
-            {{ excede() ? 'Enviar con justificación' : 'Enviar a aprobación' }}</button>
+          @if (!bloqueada()) {
+            <button type="button" class="boton primario bloque margen" [disabled]="trabajando()" (click)="excede() ? enviar() : guardar(true)">
+              {{ excede() ? 'Enviar con justificación' : 'Enviar a aprobación' }}</button>
+          } @else {
+            <button type="button" class="boton bloque margen" (click)="excede.set(null)">Ya lo corregí</button>
+          }
           @if (!excede()) {
             <button type="button" class="boton bloque margen" [disabled]="trabajando()" (click)="guardar()">Guardar borrador</button>
           }

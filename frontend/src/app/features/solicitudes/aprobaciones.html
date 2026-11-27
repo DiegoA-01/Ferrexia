@@ -58,6 +58,7 @@
             <div><span>Solicitante</span><strong>{{ solicitante() ?? (esMia() ? sesion.usuario()?.nombre + ' (tú)' : 'Usuario #' + s.usuarioSolicitanteId) }}</strong></div>
             <div><span>Centro de costo</span><strong>{{ centro()?.nombre ?? '#' + s.centroCostoId }}</strong></div>
             <div><span>Fecha requerida</span><strong>{{ s.fechaRequerida | fecha }}</strong></div>
+            <div><span>A quién se le pide</span><strong>{{ aQuien() }}</strong></div>
           </div>
           @if (s.apruebaDueno) {
             <div class="datos">
@@ -112,6 +113,21 @@
           </section>
         }
 
+        <section class="tarjeta" aria-labelledby="t-recorrido">
+          <h3 id="t-recorrido">Recorrido</h3>
+          @if (recorrido(); as pasos) {
+            <ol class="recorrido">
+              @for (p of pasos; track $index) {
+                <li><span class="material-symbols-outlined" aria-hidden="true">{{ icono(p.tipo) }}</span>
+                  <div><strong>{{ p.titulo }}</strong>
+                    <span class="texto-chico texto-2">{{ p.fecha | fecha: 'hora' }}@if (p.detalle) { · {{ p.detalle }} }</span></div></li>
+              }
+            </ol>
+          } @else {
+            <p class="cargando">Cargando…</p>
+          }
+        </section>
+
         @if (puedeDecidir()) {
           <section class="tarjeta">
             <h3>Tu decisión <span class="texto-chico texto-2">Se registra en la auditoría con tu usuario y la hora</span></h3>
@@ -135,7 +151,7 @@
         @if (puedeEditar() || puedeCancelar() || puedeCrearRfq()) {
           <section class="tarjeta fila">
             @if (puedeEditar()) {
-              <a class="boton primario" [routerLink]="['/app/solicitudes', s.id, 'editar']"><span class="material-symbols-outlined">edit</span> Editar y enviar</a>
+              <a class="boton primario" [routerLink]="['/app/solicitudes', s.id, 'editar']"><span class="material-symbols-outlined">edit</span> Cambiar o quitar productos y enviar</a>
             }
             @if (puedeCrearRfq()) {
               <a class="boton primario" routerLink="/app/cotizaciones/nueva" [queryParams]="{ solicitud: s.id }">

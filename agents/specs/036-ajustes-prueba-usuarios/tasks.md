@@ -18,7 +18,7 @@ Solo frontend; no toca el backend ni la base de datos.
 - [x] T6 · El periodo (Este mes, Trimestre, Año) y el selector de sede salen del Inicio; quedan en Reportes.
 - [x] T7 · Barra lateral: "Suscripción activa" en vez de "Plan EMPRESARIAL · activo" (sobrante de la spec 024).
 - [x] T8 · Pruebas: `empresas.spec`, `pos.spec`, `ventas.spec`, `inicio.spec` (333 en verde).
-- [ ] T9 · Revisión en Docker con cada rol y aprobación del usuario.
+- [x] T9 · Revisión en Docker con cada rol y aprobación del usuario (2026-11-26).
 
 ## Revisión contra specs futuras
 Ninguno de los 6 puntos estaba en las specs 033, 034 o 035. La spec 030 solo cubre el cobro sin existencia; el aviso
