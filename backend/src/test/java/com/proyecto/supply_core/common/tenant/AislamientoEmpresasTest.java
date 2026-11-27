@@ -3230,19 +3230,29 @@ class AislamientoEmpresasTest {
             mvc.perform(get("/api/ventas?estado=CONFIRMADA").header(HttpHeaders.AUTHORIZATION, vendedorA))
                     .andExpect(jsonPath("$.totalElementos").value(1));
 
-            // el cajero no ve el historial (cierre ciego): solo busca una venta suya por consecutivo
-            mvc.perform(get("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA)).andExpect(status().isForbidden());
+            // el cajero ve las ventas que él cobró (de cualquier día, con filtros); las de otro cajero solo por consecutivo
+            mvc.perform(get("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(4));
+            mvc.perform(get("/api/ventas?estado=ANULADA&desde=2020-01-01&hasta=2099-12-31")
+                            .header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(0));
             mvc.perform(get("/api/ventas?consecutivo=v1-000001").header(HttpHeaders.AUTHORIZATION, cajeroA))
                     .andExpect(jsonPath("$.contenido[0].id").value(venta1));
+            // otro cajero de la misma empresa: no ve las ventas ajenas sin consecutivo, pero sí encuentra una con él
+            String otroCajero = token(empresaA, usuarioA, "CAJERO");
+            mvc.perform(get("/api/ventas").header(HttpHeaders.AUTHORIZATION, otroCajero))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(0));
+            mvc.perform(get("/api/ventas?consecutivo=v1-000001").header(HttpHeaders.AUTHORIZATION, otroCajero))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.contenido[0].id").value(venta1));
             // spec 021: sí lista las facturas de su turno abierto, con sus medios de pago; ningún otro turno
             mvc.perform(get("/api/ventas?turnoId=" + turno + "&size=20").header(HttpHeaders.AUTHORIZATION, cajeroA))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.totalElementos").value(4))
                     .andExpect(jsonPath("$.contenido[?(@.id==" + venta1 + ")].medios[0]").value("EFECTIVO"));
             mvc.perform(get("/api/ventas?turnoId=" + (turno + 1000)).header(HttpHeaders.AUTHORIZATION, cajeroA))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(0));
             mvc.perform(get("/api/ventas?turnoId=" + turno).header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "CAJERO")))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(0));
             mvc.perform(get("/api/ventas").header(HttpHeaders.AUTHORIZATION, duenoA))
                     .andExpect(jsonPath("$.totalElementos").value(4));
 

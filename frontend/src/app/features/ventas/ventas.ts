@@ -39,8 +39,8 @@ const ROLES_LIMITE: Record<string, string> = { CAJERO: 'Cajero', SUPERVISOR_VENT
 /**
  * Historial de ventas (spec 005): supervisor, dueño y auditor ven todas; el vendedor, las suyas. Detalle con líneas y
  * pagos, y reimpresión del tiquete (sale como COPIA y queda en la auditoría). El dueño fija aquí el descuento máximo de
- * cada rol. El cajero no ve la lista (su cierre es ciego): busca una venta por consecutivo para anularla en su turno o
- * recibir una devolución (spec 006), siempre con el PIN de un supervisor.
+ * cada rol. El cajero ve las ventas que él cobró (filtra por fecha y estado) y, con el consecutivo, encuentra la de otro
+ * cajero para anularla en su turno o recibir una devolución (spec 006), siempre con el PIN de un supervisor.
  */
 @Component({
   selector: 'sc-ventas',
@@ -92,8 +92,8 @@ export class Ventas implements OnInit {
   protected readonly veLimites = computed(() => this.sesion.tieneRol(['ADMIN_SISTEMA', 'SUPERVISOR_VENTAS', 'AUDITOR']));
   /** Quien tiene caja corrige ventas: anula en su turno y recibe devoluciones. */
   protected readonly cobra = computed(() => this.sesion.tieneRol(['CAJERO', 'SUPERVISOR_VENTAS']) && !this.sesion.soloLectura());
-  /** El cajero sin otro rol de supervisión solo busca por consecutivo. */
-  protected readonly soloConsecutivo = computed(() => !this.sesion.tieneRol(['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR']));
+  /** El cajero sin otro rol de supervisión ve las ventas que él cobró (el aviso lo explica). */
+  protected readonly soloPropias = computed(() => !this.sesion.tieneRol(['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR']));
   protected readonly puedeAnular = computed(() => {
     const d = this.detalle();
     return !!d && this.cobra() && d.estado === 'CONFIRMADA' && !!d.turnoAbierto && this.miTurno()?.id === d.turnoId
@@ -130,11 +130,7 @@ export class Ventas implements OnInit {
     if (this.cobra()) {
       this.caja.actual().subscribe({ next: t => this.miTurno.set(t), error: (e: HttpErrorResponse) => e.status === 404 || this.avisos.error(e) });
     }
-    if (this.soloConsecutivo()) {
-      this.pagina.set({ contenido: [], pagina: 0, tamano: 20, totalElementos: 0, totalPaginas: 0 });
-    } else {
-      this.buscar();
-    }
+    this.buscar();
     if (this.veLimites()) {
       this.ventas.limites().subscribe({ next: l => this.limites.set(l), error: e => this.avisos.error(e) });
     }
@@ -142,10 +138,6 @@ export class Ventas implements OnInit {
 
   /** @param pagina página */
   protected buscar(pagina = 0): void {
-    if (this.soloConsecutivo() && !this.consecutivo().trim()) {
-      this.avisos.ok('Escriba el consecutivo de la venta (por ejemplo C1-000123).');
-      return;
-    }
     this.ventas.buscar({ desde: this.desde() || null, hasta: this.hasta() || null, estado: this.estado(),
       consecutivo: this.consecutivo().trim() || null, pagina }).subscribe({ next: p => this.pagina.set(p), error: e => this.avisos.error(e) });
   }
@@ -184,9 +176,7 @@ export class Ventas implements OnInit {
         this.enviando.set(false);
         this.abrir(v);
         this.avisos.ok(`Venta ${v.consecutivo} anulada: el stock volvió y el dinero salió de su turno.`);
-        if (!this.soloConsecutivo()) {
-          this.buscar(this.pagina()?.pagina ?? 0);
-        }
+        this.buscar(this.pagina()?.pagina ?? 0);
       },
       error: e => this.fallo(e),
     });
@@ -226,9 +216,7 @@ export class Ventas implements OnInit {
           this.enviando.set(false);
           this.abrir(v);
           this.avisos.ok(`Venta ${v.consecutivo} anulada: el stock y el dinero volvieron.`);
-          if (!this.soloConsecutivo()) {
-            this.buscar(this.pagina()?.pagina ?? 0);
-          }
+          this.buscar(this.pagina()?.pagina ?? 0);
         },
         error: e => this.fallo(e),
       });

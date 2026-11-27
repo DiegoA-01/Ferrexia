@@ -515,8 +515,8 @@ public class VentaService {
 
     /**
      * Historial de ventas según quién mira: supervisor, dueño y auditor ven todas; el vendedor, las suyas; el cajero
-     * busca una venta por su consecutivo (para reimprimirla, anularla o devolverla) o lista las facturas de su turno
-     * abierto (spec 021, "Mi turno"), y ninguna otra lista. El esperado de caja sigue oculto (cierre ciego, D20).
+     * ve las ventas que él cobró (de cualquier día, con sus filtros) y, con un consecutivo exacto, encuentra también
+     * la de otro cajero (para reimprimirla, anularla o devolverla). El esperado de caja sigue oculto (cierre ciego, D20).
      *
      * @param cajaId      caja
      * @param turnoId     turno
@@ -527,7 +527,6 @@ public class VentaService {
      * @param hasta       hasta (excluido)
      * @param pageable    página y orden
      * @return ventas
-     * @throws AccesoDenegadoException si un cajero busca sin consecutivo y sin su turno abierto
      */
     @Transactional(readOnly = true)
     public PageResponse<VentaResumen> buscar(Long cajaId, Long turnoId, Long clienteId, EstadoVenta estado,
@@ -535,6 +534,7 @@ public class VentaService {
         Set<String> roles = SesionActual.usuario().roles();
         Long yo = SesionActual.usuario().id();
         Long vendedor = null;
+        Long cajero = null;
         String exacto = consecutivo == null || consecutivo.isBlank() ? null : consecutivo.trim().toUpperCase();
         if (!veTodas(roles)) {
             if (SesionActual.usuario().tienePermiso(Permisos.VENTA_VER_PROPIAS)) {
@@ -543,12 +543,11 @@ public class VentaService {
                 boolean suTurno = turnoId != null && turnoRepository.abiertoDe(yo)
                         .map(t -> t.getId().equals(turnoId)).orElse(false);
                 if (exacto == null && !suTurno) {
-                    throw new AccesoDenegadoException(
-                            "El cajero ve las facturas de su turno abierto o busca una venta por consecutivo");
+                    cajero = yo;
                 }
             }
         }
-        var pagina = ventaRepository.buscar(null, vendedor, cajaId, turnoId, clienteId, estado, exacto, desde, hasta,
+        var pagina = ventaRepository.buscar(cajero, vendedor, cajaId, turnoId, clienteId, estado, exacto, desde, hasta,
                 pageable);
         List<Venta> ventas = pagina.getContent();
         Map<Long, String> cajas = cajaRepository.findAllById(ventas.stream().map(Venta::getCajaId).collect(Collectors.toSet()))

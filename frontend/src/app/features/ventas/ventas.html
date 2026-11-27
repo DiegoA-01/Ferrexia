@@ -1,9 +1,9 @@
 <div class="pagina">
   <div class="encabezado"><div><h1>Ventas</h1><p>Historial de ventas con su detalle. Los montos son los que calculó el sistema al cobrar.</p></div>
     <a class="boton" routerLink="/app/pedidos-venta">Pedidos de venta</a></div>
-  @if (soloConsecutivo()) {
+  @if (soloPropias()) {
     <p class="aviso azul" role="note"><span class="material-symbols-outlined">search</span>
-      Escriba el consecutivo de la venta para reimprimirla, anularla en su turno o recibir una devolución.</p>
+      Aquí ve las ventas que usted cobró. Para una venta de otro cajero, escriba su consecutivo.</p>
   }
 
   <section class="tarjeta sin-relleno">

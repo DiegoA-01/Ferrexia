@@ -117,15 +117,19 @@
                 <span class="material-symbols-outlined">warning</span>
                 <div><strong>Diferencia de {{ f.diferencia | pesos }}</strong>Supera la tolerancia: la factura no cuadra con lo recibido.</div>
               </div>
-              @if (puedeAprobar()) {
+              @if (puedeAprobarFactura() || puedeAnularFactura()) {
                 <div class="campo margen-arriba">
                   <label for="motivo">Motivo para aprobarla o anularla (obligatorio)</label>
                   <textarea id="motivo" class="entrada" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)"
                             placeholder="Ej. El proveedor ajustó el flete acordado por teléfono"></textarea>
                 </div>
                 <div class="fila margen-arriba">
-                  <button type="button" class="boton primario" [disabled]="trabajando()" (click)="aprobarFactura()">Aprobar factura con motivo</button>
-                  <button type="button" class="boton peligro" [disabled]="trabajando()" (click)="anularFactura()">Anular y pedir nota crédito</button>
+                  @if (puedeAprobarFactura()) {
+                    <button type="button" class="boton primario" [disabled]="trabajando()" (click)="aprobarFactura()">Aprobar factura con motivo</button>
+                  }
+                  @if (puedeAnularFactura()) {
+                    <button type="button" class="boton peligro" [disabled]="trabajando()" (click)="anularFactura()">Anular y pedir nota crédito</button>
+                  }
                 </div>
                 <p class="texto-chico texto-2">Quien registró la factura no puede aprobarla.</p>
               } @else {

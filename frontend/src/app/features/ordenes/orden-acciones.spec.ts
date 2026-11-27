@@ -82,6 +82,43 @@ describe('Orden: cancelar y nueva versión', () => {
     expect(texto()).not.toContain('Enviar al proveedor');
   });
 
+  describe('factura en revisión: cada botón por su permiso', () => {
+    const enRevision = { id: 5, estado: 'EN_REVISION', numero: 'FV-1', total: 1000000, esperadoTotal: 900000, diferencia: 100000, creadoEn: '2026-11-20T10:00:00' };
+    const verFactura = (permisos: string[]) => {
+      TestBed.configureTestingModule({ providers: [provideRouter([{ path: '**', children: [] }]), provideHttpClient(), provideHttpClientTesting()] });
+      backend = TestBed.inject(HttpTestingController);
+      const sesion = TestBed.inject(SesionService);
+      sesion.usuario.set({ id: 3, nombre: 'Jefe', correo: 'j@x.co', roles: ['ROL_PROPIO'] });
+      sesion.permisos.set(new Set(permisos));
+      fixture = TestBed.createComponent(OrdenDetalle);
+      fixture.componentRef.setInput('id', '9');
+      fixture.detectChanges();
+      backend.expectOne('/api/ordenes/9').flush(orden({ estado: 'RECIBIDA_TOTAL' }));
+      backend.expectOne('/api/ordenes/9/facturas').flush([enRevision]);
+      backend.expectOne('/api/ordenes/9/pagos').flush({ pagos: [] });
+      backend.expectOne('/api/ordenes/9/recepciones').flush({ lineas: [], recepciones: [] });
+      fixture.detectChanges();
+    };
+
+    it('con solo FACTURA_ANULAR ve anular y no aprobar', () => {
+      verFactura(['FACTURA_ANULAR']);
+      expect(texto()).toContain('Anular y pedir nota crédito');
+      expect(texto()).not.toContain('Aprobar factura con motivo');
+    });
+
+    it('con solo FACTURA_APROBAR ve aprobar y no anular', () => {
+      verFactura(['FACTURA_APROBAR']);
+      expect(texto()).toContain('Aprobar factura con motivo');
+      expect(texto()).not.toContain('Anular y pedir nota crédito');
+    });
+
+    it('sin ninguno de los dos permisos no ve ningún botón', () => {
+      verFactura([]);
+      expect(texto()).not.toContain('Anular y pedir nota crédito');
+      expect(texto()).not.toContain('Aprobar factura con motivo');
+    });
+  });
+
   it('otro rol no ve los botones de cambio', () => {
     crear(['ALMACENISTA']);
     expect(texto()).not.toContain('Cancelar orden');
