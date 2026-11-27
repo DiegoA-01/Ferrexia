@@ -11,7 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Lee de las migraciones V43, V44, V47, V48, V51, V52, V53, V55 y V56 qué permisos recibe cada plantilla del sistema (spec 022). Lo usan las pruebas que no
+ * Lee de las migraciones V43, V44, V47, V48, V51, V52, V53, V55, V56 y V57 qué permisos recibe cada plantilla del sistema (spec 022). Lo usan las pruebas que no
  * tienen base de datos ({@code @WebMvcTest} y las de servicios con Mockito) para que el acceso sea el mismo que en
  * producción.
  */
@@ -21,7 +21,7 @@ public final class PermisosDeMigraciones {
         "/db/migration/V44__roles_propios_y_clave_corta.sql", "/db/migration/V47__caja_con_permisos.sql", "/db/migration/V48__dueno_cotiza.sql",
         "/db/migration/V51__cambio_pago_venta.sql", "/db/migration/V52__venta_sin_existencia.sql",
         "/db/migration/V53__domicilios.sql", "/db/migration/V55__solicitud_proveedor.sql",
-        "/db/migration/V56__permiso_reporte_margen.sql" };
+        "/db/migration/V56__permiso_reporte_margen.sql", "/db/migration/V57__grupo_empresas.sql" };
     private static final Pattern PAR = Pattern.compile("\\('([A-Z_]+)', '([A-Z_]+)'\\)");
     private static Map<String, Set<String>> porRol;
 

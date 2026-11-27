@@ -3,7 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  AuditoriaPlataforma, EmpresaCrear, EmpresaDetalle, EmpresaPlataforma, EstadoSuscripcion, ModuloPlataforma, Pagina, Plan,
+  AuditoriaPlataforma, EmpresaCrear, EmpresaDetalle, GrupoPlataforma, SuperAdmin, SuperAdminNuevo,
+  EmpresaPlataforma, EstadoSuscripcion, ModuloPlataforma, Pagina, Plan,
   PlanCambios, PlanNuevo,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
@@ -80,5 +81,50 @@ export class PlataformaService {
   auditoria(empresaId: number | null, pagina: number): Observable<Pagina<AuditoriaPlataforma>> {
     return this.http.get<Pagina<AuditoriaPlataforma>>(api('/api/plataforma/auditoria'),
       { params: parametros({ empresaId, page: pagina, size: 30, sort: 'creadoEn,desc' }) });
+  }
+
+  /** Grupos de empresas con sus empresas y sus super administradores (spec 035). */
+  grupos(): Observable<GrupoPlataforma[]> {
+    return this.http.get<GrupoPlataforma[]>(api('/api/plataforma/grupos'));
+  }
+
+  /** @param nombre nombre del grupo nuevo */
+  crearGrupo(nombre: string): Observable<GrupoPlataforma> {
+    return this.http.post<GrupoPlataforma>(api('/api/plataforma/grupos'), { nombre });
+  }
+
+  /**
+   * Asigna una empresa a un grupo o la saca de él (409 {@code TRASLADOS_EN_TRANSITO} si tiene traslados sin cerrar).
+   *
+   * @param empresaId empresa
+   * @param grupoId   grupo destino; {@code null} la saca de su grupo
+   */
+  asignarEmpresa(empresaId: number, grupoId: number | null): Observable<{ empresaId?: number; grupoId?: number }> {
+    return this.http.put<{ empresaId?: number; grupoId?: number }>(api(`/api/plataforma/empresas/${empresaId}/grupo`), { grupoId });
+  }
+
+  /**
+   * @param grupoId grupo
+   * @param datos   nombre, correo y clave fuerte
+   */
+  crearSuperAdmin(grupoId: number, datos: SuperAdminNuevo): Observable<SuperAdmin> {
+    return this.http.post<SuperAdmin>(api(`/api/plataforma/grupos/${grupoId}/super-admin`), datos);
+  }
+
+  /**
+   * @param grupoId grupo
+   * @param id      super administrador
+   * @param activo  {@code false} lo desactiva y corta sus sesiones
+   */
+  estadoSuperAdmin(grupoId: number, id: number, activo: boolean): Observable<SuperAdmin> {
+    return this.http.patch<SuperAdmin>(api(`/api/plataforma/grupos/${grupoId}/super-admin/${id}`), { activo });
+  }
+
+  /**
+   * @param grupoId grupo
+   * @param id      super administrador que vuelve a configurar su segundo factor
+   */
+  reiniciarMfaSuperAdmin(grupoId: number, id: number): Observable<SuperAdmin> {
+    return this.http.post<SuperAdmin>(api(`/api/plataforma/grupos/${grupoId}/super-admin/${id}/reiniciar-mfa`), {});
   }
 }

@@ -388,6 +388,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/plataforma/empresas/{id}/grupo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["asignarEmpresa"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/perfil/password": {
         parameters: {
             query?: never;
@@ -884,6 +900,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/traslados-grupo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listar_2"];
+        put?: never;
+        post: operations["enviar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/traslados-grupo/{id}/recibir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["recibir"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/traslados-grupo/{id}/anular": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["anular_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/solicitudes": {
         parameters: {
             query?: never;
@@ -909,7 +973,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["enviar"];
+        post: operations["enviar_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -955,7 +1019,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_2"];
+        get: operations["listar_3"];
         put?: never;
         post: operations["crear_3"];
         delete?: never;
@@ -971,7 +1035,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_3"];
+        get: operations["listar_4"];
         put?: never;
         post: operations["crear_4"];
         delete?: never;
@@ -1197,7 +1261,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["enviar_1"];
+        post: operations["enviar_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1291,7 +1355,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_4"];
+        get: operations["listar_5"];
         put?: never;
         post: operations["crear_8"];
         delete?: never;
@@ -1309,7 +1373,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["enviar_2"];
+        post: operations["enviar_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1435,7 +1499,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_5"];
+        get: operations["listar_6"];
         put?: never;
         post: operations["crear_9"];
         delete?: never;
@@ -1460,6 +1524,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/plataforma/grupos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listar_7"];
+        put?: never;
+        post: operations["crear_11"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plataforma/grupos/{id}/super-admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["crearSuperAdmin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plataforma/grupos/{id}/super-admin/{usuario}/reiniciar-mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reiniciarMfa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/plataforma/empresas": {
         parameters: {
             query?: never;
@@ -1467,9 +1579,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_6"];
+        get: operations["listar_8"];
         put?: never;
-        post: operations["crear_11"];
+        post: operations["crear_12"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1517,7 +1629,7 @@ export interface paths {
         };
         get: operations["buscar_7"];
         put?: never;
-        post: operations["crear_12"];
+        post: operations["crear_13"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1547,9 +1659,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_7"];
+        get: operations["listar_9"];
         put?: never;
-        post: operations["crear_13"];
+        post: operations["crear_14"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1581,7 +1693,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["anular_1"];
+        post: operations["anular_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1771,9 +1883,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_8"];
+        get: operations["listar_10"];
         put?: never;
-        post: operations["enviar_3"];
+        post: operations["enviar_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1806,6 +1918,54 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["pedir"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/grupo/entrar/{empresaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["entrar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/grupo/auth/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["mfa_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/grupo/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["login_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1869,7 +2029,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["anular_2"];
+        post: operations["anular_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1995,7 +2155,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_9"];
+        get: operations["listar_11"];
         put?: never;
         post: operations["subir"];
         delete?: never;
@@ -2029,7 +2189,7 @@ export interface paths {
         };
         get: operations["buscar_10"];
         put?: never;
-        post: operations["crear_14"];
+        post: operations["crear_15"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2061,7 +2221,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["anular_3"];
+        post: operations["anular_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2077,7 +2237,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["crear_15"];
+        post: operations["crear_16"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2109,7 +2269,7 @@ export interface paths {
         };
         get: operations["buscar_11"];
         put?: never;
-        post: operations["crear_16"];
+        post: operations["crear_17"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2141,7 +2301,7 @@ export interface paths {
         };
         get: operations["buscar_12"];
         put?: never;
-        post: operations["crear_17"];
+        post: operations["crear_18"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2155,9 +2315,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_10"];
+        get: operations["listar_12"];
         put?: never;
-        post: operations["crear_18"];
+        post: operations["crear_19"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2171,9 +2331,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_11"];
+        get: operations["listar_13"];
         put?: never;
-        post: operations["crear_19"];
+        post: operations["crear_20"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2187,9 +2347,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_12"];
+        get: operations["listar_14"];
         put?: never;
-        post: operations["crear_20"];
+        post: operations["crear_21"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2203,9 +2363,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_13"];
+        get: operations["listar_15"];
         put?: never;
-        post: operations["crear_21"];
+        post: operations["crear_22"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2219,9 +2379,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_14"];
+        get: operations["listar_16"];
         put?: never;
-        post: operations["crear_22"];
+        post: operations["crear_23"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2381,7 +2541,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["login_1"];
+        post: operations["login_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2449,7 +2609,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["reiniciarMfa"];
+        patch: operations["reiniciarMfa_1"];
         trace?: never;
     };
     "/api/usuarios/{id}/desactivar": {
@@ -2676,7 +2836,7 @@ export interface paths {
         patch: operations["activar_4"];
         trace?: never;
     };
-    "/api/plataforma/empresas/{id}/estado": {
+    "/api/plataforma/grupos/{id}/super-admin/{usuario}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2690,6 +2850,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["cambiarEstado_1"];
+        trace?: never;
+    };
+    "/api/plataforma/empresas/{id}/estado": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["cambiarEstado_2"];
         trace?: never;
     };
     "/api/pedidos-internos/{id}": {
@@ -2801,7 +2977,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["anular_4"];
+        patch: operations["anular_5"];
         trace?: never;
     };
     "/api/config-notificaciones/{id}": {
@@ -3092,6 +3268,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/traslados-grupo/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["obtener_19"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/traslados-grupo/destinos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["destinos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/solicitudes/{id}/recorrido": {
         parameters: {
             query?: never;
@@ -3163,7 +3371,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_15"];
+        get: operations["listar_17"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3179,7 +3387,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_16"];
+        get: operations["listar_18"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3419,7 +3627,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_19"];
+        get: operations["obtener_20"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3483,7 +3691,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_17"];
+        get: operations["listar_19"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3563,7 +3771,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_20"];
+        get: operations["obtener_21"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3691,7 +3899,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_21"];
+        get: operations["obtener_22"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3739,7 +3947,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_22"];
+        get: operations["obtener_23"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3819,7 +4027,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_23"];
+        get: operations["obtener_24"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3835,7 +4043,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_24"];
+        get: operations["obtener_25"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3899,7 +4107,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_25"];
+        get: operations["obtener_26"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3916,6 +4124,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["vistaPrevia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/grupo/tablero": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["tablero_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/grupo/empresas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["empresas"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3947,7 +4187,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_26"];
+        get: operations["obtener_27"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4107,7 +4347,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_18"];
+        get: operations["listar_20"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4123,7 +4363,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_27"];
+        get: operations["obtener_28"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4155,7 +4395,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_28"];
+        get: operations["obtener_29"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4187,7 +4427,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_29"];
+        get: operations["obtener_30"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4251,7 +4491,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_30"];
+        get: operations["obtener_31"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4267,7 +4507,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_31"];
+        get: operations["obtener_32"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4459,7 +4699,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_32"];
+        get: operations["obtener_33"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4475,7 +4715,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_33"];
+        get: operations["obtener_34"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5099,6 +5339,16 @@ export interface components {
         ModuloExcepcion: {
             habilitado?: boolean;
         };
+        AsignarGrupoRequest: {
+            /** Format: int64 */
+            grupoId?: number;
+        };
+        AsignacionGrupoResponse: {
+            /** Format: int64 */
+            empresaId?: number;
+            /** Format: int64 */
+            grupoId?: number;
+        };
         CambioPasswordRequest: {
             passwordActual: string;
             passwordNueva: string;
@@ -5294,7 +5544,7 @@ export interface components {
         };
         ConfigNotificacionCambioRequest: {
             /** @enum {string} */
-            evento: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_SOBRE_MAXIMO" | "VENTA_SIN_EXISTENCIA" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "ALERTA_CAJERO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE";
+            evento: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_SOBRE_MAXIMO" | "VENTA_SIN_EXISTENCIA" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "ALERTA_CAJERO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE" | "TRASLADO_GRUPO_ENVIADO";
             /** @enum {string} */
             canal: "EMAIL" | "INTERNA";
             activo: boolean;
@@ -5303,7 +5553,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_SOBRE_MAXIMO" | "VENTA_SIN_EXISTENCIA" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "ALERTA_CAJERO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE";
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_SOBRE_MAXIMO" | "VENTA_SIN_EXISTENCIA" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "ALERTA_CAJERO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE" | "TRASLADO_GRUPO_ENVIADO";
             /** @enum {string} */
             canal?: "EMAIL" | "INTERNA";
             activo?: boolean;
@@ -5762,6 +6012,76 @@ export interface components {
         AprobarTurnoRequest: {
             explicacion: string;
         };
+        EnviarTrasladoRequest: {
+            /** Format: int64 */
+            empresaDestinoId: number;
+            /** Format: int64 */
+            bodegaOrigenId: number;
+            lineas: components["schemas"]["LineaEnvioRequest"][];
+            nota?: string;
+        };
+        LineaEnvioRequest: {
+            /** Format: int64 */
+            productoId: number;
+            cantidad: number;
+        };
+        LineaTrasladoResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            productoId?: number;
+            codigo?: string;
+            nombre?: string;
+            cantidad?: number;
+            cantidadRecibida?: number;
+            faltante?: number;
+            costoUnitario?: number;
+        };
+        TrasladoDetalleResponse: {
+            resumen?: components["schemas"]["TrasladoResumenResponse"];
+            /** Format: int64 */
+            bodegaPropiaId?: number;
+            notaRecepcion?: string;
+            motivoAnulacion?: string;
+            lineas?: components["schemas"]["LineaTrasladoResponse"][];
+        };
+        TrasladoResumenResponse: {
+            /** Format: int64 */
+            id?: number;
+            consecutivo?: string;
+            /** @enum {string} */
+            estado?: "EN_TRANSITO" | "RECIBIDO" | "ANULADO";
+            sentido?: string;
+            /** Format: int64 */
+            empresaOrigenId?: number;
+            empresaOrigenNombre?: string;
+            /** Format: int64 */
+            empresaDestinoId?: number;
+            empresaDestinoNombre?: string;
+            /** Format: int32 */
+            lineas?: number;
+            nota?: string;
+            /** Format: date-time */
+            enviadoEn?: string;
+            /** Format: date-time */
+            recibidoEn?: string;
+            /** Format: date-time */
+            anuladoEn?: string;
+        };
+        LineaRecepcionTrasladoRequest: {
+            /** Format: int64 */
+            lineaId: number;
+            cantidadRecibida: number;
+        };
+        RecibirTrasladoRequest: {
+            /** Format: int64 */
+            bodegaDestinoId: number;
+            lineas: components["schemas"]["LineaRecepcionTrasladoRequest"][];
+            nota?: string;
+        };
+        AnularTrasladoRequest: {
+            motivo: string;
+        };
         EnviarSolicitudRequest: {
             justificacionExcepcion?: string;
         };
@@ -6095,6 +6415,37 @@ export interface components {
             nombre: string;
             modulos: string[];
         };
+        GrupoCrearRequest: {
+            nombre: string;
+        };
+        EmpresaDeGrupoResponse: {
+            /** Format: int64 */
+            id?: number;
+            razonSocial?: string;
+            codigoPublico?: string;
+        };
+        GrupoResponse: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
+            activo?: boolean;
+            empresas?: components["schemas"]["EmpresaDeGrupoResponse"][];
+            superAdmins?: components["schemas"]["SuperAdminResponse"][];
+        };
+        SuperAdminResponse: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
+            correo?: string;
+            activo?: boolean;
+            mfaActivo?: boolean;
+        };
+        SuperAdminCrearRequest: {
+            nombre: string;
+            /** Format: email */
+            correo: string;
+            password: string;
+        };
         EmpresaCrearRequest: {
             razonSocial: string;
             nit: string;
@@ -6360,7 +6711,7 @@ export interface components {
             /** Format: int64 */
             productoId: number;
             /** @enum {string} */
-            tipo: "ENTRADA_COMPRA" | "SALIDA_CONSUMO" | "AJUSTE_POSITIVO" | "AJUSTE_NEGATIVO" | "DEVOLUCION_PROVEEDOR" | "TRASLADO" | "SALIDA_VENTA" | "ANULACION_DESPACHO" | "ANULACION_VENTA" | "DEVOLUCION_CLIENTE";
+            tipo: "ENTRADA_COMPRA" | "SALIDA_CONSUMO" | "AJUSTE_POSITIVO" | "AJUSTE_NEGATIVO" | "DEVOLUCION_PROVEEDOR" | "TRASLADO" | "SALIDA_VENTA" | "ANULACION_DESPACHO" | "ANULACION_VENTA" | "DEVOLUCION_CLIENTE" | "SALIDA_TRASLADO_GRUPO" | "ENTRADA_TRASLADO_GRUPO";
             /** Format: int64 */
             bodegaOrigenId?: number;
             /** Format: int64 */
@@ -6372,7 +6723,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            tipo?: "ENTRADA_COMPRA" | "SALIDA_CONSUMO" | "AJUSTE_POSITIVO" | "AJUSTE_NEGATIVO" | "DEVOLUCION_PROVEEDOR" | "TRASLADO" | "SALIDA_VENTA" | "ANULACION_DESPACHO" | "ANULACION_VENTA" | "DEVOLUCION_CLIENTE";
+            tipo?: "ENTRADA_COMPRA" | "SALIDA_CONSUMO" | "AJUSTE_POSITIVO" | "AJUSTE_NEGATIVO" | "DEVOLUCION_PROVEEDOR" | "TRASLADO" | "SALIDA_VENTA" | "ANULACION_DESPACHO" | "ANULACION_VENTA" | "DEVOLUCION_CLIENTE" | "SALIDA_TRASLADO_GRUPO" | "ENTRADA_TRASLADO_GRUPO";
             /** Format: int64 */
             productoId?: number;
             productoCodigo?: string;
@@ -6585,6 +6936,48 @@ export interface components {
             mensaje?: string;
             rangoValido?: boolean;
         };
+        LoginResponse: {
+            token?: string;
+            tipo?: string;
+            /** Format: int64 */
+            expiraEnSegundos?: number;
+            usuario?: components["schemas"]["UsuarioSesionResponse"];
+            refreshToken?: string;
+            desafioMfa?: string;
+            mfaConfigurado?: boolean;
+            secretoMfa?: string;
+            otpauthUri?: string;
+        };
+        UsuarioSesionResponse: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
+            correo?: string;
+            roles?: string[];
+            /** Format: int64 */
+            proveedorId?: number;
+        };
+        MfaGrupoRequest: {
+            desafio: string;
+            codigo: string;
+        };
+        SesionGrupoResponse: {
+            token?: string;
+            tipo?: string;
+            /** Format: int64 */
+            expiraEnSegundos?: number;
+            /** Format: int64 */
+            usuarioId?: number;
+            correo?: string;
+            nombre?: string;
+            /** Format: int64 */
+            grupoId?: number;
+            grupoNombre?: string;
+        };
+        LoginGrupoRequest: {
+            correo: string;
+            password: string;
+        };
         MotivoFacturaRequest: {
             motivo: string;
         };
@@ -6600,7 +6993,7 @@ export interface components {
             /** Format: int64 */
             bodegaId?: number;
             /** @enum {string} */
-            tipo?: "ENTRADA_COMPRA" | "SALIDA_CONSUMO" | "AJUSTE_POSITIVO" | "AJUSTE_NEGATIVO" | "DEVOLUCION_PROVEEDOR" | "TRASLADO" | "SALIDA_VENTA" | "ANULACION_DESPACHO" | "ANULACION_VENTA" | "DEVOLUCION_CLIENTE";
+            tipo?: "ENTRADA_COMPRA" | "SALIDA_CONSUMO" | "AJUSTE_POSITIVO" | "AJUSTE_NEGATIVO" | "DEVOLUCION_PROVEEDOR" | "TRASLADO" | "SALIDA_VENTA" | "ANULACION_DESPACHO" | "ANULACION_VENTA" | "DEVOLUCION_CLIENTE" | "SALIDA_TRASLADO_GRUPO" | "ENTRADA_TRASLADO_GRUPO";
             /** Format: date-time */
             desde?: string;
             /** Format: date-time */
@@ -6870,27 +7263,6 @@ export interface components {
         RefreshRequest: {
             refreshToken: string;
         };
-        LoginResponse: {
-            token?: string;
-            tipo?: string;
-            /** Format: int64 */
-            expiraEnSegundos?: number;
-            usuario?: components["schemas"]["UsuarioSesionResponse"];
-            refreshToken?: string;
-            desafioMfa?: string;
-            mfaConfigurado?: boolean;
-            secretoMfa?: string;
-            otpauthUri?: string;
-        };
-        UsuarioSesionResponse: {
-            /** Format: int64 */
-            id?: number;
-            nombre?: string;
-            correo?: string;
-            roles?: string[];
-            /** Format: int64 */
-            proveedorId?: number;
-        };
         RecuperarPasswordRequest: {
             empresa: string;
             /** Format: email */
@@ -6959,6 +7331,9 @@ export interface components {
             /** Format: int32 */
             diasSeguridad?: number;
         };
+        SuperAdminEstadoRequest: {
+            activo: boolean;
+        };
         CambiarEstado: {
             /** @enum {string} */
             estado: "PRUEBA" | "ACTIVA" | "MOROSA" | "SUSPENDIDA" | "CANCELADA";
@@ -6973,7 +7348,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_SOBRE_MAXIMO" | "VENTA_SIN_EXISTENCIA" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "ALERTA_CAJERO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE";
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_SOBRE_MAXIMO" | "VENTA_SIN_EXISTENCIA" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "ALERTA_CAJERO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE" | "TRASLADO_GRUPO_ENVIADO";
             mensaje?: string;
             leida?: boolean;
             /** Format: date-time */
@@ -7172,6 +7547,22 @@ export interface components {
                 [key: string]: number;
             };
             total?: number;
+        };
+        PageResponseTrasladoResumenResponse: {
+            contenido?: components["schemas"]["TrasladoResumenResponse"][];
+            /** Format: int32 */
+            pagina?: number;
+            /** Format: int32 */
+            tamano?: number;
+            /** Format: int64 */
+            totalElementos?: number;
+            /** Format: int32 */
+            totalPaginas?: number;
+        };
+        DestinoResponse: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
         };
         PageResponseSolicitudResumenResponse: {
             contenido?: components["schemas"]["SolicitudResumenResponse"][];
@@ -7849,7 +8240,7 @@ export interface components {
             /** Format: int64 */
             usuarioPlataformaId?: number;
             /** @enum {string} */
-            accion?: "LOGIN" | "MFA" | "MFA_CONFIGURAR" | "EMPRESA_CREAR" | "EMPRESA_CAMBIAR_PLAN" | "EMPRESA_MODULO" | "EMPRESA_ESTADO" | "PLAN_CREAR" | "PLAN_EDITAR";
+            accion?: "LOGIN" | "MFA" | "MFA_CONFIGURAR" | "EMPRESA_CREAR" | "EMPRESA_CAMBIAR_PLAN" | "EMPRESA_MODULO" | "EMPRESA_ESTADO" | "PLAN_CREAR" | "PLAN_EDITAR" | "GRUPO_CREAR" | "GRUPO_ASIGNAR_EMPRESA" | "GRUPO_SUPER_ADMIN_CREAR" | "GRUPO_SUPER_ADMIN_ESTADO" | "GRUPO_LOGIN" | "GRUPO_MFA" | "GRUPO_SUPER_ADMIN_REINICIAR_MFA";
             /** Format: int64 */
             empresaId?: number;
             resultado?: string;
@@ -7945,6 +8336,29 @@ export interface components {
             totalElementos?: number;
             /** Format: int32 */
             totalPaginas?: number;
+        };
+        TableroEmpresaResponse: {
+            /** Format: int64 */
+            empresaId?: number;
+            razonSocial?: string;
+            ventasNetas?: number;
+            compras?: number;
+            inventarioValorizado?: number;
+        };
+        TableroGrupoResponse: {
+            /** Format: date */
+            desde?: string;
+            /** Format: date */
+            hasta?: string;
+            empresas?: components["schemas"]["TableroEmpresaResponse"][];
+            total?: components["schemas"]["TableroEmpresaResponse"];
+        };
+        EmpresaEntrableResponse: {
+            /** Format: int64 */
+            id?: number;
+            razonSocial?: string;
+            codigoPublico?: string;
+            estado?: string;
         };
         PageResponseFacturaResponse: {
             contenido?: components["schemas"]["FacturaResponse"][];
@@ -8155,11 +8569,11 @@ export interface components {
             /** Format: int64 */
             usuarioId?: number;
             /** @enum {string} */
-            entidad?: "USUARIO" | "ROL" | "PROVEEDOR" | "EMPRESA" | "SEDE" | "CENTRO_COSTO" | "DELEGACION" | "PRESUPUESTO" | "CONTRATO" | "POLITICA_APROBACION" | "CATEGORIA_PRODUCTO" | "UNIDAD_MEDIDA" | "PRODUCTO" | "BODEGA" | "MOVIMIENTO_INVENTARIO" | "DOCUMENTO" | "CONFIG_NOTIFICACION" | "SOLICITUD_COMPRA" | "RFQ" | "DESPACHO" | "COTIZACION" | "CONFIG_PESOS" | "ANALISIS" | "ADJUDICACION" | "ORDEN_COMPRA" | "PAGO" | "RECEPCION" | "FACTURA" | "EXPORTACION" | "INFORME_COMPRAS" | "PEDIDO_INTERNO" | "TARIFA_IMPUESTO" | "LISTA_PRECIO" | "PRECIO_PRODUCTO" | "CATALOGO_ITEM" | "CLIENTE" | "CAJA" | "CATEGORIA_MOVIMIENTO_CAJA" | "TURNO_CAJA" | "AUTORIZACION" | "VENTA" | "PEDIDO_VENTA" | "LIMITE_DESCUENTO" | "DEVOLUCION_VENTA" | "ABONO_CLIENTE";
+            entidad?: "USUARIO" | "ROL" | "PROVEEDOR" | "EMPRESA" | "SEDE" | "CENTRO_COSTO" | "DELEGACION" | "PRESUPUESTO" | "CONTRATO" | "POLITICA_APROBACION" | "CATEGORIA_PRODUCTO" | "UNIDAD_MEDIDA" | "PRODUCTO" | "BODEGA" | "MOVIMIENTO_INVENTARIO" | "DOCUMENTO" | "CONFIG_NOTIFICACION" | "SOLICITUD_COMPRA" | "RFQ" | "DESPACHO" | "COTIZACION" | "CONFIG_PESOS" | "ANALISIS" | "ADJUDICACION" | "ORDEN_COMPRA" | "PAGO" | "RECEPCION" | "FACTURA" | "EXPORTACION" | "INFORME_COMPRAS" | "PEDIDO_INTERNO" | "TARIFA_IMPUESTO" | "LISTA_PRECIO" | "PRECIO_PRODUCTO" | "CATALOGO_ITEM" | "CLIENTE" | "CAJA" | "CATEGORIA_MOVIMIENTO_CAJA" | "TURNO_CAJA" | "AUTORIZACION" | "VENTA" | "PEDIDO_VENTA" | "LIMITE_DESCUENTO" | "DEVOLUCION_VENTA" | "ABONO_CLIENTE" | "TRASLADO_GRUPO";
             /** Format: int64 */
             entidadId?: number;
             /** @enum {string} */
-            accion?: "LOGIN" | "LOGOUT" | "REFRESH_REUTILIZADO" | "CUENTA_BLOQUEADA" | "USUARIO_CREAR" | "USUARIO_EDITAR" | "USUARIO_ACTIVAR" | "USUARIO_DESACTIVAR" | "USUARIO_RESTABLECER_PASSWORD" | "ROL_CREAR" | "ROL_EDITAR" | "ROL_ELIMINAR" | "USUARIO_PERMISOS_CAMBIAR" | "PASSWORD_CAMBIAR" | "PROVEEDOR_REGISTRAR" | "PROVEEDOR_HABILITAR" | "PROVEEDOR_RECHAZAR" | "PROVEEDOR_SUSPENDER" | "PROVEEDOR_EDITAR" | "EMPRESA_EDITAR" | "SEDE_CREAR" | "SEDE_EDITAR" | "SEDE_CAMBIAR_ESTADO" | "CENTRO_COSTO_CREAR" | "CENTRO_COSTO_EDITAR" | "CENTRO_COSTO_CAMBIAR_ESTADO" | "DELEGACION_CREAR" | "DELEGACION_REVOCAR" | "SOLICITUD_ESCALAR" | "REORDEN_GENERAR" | "PRODUCTO_CARGA_MASIVA" | "CONTRATO_CREAR" | "CONTRATO_EDITAR" | "CONTRATO_ANULAR" | "ORDEN_EMITIR_DIRECTA" | "PRESUPUESTO_CREAR" | "PRESUPUESTO_EDITAR" | "SOLICITUD_EXCEPCION" | "POLITICA_CREAR" | "POLITICA_EDITAR" | "POLITICA_CAMBIAR_ESTADO" | "CATEGORIA_CREAR" | "CATEGORIA_EDITAR" | "CATEGORIA_CAMBIAR_ESTADO" | "UNIDAD_CREAR" | "UNIDAD_EDITAR" | "UNIDAD_CAMBIAR_ESTADO" | "PRODUCTO_CREAR" | "PRODUCTO_EDITAR" | "PRODUCTO_CAMBIAR_ESTADO" | "BODEGA_CREAR" | "BODEGA_EDITAR" | "BODEGA_CAMBIAR_ESTADO" | "INVENTARIO_AJUSTE" | "DOCUMENTO_SUBIR" | "CONFIG_NOTIFICACION_CAMBIAR" | "SOLICITUD_CREAR" | "SOLICITUD_EDITAR" | "SOLICITUD_ENVIAR" | "SOLICITUD_CANCELAR" | "SOLICITUD_DECIDIR" | "RFQ_CREAR" | "RFQ_EDITAR" | "RFQ_ABRIR" | "RFQ_CERRAR" | "RFQ_CANCELAR" | "ENLACE_COTIZACION_REGENERAR" | "DESPACHO_CREAR" | "DESPACHO_EDITAR" | "DESPACHO_CONFIRMAR" | "DESPACHO_ANULAR" | "COTIZACION_GUARDAR" | "COTIZACION_ENVIAR" | "EXTRACCION_CONFIRMAR" | "COTIZACION_DIGITAR" | "PESOS_CAMBIAR" | "ANALISIS_GENERAR" | "ANALISIS_PUBLICAR" | "ADJUDICACION_CREAR" | "ADJUDICACION_DECIDIR" | "ORDEN_EMITIR" | "ORDEN_VERSIONAR" | "ORDEN_CANCELAR" | "ORDEN_PROVEEDOR" | "ORDEN_ENVIAR_PROVEEDOR" | "PAGO_REGISTRAR" | "PAGO_COMPROBANTE" | "PAGO_ANULAR" | "RECEPCION_REGISTRAR" | "RECEPCION_RESOLVER_EXCESO" | "RECEPCION_CERRAR" | "FACTURA_REGISTRAR" | "FACTURA_RECRUZAR" | "FACTURA_APROBAR" | "FACTURA_ANULAR" | "FACTURA_ARCHIVO" | "EXPORTAR_ARCHIVO" | "EXPORTAR_CORREO" | "PASSWORD_RECUPERAR_PEDIR" | "PASSWORD_RECUPERAR_USAR" | "MFA_ACTIVAR" | "MFA_DESACTIVAR" | "MFA_FALLO" | "INFORME_PEDIR" | "INFORME_ENVIAR" | "PEDIDO_INTERNO_CREAR" | "PEDIDO_INTERNO_GESTIONAR" | "PRECIO_CONFIGURAR" | "PRECIO_CAMBIAR" | "CATALOGO_CARGAR" | "CATALOGO_EQUIVALENCIA" | "CLIENTE_CREAR" | "CLIENTE_EDITAR" | "CLIENTE_CUPO_CAMBIAR" | "CAJA_CREAR" | "CAJA_EDITAR" | "CAJA_CONFIGURAR" | "CATEGORIA_CAJA_CREAR" | "CATEGORIA_CAJA_EDITAR" | "TURNO_ABRIR" | "TURNO_MOVIMIENTO" | "TURNO_CERRAR" | "TURNO_APROBAR" | "AUTORIZACION_OTORGAR" | "AUTORIZACION_FALLO" | "PIN_CAMBIAR" | "VENTA_CONFIRMAR" | "PEDIDO_VENTA_CREAR" | "PEDIDO_VENTA_EDITAR" | "PEDIDO_VENTA_DESCARTAR" | "LIMITE_DESCUENTO_CAMBIAR" | "VENTA_IMPRIMIR" | "VENTA_REIMPRIMIR" | "VENTA_ANULAR" | "VENTA_CAMBIAR_PAGO" | "DOMICILIO_ESTADO" | "DOMICILIO_COBRAR" | "VENTA_DEVOLVER" | "CREDITO_EXCEPCION" | "ABONO_REGISTRAR";
+            accion?: "LOGIN" | "LOGOUT" | "REFRESH_REUTILIZADO" | "CUENTA_BLOQUEADA" | "USUARIO_CREAR" | "USUARIO_EDITAR" | "USUARIO_ACTIVAR" | "USUARIO_DESACTIVAR" | "USUARIO_RESTABLECER_PASSWORD" | "ROL_CREAR" | "ROL_EDITAR" | "ROL_ELIMINAR" | "USUARIO_PERMISOS_CAMBIAR" | "PASSWORD_CAMBIAR" | "PROVEEDOR_REGISTRAR" | "PROVEEDOR_HABILITAR" | "PROVEEDOR_RECHAZAR" | "PROVEEDOR_SUSPENDER" | "PROVEEDOR_EDITAR" | "EMPRESA_EDITAR" | "SEDE_CREAR" | "SEDE_EDITAR" | "SEDE_CAMBIAR_ESTADO" | "CENTRO_COSTO_CREAR" | "CENTRO_COSTO_EDITAR" | "CENTRO_COSTO_CAMBIAR_ESTADO" | "DELEGACION_CREAR" | "DELEGACION_REVOCAR" | "SOLICITUD_ESCALAR" | "REORDEN_GENERAR" | "PRODUCTO_CARGA_MASIVA" | "CONTRATO_CREAR" | "CONTRATO_EDITAR" | "CONTRATO_ANULAR" | "ORDEN_EMITIR_DIRECTA" | "PRESUPUESTO_CREAR" | "PRESUPUESTO_EDITAR" | "SOLICITUD_EXCEPCION" | "POLITICA_CREAR" | "POLITICA_EDITAR" | "POLITICA_CAMBIAR_ESTADO" | "CATEGORIA_CREAR" | "CATEGORIA_EDITAR" | "CATEGORIA_CAMBIAR_ESTADO" | "UNIDAD_CREAR" | "UNIDAD_EDITAR" | "UNIDAD_CAMBIAR_ESTADO" | "PRODUCTO_CREAR" | "PRODUCTO_EDITAR" | "PRODUCTO_CAMBIAR_ESTADO" | "BODEGA_CREAR" | "BODEGA_EDITAR" | "BODEGA_CAMBIAR_ESTADO" | "INVENTARIO_AJUSTE" | "DOCUMENTO_SUBIR" | "CONFIG_NOTIFICACION_CAMBIAR" | "SOLICITUD_CREAR" | "SOLICITUD_EDITAR" | "SOLICITUD_ENVIAR" | "SOLICITUD_CANCELAR" | "SOLICITUD_DECIDIR" | "RFQ_CREAR" | "RFQ_EDITAR" | "RFQ_ABRIR" | "RFQ_CERRAR" | "RFQ_CANCELAR" | "ENLACE_COTIZACION_REGENERAR" | "DESPACHO_CREAR" | "DESPACHO_EDITAR" | "DESPACHO_CONFIRMAR" | "DESPACHO_ANULAR" | "COTIZACION_GUARDAR" | "COTIZACION_ENVIAR" | "EXTRACCION_CONFIRMAR" | "COTIZACION_DIGITAR" | "PESOS_CAMBIAR" | "ANALISIS_GENERAR" | "ANALISIS_PUBLICAR" | "ADJUDICACION_CREAR" | "ADJUDICACION_DECIDIR" | "ORDEN_EMITIR" | "ORDEN_VERSIONAR" | "ORDEN_CANCELAR" | "ORDEN_PROVEEDOR" | "ORDEN_ENVIAR_PROVEEDOR" | "PAGO_REGISTRAR" | "PAGO_COMPROBANTE" | "PAGO_ANULAR" | "RECEPCION_REGISTRAR" | "RECEPCION_RESOLVER_EXCESO" | "RECEPCION_CERRAR" | "FACTURA_REGISTRAR" | "FACTURA_RECRUZAR" | "FACTURA_APROBAR" | "FACTURA_ANULAR" | "FACTURA_ARCHIVO" | "EXPORTAR_ARCHIVO" | "EXPORTAR_CORREO" | "PASSWORD_RECUPERAR_PEDIR" | "PASSWORD_RECUPERAR_USAR" | "MFA_ACTIVAR" | "MFA_DESACTIVAR" | "MFA_FALLO" | "INFORME_PEDIR" | "INFORME_ENVIAR" | "PEDIDO_INTERNO_CREAR" | "PEDIDO_INTERNO_GESTIONAR" | "PRECIO_CONFIGURAR" | "PRECIO_CAMBIAR" | "CATALOGO_CARGAR" | "CATALOGO_EQUIVALENCIA" | "CLIENTE_CREAR" | "CLIENTE_EDITAR" | "CLIENTE_CUPO_CAMBIAR" | "CAJA_CREAR" | "CAJA_EDITAR" | "CAJA_CONFIGURAR" | "CATEGORIA_CAJA_CREAR" | "CATEGORIA_CAJA_EDITAR" | "TURNO_ABRIR" | "TURNO_MOVIMIENTO" | "TURNO_CERRAR" | "TURNO_APROBAR" | "AUTORIZACION_OTORGAR" | "AUTORIZACION_FALLO" | "PIN_CAMBIAR" | "VENTA_CONFIRMAR" | "PEDIDO_VENTA_CREAR" | "PEDIDO_VENTA_EDITAR" | "PEDIDO_VENTA_DESCARTAR" | "LIMITE_DESCUENTO_CAMBIAR" | "VENTA_IMPRIMIR" | "VENTA_REIMPRIMIR" | "VENTA_ANULAR" | "VENTA_CAMBIAR_PAGO" | "DOMICILIO_ESTADO" | "DOMICILIO_COBRAR" | "VENTA_DEVOLVER" | "CREDITO_EXCEPCION" | "ABONO_REGISTRAR" | "GRUPO_ENTRAR" | "TRASLADO_GRUPO_ENVIAR" | "TRASLADO_GRUPO_RECIBIR" | "TRASLADO_GRUPO_ANULAR";
             /** @enum {string} */
             resultado?: "EXITO" | "FALLO";
             /** Format: date-time */
@@ -9199,6 +9613,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["EmpresaDetalleResponse"];
+                };
+            };
+        };
+    };
+    asignarEmpresa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AsignarGrupoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AsignacionGrupoResponse"];
                 };
             };
         };
@@ -10403,6 +10843,104 @@ export interface operations {
             };
         };
     };
+    listar_2: {
+        parameters: {
+            query: {
+                pageable: components["schemas"]["Pageable"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseTrasladoResumenResponse"];
+                };
+            };
+        };
+    };
+    enviar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnviarTrasladoRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TrasladoDetalleResponse"];
+                };
+            };
+        };
+    };
+    recibir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecibirTrasladoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TrasladoDetalleResponse"];
+                };
+            };
+        };
+    };
+    anular_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnularTrasladoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TrasladoDetalleResponse"];
+                };
+            };
+        };
+    };
     buscar_3: {
         parameters: {
             query: {
@@ -10453,7 +10991,7 @@ export interface operations {
             };
         };
     };
-    enviar: {
+    enviar_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -10527,7 +11065,7 @@ export interface operations {
             };
         };
     };
-    listar_2: {
+    listar_3: {
         parameters: {
             query?: {
                 activo?: boolean;
@@ -10573,7 +11111,7 @@ export interface operations {
             };
         };
     };
-    listar_3: {
+    listar_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -10987,7 +11525,7 @@ export interface operations {
             };
         };
     };
-    enviar_1: {
+    enviar_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -11192,7 +11730,7 @@ export interface operations {
             };
         };
     };
-    listar_4: {
+    listar_5: {
         parameters: {
             query?: {
                 centroCostoId?: number;
@@ -11239,7 +11777,7 @@ export interface operations {
             };
         };
     };
-    enviar_2: {
+    enviar_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -11459,7 +11997,7 @@ export interface operations {
             };
         };
     };
-    listar_5: {
+    listar_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -11547,7 +12085,100 @@ export interface operations {
             };
         };
     };
-    listar_6: {
+    listar_7: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["GrupoResponse"][];
+                };
+            };
+        };
+    };
+    crear_11: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrupoCrearRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["GrupoResponse"];
+                };
+            };
+        };
+    };
+    crearSuperAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuperAdminCrearRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SuperAdminResponse"];
+                };
+            };
+        };
+    };
+    reiniciarMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                usuario: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SuperAdminResponse"];
+                };
+            };
+        };
+    };
+    listar_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -11567,7 +12198,7 @@ export interface operations {
             };
         };
     };
-    crear_11: {
+    crear_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -11662,7 +12293,7 @@ export interface operations {
             };
         };
     };
-    crear_12: {
+    crear_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -11712,7 +12343,7 @@ export interface operations {
             };
         };
     };
-    listar_7: {
+    listar_9: {
         parameters: {
             query: {
                 mios?: boolean;
@@ -11736,7 +12367,7 @@ export interface operations {
             };
         };
     };
-    crear_13: {
+    crear_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -11789,7 +12420,7 @@ export interface operations {
             };
         };
     };
-    anular_1: {
+    anular_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -12208,7 +12839,7 @@ export interface operations {
             };
         };
     };
-    listar_8: {
+    listar_10: {
         parameters: {
             query: {
                 pageable: components["schemas"]["Pageable"];
@@ -12230,7 +12861,7 @@ export interface operations {
             };
         };
     };
-    enviar_3: {
+    enviar_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -12296,6 +12927,76 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["InformeResponse"];
+                };
+            };
+        };
+    };
+    entrar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                empresaId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LoginResponse"];
+                };
+            };
+        };
+    };
+    mfa_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaGrupoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SesionGrupoResponse"];
+                };
+            };
+        };
+    };
+    login_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginGrupoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DesafioMfaResponse"];
                 };
             };
         };
@@ -12377,7 +13078,7 @@ export interface operations {
             };
         };
     };
-    anular_2: {
+    anular_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -12578,7 +13279,7 @@ export interface operations {
             };
         };
     };
-    listar_9: {
+    listar_11: {
         parameters: {
             query: {
                 entidad: "PROVEEDOR" | "COTIZACION" | "ORDEN_COMPRA" | "PAGO" | "RECEPCION" | "FACTURA";
@@ -12703,7 +13404,7 @@ export interface operations {
             };
         };
     };
-    crear_14: {
+    crear_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -12749,7 +13450,7 @@ export interface operations {
             };
         };
     };
-    anular_3: {
+    anular_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -12775,7 +13476,7 @@ export interface operations {
             };
         };
     };
-    crear_15: {
+    crear_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -12846,7 +13547,7 @@ export interface operations {
             };
         };
     };
-    crear_16: {
+    crear_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -12938,7 +13639,7 @@ export interface operations {
             };
         };
     };
-    crear_17: {
+    crear_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -12962,7 +13663,7 @@ export interface operations {
             };
         };
     };
-    listar_10: {
+    listar_12: {
         parameters: {
             query?: {
                 activo?: boolean;
@@ -12984,7 +13685,7 @@ export interface operations {
             };
         };
     };
-    crear_18: {
+    crear_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -13008,7 +13709,7 @@ export interface operations {
             };
         };
     };
-    listar_11: {
+    listar_13: {
         parameters: {
             query?: {
                 activo?: boolean;
@@ -13030,7 +13731,7 @@ export interface operations {
             };
         };
     };
-    crear_19: {
+    crear_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -13054,7 +13755,7 @@ export interface operations {
             };
         };
     };
-    listar_12: {
+    listar_14: {
         parameters: {
             query?: {
                 activa?: boolean;
@@ -13076,7 +13777,7 @@ export interface operations {
             };
         };
     };
-    crear_20: {
+    crear_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -13100,7 +13801,7 @@ export interface operations {
             };
         };
     };
-    listar_13: {
+    listar_15: {
         parameters: {
             query?: {
                 tipo?: "INGRESO" | "EGRESO";
@@ -13123,7 +13824,7 @@ export interface operations {
             };
         };
     };
-    crear_21: {
+    crear_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -13147,7 +13848,7 @@ export interface operations {
             };
         };
     };
-    listar_14: {
+    listar_16: {
         parameters: {
             query?: {
                 activo?: boolean;
@@ -13169,7 +13870,7 @@ export interface operations {
             };
         };
     };
-    crear_22: {
+    crear_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -13395,7 +14096,7 @@ export interface operations {
             };
         };
     };
-    login_1: {
+    login_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -13493,7 +14194,7 @@ export interface operations {
             };
         };
     };
-    reiniciarMfa: {
+    reiniciarMfa_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -13839,6 +14540,33 @@ export interface operations {
             header?: never;
             path: {
                 id: number;
+                usuario: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuperAdminEstadoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SuperAdminResponse"];
+                };
+            };
+        };
+    };
+    cambiarEstado_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
             };
             cookie?: never;
         };
@@ -14002,7 +14730,7 @@ export interface operations {
             };
         };
     };
-    anular_4: {
+    anular_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -14433,6 +15161,48 @@ export interface operations {
             };
         };
     };
+    obtener_19: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TrasladoDetalleResponse"];
+                };
+            };
+        };
+    };
+    destinos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DestinoResponse"][];
+                };
+            };
+        };
+    };
     recorrido: {
         parameters: {
             query?: never;
@@ -14517,7 +15287,7 @@ export interface operations {
             };
         };
     };
-    listar_15: {
+    listar_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -14539,7 +15309,7 @@ export interface operations {
             };
         };
     };
-    listar_16: {
+    listar_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -14890,7 +15660,7 @@ export interface operations {
             };
         };
     };
-    obtener_19: {
+    obtener_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -14978,7 +15748,7 @@ export interface operations {
             };
         };
     };
-    listar_17: {
+    listar_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -15082,7 +15852,7 @@ export interface operations {
             };
         };
     };
-    obtener_20: {
+    obtener_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -15257,7 +16027,7 @@ export interface operations {
             };
         };
     };
-    obtener_21: {
+    obtener_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -15322,7 +16092,7 @@ export interface operations {
             };
         };
     };
-    obtener_22: {
+    obtener_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -15434,7 +16204,7 @@ export interface operations {
             };
         };
     };
-    obtener_23: {
+    obtener_24: {
         parameters: {
             query?: never;
             header?: never;
@@ -15456,7 +16226,7 @@ export interface operations {
             };
         };
     };
-    obtener_24: {
+    obtener_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -15544,7 +16314,7 @@ export interface operations {
             };
         };
     };
-    obtener_25: {
+    obtener_26: {
         parameters: {
             query?: never;
             header?: never;
@@ -15589,6 +16359,49 @@ export interface operations {
             };
         };
     };
+    tablero_2: {
+        parameters: {
+            query?: {
+                desde?: string;
+                hasta?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TableroGrupoResponse"];
+                };
+            };
+        };
+    };
+    empresas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EmpresaEntrableResponse"][];
+                };
+            };
+        };
+    };
     buscar_15: {
         parameters: {
             query: {
@@ -15613,7 +16426,7 @@ export interface operations {
             };
         };
     };
-    obtener_26: {
+    obtener_27: {
         parameters: {
             query?: never;
             header?: never;
@@ -15850,7 +16663,7 @@ export interface operations {
             };
         };
     };
-    listar_18: {
+    listar_20: {
         parameters: {
             query?: {
                 fecha?: string;
@@ -15873,7 +16686,7 @@ export interface operations {
             };
         };
     };
-    obtener_27: {
+    obtener_28: {
         parameters: {
             query?: never;
             header?: never;
@@ -15915,7 +16728,7 @@ export interface operations {
             };
         };
     };
-    obtener_28: {
+    obtener_29: {
         parameters: {
             query?: never;
             header?: never;
@@ -15959,7 +16772,7 @@ export interface operations {
             };
         };
     };
-    obtener_29: {
+    obtener_30: {
         parameters: {
             query?: never;
             header?: never;
@@ -16041,7 +16854,7 @@ export interface operations {
             };
         };
     };
-    obtener_30: {
+    obtener_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -16063,7 +16876,7 @@ export interface operations {
             };
         };
     };
-    obtener_31: {
+    obtener_32: {
         parameters: {
             query?: never;
             header?: never;
@@ -16321,7 +17134,7 @@ export interface operations {
             };
         };
     };
-    obtener_32: {
+    obtener_33: {
         parameters: {
             query?: never;
             header?: never;
@@ -16343,7 +17156,7 @@ export interface operations {
             };
         };
     };
-    obtener_33: {
+    obtener_34: {
         parameters: {
             query?: never;
             header?: never;

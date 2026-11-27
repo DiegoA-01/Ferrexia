@@ -94,5 +94,7 @@ public enum EntidadAuditada {
     /** Tabla {@code devolucion_venta}. */
     DEVOLUCION_VENTA,
     /** Tabla {@code abono_cliente}. */
-    ABONO_CLIENTE
+    ABONO_CLIENTE,
+    /** Tabla {@code traslado_grupo} (spec 035). */
+    TRASLADO_GRUPO
 }

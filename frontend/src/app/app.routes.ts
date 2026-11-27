@@ -3,8 +3,8 @@ import { Routes } from '@angular/router';
 import { ROLES_DOMICILIOS } from './core/navegacion/menu';
 import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO, ROLES_PRECIOS, ROLES_CATALOGOS, ROLES_CLIENTES, ROLES_CAJA, ROLES_POS, ROLES_MI_TURNO, ROLES_VENTAS, ROLES_PEDIDOS_VENTA, ROLES_CARTERA, ROLES_RECEPCION, ROLES_REPORTES_VENTAS, ROLES_CONFIGURACION,
   ROLES_CATALOGOS_BASE, ROLES_USUARIOS, ROLES_AUDITORIA, ROLES_INFORMES, ROLES_NOTIFICACIONES, ROLES_EMPRESA, ROLES_IMPORTACION,
-  ROLES_SOLICITAR, ROLES_CREAR_RFQ, ROLES_EMITIR_ORDEN } from './core/navegacion/menu';
-import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard } from './core/sesion/guards';
+  ROLES_SOLICITAR, ROLES_CREAR_RFQ, ROLES_EMITIR_ORDEN, ROLES_TRASLADOS_GRUPO } from './core/navegacion/menu';
+import { empresaGuard, invitadoGuard, grupoGuard, permisoGuard, plataformaGuard } from './core/sesion/guards';
 
 /**
  * Una sola aplicación con dos zonas: {@code /app} (empresa) y {@code /plataforma} (dueño), más la página pública
@@ -250,6 +250,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/inventario/rotacion').then(m => m.RotacionProductos),
       },
       {
+        path: 'inventario/traslados-grupo',
+        title: 'Traslados entre empresas · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_TRASLADOS_GRUPO, modulo: 'INVENTARIO' },
+        loadComponent: () => import('./features/inventario/traslados-grupo').then(m => m.TrasladosGrupo),
+      },
+      {
         path: 'inventario/movimientos',
         title: 'Movimientos de stock · Supply-Core',
         canActivate: [permisoGuard],
@@ -385,9 +392,23 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'empresas' },
       { path: 'empresas', title: 'Empresas · Plataforma', loadComponent: () => import('./features/plataforma/empresas').then(m => m.Empresas) },
+      { path: 'grupos', title: 'Grupos · Plataforma', loadComponent: () => import('./features/plataforma/grupos').then(m => m.Grupos) },
       // spec 024: sin planes; los módulos se eligen en cada empresa. La dirección vieja lleva a Empresas.
       { path: 'planes', redirectTo: 'empresas', pathMatch: 'full' },
       { path: 'auditoria', title: 'Auditoría global · Plataforma', loadComponent: () => import('./features/plataforma/auditoria-global').then(m => m.AuditoriaGlobal) },
+    ],
+  },
+  {
+    path: 'grupo/ingreso',
+    title: 'Grupo de empresas · Supply-Core',
+    loadComponent: () => import('./features/grupo/ingreso-grupo').then(m => m.IngresoGrupo),
+  },
+  {
+    path: 'grupo',
+    canActivate: [grupoGuard],
+    loadComponent: () => import('./layout/grupo-shell/grupo-shell').then(m => m.GrupoShell),
+    children: [
+      { path: '', title: 'Tus empresas · Supply-Core', loadComponent: () => import('./features/grupo/grupo-inicio').then(m => m.GrupoInicio) },
     ],
   },
   { path: '**', redirectTo: 'ingreso' },

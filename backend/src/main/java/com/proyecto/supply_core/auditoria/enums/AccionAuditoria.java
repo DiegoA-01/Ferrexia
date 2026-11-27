@@ -284,5 +284,13 @@ public enum AccionAuditoria {
     /** Se habilitó o se retiró la excepción de crédito de un cliente en mora (spec 007). */
     CREDITO_EXCEPCION,
     /** Un cliente abonó a su cartera en la caja. */
-    ABONO_REGISTRAR
+    ABONO_REGISTRAR,
+    /** El super administrador de un grupo entró a esta empresa desde su ingreso de grupo (spec 035). */
+    GRUPO_ENTRAR,
+    /** Se envió un traslado a otra empresa del grupo (spec 035). */
+    TRASLADO_GRUPO_ENVIAR,
+    /** Se recibió un traslado enviado por otra empresa del grupo (spec 035). */
+    TRASLADO_GRUPO_RECIBIR,
+    /** Se anuló un traslado en tránsito a otra empresa del grupo (spec 035). */
+    TRASLADO_GRUPO_ANULAR
 }

@@ -45,4 +45,12 @@ public interface EmpresaRepository extends JpaRepository<Empresa, Long> {
      */
     @Query("select e.id from Empresa e order by e.id")
     List<Long> todosLosIds();
+
+    /**
+     * Empresas de un grupo, la más antigua primero.
+     *
+     * @param grupoId grupo
+     * @return empresas del grupo
+     */
+    List<Empresa> findByGrupoIdOrderByIdAsc(Long grupoId);
 }

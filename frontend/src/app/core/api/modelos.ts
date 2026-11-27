@@ -234,6 +234,21 @@ export type ModuloPlataforma = S['ModuloRespuesta'];
 export type AuditoriaPlataforma = S['AuditoriaPlataformaResponse'];
 export type EstadoSuscripcion = NonNullable<S['ModulosEmpresaResponse']['estado']>;
 
+// Grupo de empresas (spec 035)
+export type GrupoPlataforma = S['GrupoResponse'];
+export type SuperAdmin = S['SuperAdminResponse'];
+export type SuperAdminNuevo = S['SuperAdminCrearRequest'];
+export type SesionGrupo = S['SesionGrupoResponse'];
+export type EmpresaEntrable = S['EmpresaEntrableResponse'];
+export type TableroGrupo = S['TableroGrupoResponse'];
+export type TableroEmpresaGrupo = S['TableroEmpresaResponse'];
+export type DestinoTraslado = S['DestinoResponse'];
+export type TrasladoResumen = S['TrasladoResumenResponse'];
+export type TrasladoDetalle = S['TrasladoDetalleResponse'];
+export type TrasladoLinea = S['LineaTrasladoResponse'];
+export type TrasladoEnvio = S['EnviarTrasladoRequest'];
+export type TrasladoRecepcion = S['RecibirTrasladoRequest'];
+
 // Portal del proveedor
 export type RfqPortal = S['RfqPortalResponse'];
 export type CotizacionNueva = S['CotizacionRequest'];

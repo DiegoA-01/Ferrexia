@@ -150,6 +150,7 @@ public class UsuarioService {
     @Transactional
     public UsuarioResponse actualizar(Long id, UsuarioUpdateRequest req) {
         Usuario u = buscarEntidad(id);
+        exigirNoEsDeGrupo(id);
         String correo = normalizarCorreo(req.correo());
         if (usuarioRepository.existsByCorreoIgnoreCaseAndIdNot(correo, id)) {
             throw new NegocioException("CORREO_DUPLICADO", "Ya existe un usuario con el correo " + correo);
@@ -203,6 +204,7 @@ public class UsuarioService {
     @Transactional
     public UsuarioResponse activar(Long id) {
         Usuario u = buscarEntidad(id);
+        exigirNoEsDeGrupo(id);
         u.setActivo(true);
         auditoriaService.exito(AccionAuditoria.USUARIO_ACTIVAR, EntidadAuditada.USUARIO, id, "correo=" + u.getCorreo());
         return UsuarioResponse.of(u);
@@ -222,6 +224,7 @@ public class UsuarioService {
             throw new NegocioException("AUTO_DESACTIVACION", "No puede desactivar su propio usuario");
         }
         Usuario u = buscarEntidad(id);
+        exigirNoEsDeGrupo(id);
         if (u.isActivo() && u.codigosRoles().contains(Roles.ADMIN_SISTEMA)) {
             validarNoEsUltimoAdmin();
         }
@@ -242,6 +245,7 @@ public class UsuarioService {
      */
     @Transactional
     public void reiniciarMfa(Long id) {
+        exigirNoEsDeGrupo(id);
         mfa.reiniciar(id);
     }
 
@@ -256,6 +260,7 @@ public class UsuarioService {
     @Transactional
     public void restablecerPassword(Long id, RestablecerPasswordRequest req) {
         Usuario u = buscarEntidad(id);
+        exigirNoEsDeGrupo(id);
         u.setTipoCredencial(ReglasCredencial.validar(u.codigosRoles(), u.getId(), u.getEmpresaId(), req.passwordNueva()));
         u.setHashPassword(passwordEncoder.encode(req.passwordNueva()));
         u.setIntentosFallidos(0);
@@ -277,6 +282,7 @@ public class UsuarioService {
     @Transactional
     public void cambiarPasswordPropia(CambioPasswordRequest req) {
         Usuario u = buscarEntidad(SesionActual.usuario().id());
+        exigirNoEsDeGrupo(u.getId());
         if (u.getTipoCredencial() == TipoCredencial.PIN) {
             throw new NegocioException("PIN_ASIGNADO", "Su PIN lo asigna el administrador: pídale uno nuevo si lo olvidó");
         }
@@ -317,6 +323,20 @@ public class UsuarioService {
     private Usuario buscarEntidad(Long id) {
         return usuarioRepository.findWithRolesById(id)
                 .orElseThrow(() -> new NoEncontradoException("Usuario", id));
+    }
+
+    /**
+     * El Dueño vinculado a un super administrador de grupo (spec 035) lo administra el grupo desde la plataforma: ni
+     * credenciales, ni roles, ni estado, ni segundo factor se tocan desde la empresa.
+     *
+     * @param id usuario que se quiere modificar
+     * @throws NegocioException {@code USUARIO_DE_GRUPO} si es el usuario vinculado de un super administrador
+     */
+    private void exigirNoEsDeGrupo(Long id) {
+        if (usuarioRepository.contarVinculosDeGrupo(id) > 0) {
+            throw new NegocioException("USUARIO_DE_GRUPO",
+                    "Este usuario lo administra el grupo de empresas desde la plataforma");
+        }
     }
 
     /**

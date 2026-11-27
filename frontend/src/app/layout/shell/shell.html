@@ -54,6 +54,12 @@
     </nav>
 
     <div class="pie">
+      @if (sesion.desdeGrupo()) {
+        <button type="button" class="opcion salir cambiar-empresa" (click)="sesion.volverAlGrupo()">
+          <span class="material-symbols-outlined">swap_horiz</span>
+          <span class="texto">Cambiar de empresa</span>
+        </button>
+      }
       <button type="button" class="opcion salir" (click)="sesion.salir()">
         <span class="material-symbols-outlined">logout</span>
         <span class="texto">Cerrar sesión</span>

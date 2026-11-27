@@ -11,6 +11,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.proyecto.supply_core.compra.enlace.service.FirmaEnlace;
+import com.proyecto.supply_core.grupo.service.GrupoSesionService;
 import com.proyecto.supply_core.catalogo.repository.CategoriaProductoRepository;
 import com.proyecto.supply_core.catalogo.repository.UnidadMedidaRepository;
 import com.proyecto.supply_core.empresa.repository.CentroCostoRepository;
@@ -23,6 +24,7 @@ import com.proyecto.supply_core.security.config.SecurityBeansConfig;
 import com.proyecto.supply_core.security.PermisosDeMigraciones;
 import com.proyecto.supply_core.security.service.PermisosService;
 import com.proyecto.supply_core.security.service.SesionUsuarioService;
+import com.proyecto.supply_core.security.context.GrupoAutenticado;
 import com.proyecto.supply_core.security.context.PlataformaAutenticada;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.security.interceptor.RolInterceptor;
@@ -52,6 +54,10 @@ public abstract class WebTestBase {
     /** Simulado: valida los enlaces de cotización de {@code /api/publico/cotizar/**} (spec 031). */
     @MockitoBean
     protected FirmaEnlace firmaEnlace;
+
+    /** Simulado: no lanza nada, así que todo token de grupo vigente sigue valiendo (spec 035). */
+    @MockitoBean
+    protected GrupoSesionService grupoSesionService;
 
     @MockitoBean
     protected EmpresaRepository empresaRepository;
@@ -114,6 +120,15 @@ public abstract class WebTestBase {
      */
     protected String bearerPlataforma() {
         return "Bearer " + jwtUtil.generarPlataforma(new PlataformaAutenticada(3L, "dueno@supplycore.local", "Dueño"));
+    }
+
+    /**
+     * Header {@code Authorization} con un JWT real de un super administrador de grupo (sin empresa).
+     *
+     * @return valor del header ("Bearer ...")
+     */
+    protected String bearerGrupo() {
+        return "Bearer " + jwtUtil.generarGrupo(new GrupoAutenticado(7L, 2L, "super@grupo.com", "Super Admin"), 0);
     }
 
     /**

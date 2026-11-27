@@ -18,6 +18,8 @@ const PERMISOS: Record<string, { roles?: string[]; modulo?: string }> = {
   '/app/inventario': { roles: undefined, modulo: 'INVENTARIO' },
   '/app/inventario/reabastecimiento': { roles: ['ADMIN_COMPRAS', 'COMPRADOR', 'ALMACENISTA', 'SOLICITANTE', 'AUDITOR', 'ADMIN_SISTEMA'], modulo: 'COMPRAS' },
   '/app/inventario/rotacion': { roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO', 'AUDITOR', 'ALMACENISTA'], modulo: 'REPORTES' },
+  // spec 035: traslados entre empresas del grupo (enviar o recibir)
+  '/app/inventario/traslados-grupo': { roles: ['ADMIN_SISTEMA', 'ADMINISTRADOR', 'ALMACENISTA'], modulo: 'INVENTARIO' },
   '/app/despachos': { roles: ['ALMACENISTA', 'ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR'], modulo: 'DESPACHOS' },
   '/app/inventario/movimientos': { roles: undefined, modulo: 'INVENTARIO' },
   '/app/proveedores': { roles: ['ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR'], modulo: 'PROVEEDORES' },
@@ -52,10 +54,10 @@ describe('Menú lateral por categorías (spec 011)', () => {
     expect(MENU[0].opciones.map(o => o.ruta)).toEqual(['/app/inicio']);
   });
 
-  it('conserva las 33 opciones sin repetir rutas (32 + Domicilios de la spec 032)', () => {
+  it('conserva las 34 opciones sin repetir rutas (33 + Traslados entre empresas de la spec 035)', () => {
     const rutas = opciones().map(o => o.ruta);
-    expect(rutas.length).toBe(33);
-    expect(new Set(rutas).size).toBe(33);
+    expect(rutas.length).toBe(34);
+    expect(new Set(rutas).size).toBe(34);
     expect([...rutas].sort()).toEqual(Object.keys(PERMISOS).sort());
   });
 

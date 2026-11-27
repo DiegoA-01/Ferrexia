@@ -36,8 +36,10 @@ public class ConsecutivoGenerator {
     public static final String ABONO_CLIENTE = "AB";
     /** Domicilio (spec 032). */
     public static final String DOMICILIO = "DOM";
+    /** Traslado a otra empresa del grupo (spec 035). */
+    public static final String TRASLADO_GRUPO = "TG";
     private static final Set<String> PREFIJOS = Set.of(SOLICITUD, RFQ, ORDEN_COMPRA, DESPACHO, PEDIDO_INTERNO, PEDIDO_VENTA,
-            DEVOLUCION_VENTA, ABONO_CLIENTE, DOMICILIO);
+            DEVOLUCION_VENTA, ABONO_CLIENTE, DOMICILIO, TRASLADO_GRUPO);
 
     private final JdbcTemplate jdbc;
 

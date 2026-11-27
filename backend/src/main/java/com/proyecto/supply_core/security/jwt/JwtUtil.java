@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.proyecto.supply_core.common.exception.NoAutenticadoException;
+import com.proyecto.supply_core.security.context.GrupoAutenticado;
 import com.proyecto.supply_core.security.context.PlataformaAutenticada;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 
@@ -55,6 +56,10 @@ public class JwtUtil {
     private static final String CLAIM_PLATAFORMA = "plat";
     /** Marca del desafío de MFA: sirve solo para entregar el código, no para llamar a la API. */
     private static final String CLAIM_DESAFIO_MFA = "mfa";
+    /** Marca de un token de grupo: lleva el id del grupo; los de empresa y plataforma no la llevan. */
+    private static final String CLAIM_GRUPO = "grp";
+    /** Marca del desafío de MFA de un super administrador de grupo (distinta de la de plataforma y la de empresa). */
+    private static final String CLAIM_DESAFIO_MFA_GRUPO = "mfag";
     /** Marca del desafío de MFA de un usuario de empresa: lleva la empresa y no sirve en la consola de la plataforma. */
     private static final String CLAIM_DESAFIO_MFA_EMPRESA = "mfae";
     /** Tiempo para escribir el código de MFA después de acertar la contraseña. */
@@ -150,7 +155,7 @@ public class JwtUtil {
     }
 
     /**
-     * Valida un token de sesión de la plataforma. Un token de empresa o un desafío de MFA no pasan.
+     * Valida un token de sesión de la plataforma. Un token de empresa, de grupo o un desafío de MFA no pasan.
      *
      * @param token JWT recibido (sin el prefijo "Bearer ")
      * @return usuario de la plataforma
@@ -159,7 +164,7 @@ public class JwtUtil {
     public PlataformaAutenticada validarPlataforma(String token) {
         Claims claims = leer(token);
         try {
-            if (!Boolean.TRUE.equals(claims.get(CLAIM_PLATAFORMA, Boolean.class))) {
+            if (!Boolean.TRUE.equals(claims.get(CLAIM_PLATAFORMA, Boolean.class)) || claims.get(CLAIM_GRUPO) != null) {
                 throw invalido();
             }
             return new PlataformaAutenticada(Long.valueOf(claims.getSubject()), claims.get(CLAIM_CORREO, String.class),
@@ -249,6 +254,89 @@ public class JwtUtil {
     }
 
     /**
+     * Emite el token de sesión de un super administrador de grupo. Lleva el grupo ({@code grp}) y la versión de sesión,
+     * y no lleva empresa ni la marca de plataforma: no sirve en la API de una empresa ni en la consola.
+     *
+     * @param u             super administrador
+     * @param versionSesion versión de sesión que tiene hoy su cuenta
+     * @return JWT compacto
+     */
+    public String generarGrupo(GrupoAutenticado u, int versionSesion) {
+        Instant ahora = reloj.instant();
+        return Jwts.builder()
+                .issuer(EMISOR)
+                .subject(String.valueOf(u.id()))
+                .claim(CLAIM_CORREO, u.correo())
+                .claim(CLAIM_NOMBRE, u.nombre())
+                .claim(CLAIM_GRUPO, u.grupoId())
+                .claim(CLAIM_VERSION_SESION, versionSesion)
+                .issuedAt(Date.from(ahora))
+                .expiration(Date.from(ahora.plusSeconds(expiracionSegundos)))
+                .signWith(clave, Jwts.SIG.HS256)
+                .compact();
+    }
+
+    /**
+     * Valida un token de sesión de grupo. Un token de empresa, de plataforma o un desafío de MFA no pasan.
+     *
+     * @param token JWT recibido (sin el prefijo "Bearer ")
+     * @return super administrador del grupo
+     * @throws NoAutenticadoException si el token no es de grupo, está alterado o expiró
+     */
+    public GrupoAutenticado validarGrupo(String token) {
+        Claims claims = leer(token);
+        try {
+            Number grupo = claims.get(CLAIM_GRUPO, Number.class);
+            if (grupo == null || claims.get(CLAIM_EMPRESA) != null
+                    || Boolean.TRUE.equals(claims.get(CLAIM_PLATAFORMA, Boolean.class))) {
+                throw invalido();
+            }
+            return new GrupoAutenticado(Long.valueOf(claims.getSubject()), grupo.longValue(),
+                    claims.get(CLAIM_CORREO, String.class), claims.get(CLAIM_NOMBRE, String.class));
+        } catch (JwtException | NumberFormatException e) {
+            throw invalido();
+        }
+    }
+
+    /**
+     * Emite el desafío de MFA de un super administrador de grupo: se canjea por la sesión al escribir el código. No
+     * sirve como desafío de la plataforma ni de una empresa.
+     *
+     * @param usuarioId super administrador que acertó la contraseña
+     * @return JWT compacto de corta vida
+     */
+    public String generarDesafioMfaGrupo(Long usuarioId) {
+        Instant ahora = reloj.instant();
+        return Jwts.builder()
+                .issuer(EMISOR)
+                .subject(String.valueOf(usuarioId))
+                .claim(CLAIM_DESAFIO_MFA_GRUPO, Boolean.TRUE)
+                .issuedAt(Date.from(ahora))
+                .expiration(Date.from(ahora.plusSeconds(VIGENCIA_DESAFIO_SEGUNDOS)))
+                .signWith(clave, Jwts.SIG.HS256)
+                .compact();
+    }
+
+    /**
+     * Valida el desafío de MFA de un super administrador de grupo.
+     *
+     * @param token desafío entregado al acertar la contraseña
+     * @return id del super administrador
+     * @throws NoAutenticadoException si no es un desafío de grupo, está alterado o expiró
+     */
+    public Long validarDesafioMfaGrupo(String token) {
+        Claims claims = leer(token);
+        try {
+            if (!Boolean.TRUE.equals(claims.get(CLAIM_DESAFIO_MFA_GRUPO, Boolean.class))) {
+                throw invalido();
+            }
+            return Long.valueOf(claims.getSubject());
+        } catch (JwtException | NumberFormatException e) {
+            throw invalido();
+        }
+    }
+
+    /**
      * Verifica firma, emisor y vigencia y devuelve el contenido.
      *
      * @param token JWT recibido
@@ -284,7 +372,7 @@ public class JwtUtil {
         try {
             Number proveedor = claims.get(CLAIM_PROVEEDOR, Number.class);
             Number empresa = claims.get(CLAIM_EMPRESA, Number.class);
-            if (empresa == null) {
+            if (empresa == null || claims.get(CLAIM_GRUPO) != null) {
                 throw invalido(); // un token sin empresa (anterior a SaaS) ya no sirve: debe iniciar sesión de nuevo
             }
             return new UsuarioAutenticado(

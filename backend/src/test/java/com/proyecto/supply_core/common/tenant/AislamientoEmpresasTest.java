@@ -340,7 +340,7 @@ class AislamientoEmpresasTest {
             }
         });
         assertEquals(List.of(), diferencias);
-        assertEquals(117, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 (V47) + 2 (V51) + 1 (V52) + 2 (V53) + 1 (V55) + 1 (V56)
+        assertEquals(119, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 (V47) + 2 (V51) + 1 (V52) + 2 (V53) + 1 (V55) + 1 (V56) + 2 (V57)
         assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM rol WHERE es_plantilla AND empresa_id IS NULL", Integer.class));
     }
 
@@ -5556,5 +5556,738 @@ class AislamientoEmpresasTest {
         Long[] vencido = sembrarRfqConEnlace(empresaA, proveedorA, productoA, "RFQ-ENL-V", -1);
         mvc.perform(get("/api/publico/cotizar/" + firmaEnlace.token(vencido[2], empresaA, 1)))
                 .andExpect(status().isNotFound());
+    }
+
+    // ------------------------------------------------------------------ grupos de empresas y super administrador (spec 035)
+
+    private static final String CLAVE_GRUPO = "ClaveDelGrupo2026";
+
+    /**
+     * Entra por el ingreso del grupo con contraseña y un código de MFA real (la primera vez configura el MFA) y devuelve
+     * el header Authorization de la sesión de grupo.
+     */
+    private String entrarAlGrupo(String correo) throws Exception {
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        String paso1 = mvc.perform(post("/api/grupo/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"" + correo + "\",\"password\":\"" + CLAVE_GRUPO + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mfaConfigurado").value(false))
+                .andReturn().getResponse().getContentAsString();
+        String secreto = json.readTree(paso1).get("secretoMfa").asText();
+        String desafio = json.readTree(paso1).get("desafio").asText();
+        String codigo = totp.codigo(secreto, totp.paso(java.time.Instant.now()));
+        String sesion = mvc.perform(post("/api/grupo/auth/mfa").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"desafio\":\"" + desafio + "\",\"codigo\":\"" + codigo + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        // el mismo código no se acepta dos veces
+        mvc.perform(post("/api/grupo/auth/mfa").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"desafio\":\"" + desafio + "\",\"codigo\":\"" + codigo + "\"}"))
+                .andExpect(status().isUnauthorized());
+        return "Bearer " + json.readTree(sesion).get("token").asText();
+    }
+
+    /** Valor numérico de un campo de una respuesta JSON, por su ruta (por ejemplo {@code totales.neto}). */
+    private static java.math.BigDecimal numero(String cuerpo, String ruta) throws Exception {
+        com.fasterxml.jackson.databind.JsonNode n = new com.fasterxml.jackson.databind.ObjectMapper().readTree(cuerpo);
+        for (String parte : ruta.split("\\.")) {
+            n = n.get(parte);
+        }
+        return n.isNull() ? java.math.BigDecimal.ZERO : new java.math.BigDecimal(n.asText());
+    }
+
+    /** Borra todo lo que crea la prueba de grupos para que las demás pruebas de la clase no lo vean. */
+    private void limpiarGrupos(String dueno, List<String> correos, List<Long> empresasDelGrupo, List<Long> grupos,
+            Long empresaC) {
+        String marcas = String.join(",", java.util.Collections.nCopies(correos.size(), "?"));
+        List<Long> usuariosVinculados = jdbc.queryForList("SELECT usuario_id FROM usuario_grupo_empresa WHERE usuario_grupo_id IN "
+                + "(SELECT id FROM usuario_grupo WHERE correo IN (" + marcas + "))", Long.class, correos.toArray());
+        for (Long id : usuariosVinculados) {
+            jdbc.update("DELETE FROM refresh_token WHERE usuario_id = ?", id);
+            jdbc.update("DELETE FROM notificacion WHERE usuario_id = ?", id);
+            jdbc.update("DELETE FROM recuperacion_password WHERE usuario_id = ?", id);
+            jdbc.update("DELETE FROM auditoria WHERE usuario_id = ?", id);
+            jdbc.update("DELETE FROM usuario_rol WHERE usuario_id = ?", id);
+        }
+        jdbc.update("DELETE FROM usuario_grupo_empresa WHERE usuario_grupo_id IN "
+                + "(SELECT id FROM usuario_grupo WHERE correo IN (" + marcas + "))", correos.toArray());
+        for (Long id : usuariosVinculados) {
+            jdbc.update("DELETE FROM usuario WHERE id = ?", id);
+        }
+        jdbc.update("DELETE FROM usuario_grupo WHERE correo IN (" + marcas + ")", correos.toArray());
+        for (Long e : empresasDelGrupo) {
+            jdbc.update("UPDATE empresa SET grupo_id = NULL WHERE id = ?", e);
+        }
+        for (Long g : grupos) {
+            if (g != null) {
+                jdbc.update("DELETE FROM grupo_empresa WHERE id = ?", g);
+            }
+        }
+        jdbc.update("DELETE FROM auditoria_plataforma WHERE accion LIKE 'GRUPO_%'");
+        if (empresaC != null) {
+            borrarEmpresaDePrueba(empresaC);
+        }
+        borrarDuenoDePrueba(dueno);
+    }
+
+    @Test
+    void elSuperAdministradorEntraASusEmpresasSinVolverAIngresarYNadieVeLoDeOtroGrupo() throws Exception {
+        String dueno = "dueno-grupo@plataforma.test";
+        String correoS1 = "super1@grupo.test";
+        String correoS2 = "super2@grupo.test";
+        String ct = MediaType.APPLICATION_JSON_VALUE;
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        Long empresaC = null;
+        Long grupo1 = null;
+        Long grupo2 = null;
+        // inventario valorizado de A y B: costo 50 y 4 unidades (se restaura al terminar)
+        java.math.BigDecimal costoA = jdbc.queryForObject("SELECT costo_referencia FROM producto WHERE id = ?",
+                java.math.BigDecimal.class, productoA);
+        java.math.BigDecimal costoB = jdbc.queryForObject("SELECT costo_referencia FROM producto WHERE id = ?",
+                java.math.BigDecimal.class, productoB);
+        List<java.math.BigDecimal> stockPrevio = new java.util.ArrayList<>();
+        for (Object[] par : new Object[][] { { empresaA, productoA, bodegaA }, { empresaB, productoB, bodegaB } }) {
+            List<java.math.BigDecimal> previo = jdbc.queryForList("SELECT cantidad FROM stock_producto_bodega "
+                    + "WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, par[1], par[2]);
+            stockPrevio.add(previo.isEmpty() ? null : previo.get(0));
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 4) "
+                    + "ON DUPLICATE KEY UPDATE cantidad = 4", par[0], par[1], par[2]);
+        }
+        try {
+            jdbc.update("UPDATE producto SET costo_referencia = 50 WHERE id IN (?, ?)", productoA, productoB);
+            String plataforma = entrarALaPlataforma(dueno);
+            jdbc.update("INSERT INTO empresa (razon_social, nit, moneda_base, codigo_publico) VALUES (?, ?, 'COP', ?)",
+                    "Empresa C Grupo S.A.S.", "900000777-7", "empresa-c-grupo");
+            empresaC = jdbc.queryForObject("SELECT id FROM empresa WHERE codigo_publico = 'empresa-c-grupo'", Long.class);
+            jdbc.update("INSERT INTO suscripcion (empresa_id, plan_id, estado) SELECT ?, id, 'ACTIVA' FROM plan "
+                    + "WHERE codigo = 'EMPRESARIAL'", empresaC);
+
+            // ---- la plataforma arma dos grupos: {A, B} con S1, y {C} con S2
+            grupo1 = json.readTree(mvc.perform(post("/api/plataforma/grupos").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"nombre\":\"Grupo Uno Fuga\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            grupo2 = json.readTree(mvc.perform(post("/api/plataforma/grupos").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"nombre\":\"Grupo Dos Fuga\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(post("/api/plataforma/grupos").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(ct)
+                            .content("{\"nombre\":\"grupo uno fuga\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("GRUPO_DUPLICADO"));
+
+            // clave débil: se rechaza sin crear nada
+            String ruta1 = "/api/plataforma/grupos/" + grupo1 + "/super-admin";
+            mvc.perform(post(ruta1).header(HttpHeaders.AUTHORIZATION, plataforma).contentType(ct)
+                            .content("{\"nombre\":\"S1\",\"correo\":\"" + correoS1 + "\",\"password\":\"Corta123\"}"))
+                    .andExpect(status().isBadRequest());
+            String s1 = mvc.perform(post(ruta1).header(HttpHeaders.AUTHORIZATION, plataforma).contentType(ct)
+                            .content("{\"nombre\":\"Super Uno\",\"correo\":\"" + correoS1.toUpperCase() + "\",\"password\":\""
+                                    + CLAVE_GRUPO + "\"}"))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.correo").value(correoS1))
+                    .andExpect(jsonPath("$.hashPassword").doesNotExist())
+                    .andReturn().getResponse().getContentAsString();
+            Long idS1 = json.readTree(s1).get("id").asLong();
+            mvc.perform(post(ruta1).header(HttpHeaders.AUTHORIZATION, plataforma).contentType(ct)
+                            .content("{\"nombre\":\"Otro\",\"correo\":\"" + correoS1 + "\",\"password\":\"" + CLAVE_GRUPO + "\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CORREO_DUPLICADO"));
+
+            // al asignar las empresas queda un usuario Dueño vinculado en cada una (el de C sigue sin existir)
+            for (Long e : new Long[] { empresaA, empresaB }) {
+                mvc.perform(put("/api/plataforma/empresas/" + e + "/grupo").header(HttpHeaders.AUTHORIZATION, plataforma)
+                                .contentType(ct).content("{\"grupoId\":" + grupo1 + "}"))
+                        .andExpect(status().isOk()).andExpect(jsonPath("$.grupoId").value(grupo1));
+            }
+            mvc.perform(put("/api/plataforma/empresas/" + empresaC + "/grupo").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"grupoId\":" + grupo2 + "}"))
+                    .andExpect(status().isOk());
+            mvc.perform(post("/api/plataforma/grupos/" + grupo2 + "/super-admin").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"nombre\":\"Super Dos\",\"correo\":\"" + correoS2 + "\",\"password\":\""
+                                    + CLAVE_GRUPO + "\"}"))
+                    .andExpect(status().isCreated());
+            String vinculado = "SELECT COUNT(*) FROM usuario u JOIN usuario_rol ur ON ur.usuario_id = u.id JOIN rol r ON r.id = ur.rol_id "
+                    + "WHERE u.empresa_id = ? AND u.correo = ? AND u.activo = 1 AND r.codigo = 'ADMIN_SISTEMA'";
+            assertEquals(1, jdbc.queryForObject(vinculado, Integer.class, empresaA, correoS1));
+            assertEquals(1, jdbc.queryForObject(vinculado, Integer.class, empresaB, correoS1));
+            assertEquals(0, jdbc.queryForObject(vinculado, Integer.class, empresaC, correoS1));
+            assertEquals(1, jdbc.queryForObject(vinculado, Integer.class, empresaC, correoS2));
+            assertEquals(0, jdbc.queryForObject(vinculado, Integer.class, empresaA, correoS2));
+            // un correo que ya usa otro usuario de la empresa no se puede vincular (A ya tiene a admin@mismo.com)
+            mvc.perform(post(ruta1).header(HttpHeaders.AUTHORIZATION, plataforma).contentType(ct)
+                            .content("{\"nombre\":\"Choca\",\"correo\":\"admin@mismo.com\",\"password\":\"" + CLAVE_GRUPO + "\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CORREO_EN_USO_EMPRESA"));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM usuario_grupo WHERE correo = 'admin@mismo.com'", Integer.class));
+            // la consola lista el grupo con sus empresas y su super administrador
+            mvc.perform(get("/api/plataforma/grupos").header(HttpHeaders.AUTHORIZATION, plataforma))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.id==" + grupo1 + ")].empresas.length()").value(2))
+                    .andExpect(jsonPath("$[?(@.id==" + grupo1 + ")].superAdmins[0].correo").value(correoS1));
+
+            // ---- nadie entra por el login normal con ese usuario: ni con la clave del grupo ni recuperándola
+            mvc.perform(post("/api/auth/login").contentType(ct).content("{\"empresa\":\"demo\",\"correo\":\"" + correoS1
+                            + "\",\"password\":\"" + CLAVE_GRUPO + "\"}"))
+                    .andExpect(status().isUnauthorized());
+            org.mockito.Mockito.clearInvocations(emailClient);
+            mvc.perform(post("/api/auth/recuperar").contentType(ct)
+                            .content("{\"empresa\":\"demo\",\"correo\":\"" + correoS1 + "\"}"))
+                    .andExpect(status().isAccepted());
+            org.mockito.Mockito.verifyNoInteractions(emailClient);
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM recuperacion_password WHERE usuario_id IN "
+                    + "(SELECT usuario_id FROM usuario_grupo_empresa)", Integer.class));
+
+            // ---- ingreso del grupo (con MFA) y empresas del grupo
+            String grupoS1 = entrarAlGrupo(correoS1);
+            String grupoS2 = entrarAlGrupo(correoS2);
+            mvc.perform(post("/api/grupo/auth/login").contentType(ct)
+                            .content("{\"correo\":\"" + correoS1 + "\",\"password\":\"otraClave123\"}"))
+                    .andExpect(status().isUnauthorized());
+            mvc.perform(get("/api/grupo/empresas").header(HttpHeaders.AUTHORIZATION, grupoS1))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
+                    .andExpect(jsonPath("$[?(@.id==" + empresaA + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$[?(@.id==" + empresaB + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$[?(@.id==" + empresaC + ")]").isEmpty());
+            mvc.perform(get("/api/grupo/empresas").header(HttpHeaders.AUTHORIZATION, grupoS2))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                    .andExpect(jsonPath("$[0].id").value(empresaC));
+
+            // ---- entrar a cada empresa sin volver a escribir la clave: sesión normal de esa empresa, auditada
+            String sesionA = mvc.perform(post("/api/grupo/entrar/" + empresaA).header(HttpHeaders.AUTHORIZATION, grupoS1))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.usuario.roles[0]").value("ADMIN_SISTEMA"))
+                    .andReturn().getResponse().getContentAsString();
+            String sesionB = mvc.perform(post("/api/grupo/entrar/" + empresaB).header(HttpHeaders.AUTHORIZATION, grupoS1))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            String tokenA = "Bearer " + json.readTree(sesionA).get("token").asText();
+            String tokenB = "Bearer " + json.readTree(sesionB).get("token").asText();
+            String refreshA = json.readTree(sesionA).get("refreshToken").asText();
+            assertEquals(empresaA, jwtUtil.validar(tokenA.substring(7)).empresaId());
+            assertEquals(empresaB, jwtUtil.validar(tokenB.substring(7)).empresaId());
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE empresa_id = ? AND accion = 'GRUPO_ENTRAR'",
+                    Integer.class, empresaA));
+            // dentro de A solo se ve lo de A (y su propio usuario vinculado), nunca lo de B ni el vínculo de C
+            mvc.perform(get("/api/usuarios").header(HttpHeaders.AUTHORIZATION, tokenA)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido[?(@.correo=='" + correoS1 + "')]").isNotEmpty())
+                    .andExpect(jsonPath("$.contenido[?(@.correo=='" + correoS2 + "')]").isEmpty());
+            String productosA = mvc.perform(get("/api/productos").header(HttpHeaders.AUTHORIZATION, tokenA))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertTrue(productosA.contains("Cable de la empresa A") && !productosA.contains("Cable de la empresa B"));
+            // la sesión normal se renueva con su refresh token
+            mvc.perform(post("/api/auth/refresh").contentType(ct).content("{\"refreshToken\":\"" + refreshA + "\"}"))
+                    .andExpect(status().isOk());
+
+            // ---- una empresa de otro grupo, o inexistente, da 404 (en las dos direcciones)
+            mvc.perform(post("/api/grupo/entrar/" + empresaC).header(HttpHeaders.AUTHORIZATION, grupoS1))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/grupo/entrar/999999").header(HttpHeaders.AUTHORIZATION, grupoS1))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/grupo/entrar/" + empresaA).header(HttpHeaders.AUTHORIZATION, grupoS2))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/grupo/entrar/" + empresaB).header(HttpHeaders.AUTHORIZATION, grupoS2))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/grupo/entrar/" + empresaC).header(HttpHeaders.AUTHORIZATION, grupoS2))
+                    .andExpect(status().isOk());
+
+            // ---- un usuario normal de A no ve nada del grupo ni de B
+            String normalA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+            mvc.perform(get("/api/grupo/empresas").header(HttpHeaders.AUTHORIZATION, normalA)).andExpect(status().isUnauthorized());
+            mvc.perform(get("/api/grupo/tablero").header(HttpHeaders.AUTHORIZATION, normalA)).andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/grupo/entrar/" + empresaB).header(HttpHeaders.AUTHORIZATION, normalA))
+                    .andExpect(status().isUnauthorized());
+            mvc.perform(put("/api/plataforma/empresas/" + empresaB + "/grupo").header(HttpHeaders.AUTHORIZATION, normalA)
+                            .contentType(ct).content("{\"grupoId\":null}"))
+                    .andExpect(status().isUnauthorized());
+
+            // ---- los tokens no se cruzan: grupo, empresa y plataforma
+            for (String ruta : new String[] { "/api/productos", "/api/usuarios", "/api/plataforma/empresas",
+                    "/api/plataforma/grupos" }) {
+                mvc.perform(get(ruta).header(HttpHeaders.AUTHORIZATION, grupoS1)).andExpect(status().isUnauthorized());
+            }
+            for (String ruta : new String[] { "/api/grupo/empresas", "/api/grupo/tablero", "/api/plataforma/grupos" }) {
+                mvc.perform(get(ruta).header(HttpHeaders.AUTHORIZATION, tokenA)).andExpect(status().isUnauthorized());
+            }
+            mvc.perform(get("/api/grupo/empresas").header(HttpHeaders.AUTHORIZATION, plataforma)).andExpect(status().isUnauthorized());
+            mvc.perform(get("/api/grupo/empresas")).andExpect(status().isUnauthorized());
+
+            // ---- el tablero suma lo que cada empresa ve en sus propios reportes
+            String hoy = java.time.LocalDate.now().toString();
+            String inicio = java.time.LocalDate.now().withDayOfMonth(1).toString();
+            String tablero = mvc.perform(get("/api/grupo/tablero?desde=" + inicio + "&hasta=" + hoy)
+                            .header(HttpHeaders.AUTHORIZATION, grupoS1))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.empresas.length()").value(2))
+                    .andReturn().getResponse().getContentAsString();
+            var filas = json.readTree(tablero).get("empresas");
+            java.math.BigDecimal sumaVentas = java.math.BigDecimal.ZERO;
+            java.math.BigDecimal sumaCompras = java.math.BigDecimal.ZERO;
+            java.math.BigDecimal sumaInventario = java.math.BigDecimal.ZERO;
+            for (var fila : filas) {
+                Long id = fila.get("empresaId").asLong();
+                String tokenEmpresa = id.equals(empresaA) ? tokenA : tokenB;
+                String consulta = "?desde=" + inicio + "&hasta=" + hoy;
+                // el Dueño no tiene los permisos de reportes de compras e inventario de la empresa: se leen con el jefe de compras
+                String comprador = id.equals(empresaA) ? token(empresaA, usuarioA, "ADMIN_COMPRAS") : token(empresaB, usuarioB, "ADMIN_COMPRAS");
+                java.math.BigDecimal ventas = numero(mvc.perform(get("/api/reportes/ventas" + consulta)
+                        .header(HttpHeaders.AUTHORIZATION, tokenEmpresa)).andExpect(status().isOk()).andReturn()
+                        .getResponse().getContentAsString(), "totales.neto");
+                java.math.BigDecimal compras = numero(mvc.perform(get("/api/reportes/gasto" + consulta)
+                        .header(HttpHeaders.AUTHORIZATION, comprador)).andExpect(status().isOk()).andReturn()
+                        .getResponse().getContentAsString(), "total");
+                java.math.BigDecimal inventario = numero(mvc.perform(get("/api/reportes/inventario")
+                        .header(HttpHeaders.AUTHORIZATION, comprador)).andExpect(status().isOk()).andReturn()
+                        .getResponse().getContentAsString(), "valorTotal");
+                assertEquals(0, ventas.compareTo(new java.math.BigDecimal(fila.get("ventasNetas").asText())), "ventas " + id);
+                assertEquals(0, compras.compareTo(new java.math.BigDecimal(fila.get("compras").asText())), "compras " + id);
+                assertEquals(0, inventario.compareTo(new java.math.BigDecimal(fila.get("inventarioValorizado").asText())),
+                        "inventario " + id);
+                assertTrue(compras.signum() > 0 && inventario.signum() > 0, "la prueba necesita cifras reales en " + id);
+                sumaVentas = sumaVentas.add(ventas);
+                sumaCompras = sumaCompras.add(compras);
+                sumaInventario = sumaInventario.add(inventario);
+            }
+            var total = json.readTree(tablero).get("total");
+            assertEquals(0, sumaVentas.compareTo(new java.math.BigDecimal(total.get("ventasNetas").asText())));
+            assertEquals(0, sumaCompras.compareTo(new java.math.BigDecimal(total.get("compras").asText())));
+            assertEquals(0, sumaInventario.compareTo(new java.math.BigDecimal(total.get("inventarioValorizado").asText())));
+            // el otro grupo solo ve su empresa (vacía): nada de A ni de B
+            mvc.perform(get("/api/grupo/tablero?desde=" + inicio + "&hasta=" + hoy).header(HttpHeaders.AUTHORIZATION, grupoS2))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.empresas.length()").value(1))
+                    .andExpect(jsonPath("$.empresas[0].empresaId").value(empresaC))
+                    .andExpect(jsonPath("$.total.compras").value(0.0));
+
+            // ---- sacar a B del grupo corta lo suyo: su usuario vinculado queda inactivo y su sesión deja de valer
+            mvc.perform(put("/api/plataforma/empresas/" + empresaB + "/grupo").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"grupoId\":null}"))
+                    .andExpect(status().isOk());
+            assertEquals(0, jdbc.queryForObject(vinculado, Integer.class, empresaB, correoS1));
+            mvc.perform(get("/api/usuarios").header(HttpHeaders.AUTHORIZATION, tokenB)).andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/grupo/entrar/" + empresaB).header(HttpHeaders.AUTHORIZATION, grupoS1))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/grupo/empresas").header(HttpHeaders.AUTHORIZATION, grupoS1))
+                    .andExpect(jsonPath("$.length()").value(1));
+
+            // ---- desactivar al super administrador corta su sesión de grupo y la de sus empresas, y no puede volver a entrar
+            mvc.perform(patch("/api/plataforma/grupos/" + grupo1 + "/super-admin/" + idS1)
+                            .header(HttpHeaders.AUTHORIZATION, plataforma).contentType(ct).content("{\"activo\":false}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.activo").value(false));
+            mvc.perform(get("/api/grupo/empresas").header(HttpHeaders.AUTHORIZATION, grupoS1)).andExpect(status().isUnauthorized());
+            mvc.perform(get("/api/usuarios").header(HttpHeaders.AUTHORIZATION, tokenA)).andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/auth/refresh").contentType(ct).content("{\"refreshToken\":\"" + refreshA + "\"}"))
+                    .andExpect(status().isUnauthorized());
+            assertEquals(0, jdbc.queryForObject(vinculado, Integer.class, empresaA, correoS1));
+            mvc.perform(post("/api/grupo/auth/login").contentType(ct)
+                            .content("{\"correo\":\"" + correoS1 + "\",\"password\":\"" + CLAVE_GRUPO + "\"}"))
+                    .andExpect(status().isUnauthorized());
+            // reactivarlo devuelve el acceso a las empresas que siguen en su grupo (con el mismo usuario, sin duplicarlo)
+            mvc.perform(patch("/api/plataforma/grupos/" + grupo1 + "/super-admin/" + idS1)
+                            .header(HttpHeaders.AUTHORIZATION, plataforma).contentType(ct).content("{\"activo\":true}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.activo").value(true));
+            assertEquals(1, jdbc.queryForObject(vinculado, Integer.class, empresaA, correoS1));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM usuario WHERE empresa_id = ? AND correo = ?",
+                    Integer.class, empresaA, correoS1));
+        } finally {
+            jdbc.update("UPDATE producto SET costo_referencia = ? WHERE id = ?", costoA, productoA);
+            jdbc.update("UPDATE producto SET costo_referencia = ? WHERE id = ?", costoB, productoB);
+            Object[][] filasStock = { { productoA, bodegaA }, { productoB, bodegaB } };
+            for (int i = 0; i < filasStock.length; i++) {
+                if (stockPrevio.get(i) == null) {
+                    jdbc.update("DELETE FROM stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?", filasStock[i]);
+                } else {
+                    jdbc.update("UPDATE stock_producto_bodega SET cantidad = ? WHERE producto_id = ? AND bodega_id = ?",
+                            stockPrevio.get(i), filasStock[i][0], filasStock[i][1]);
+                }
+            }
+            limpiarGrupos(dueno, List.of(correoS1, correoS2), List.of(empresaA, empresaB, empresaC == null ? -1L : empresaC),
+                    java.util.Arrays.asList(grupo1, grupo2), empresaC);
+        }
+    }
+
+    /**
+     * El usuario Dueño vinculado a un super administrador lo administra solo el grupo: el admin de la empresa no puede
+     * cambiarle clave, datos, estado, MFA ni permisos (409), el login normal da 401 aun con una clave conocida, y al
+     * reiniciar el MFA del super administrador se cortan sus sesiones de empresa (token y refresh).
+     */
+    @Test
+    void elUsuarioVinculadoDelSuperAdministradorNoSeToca_NiSeEntraPorLoginNormal_YReiniciarMfaCortaSusSesiones() throws Exception {
+        String dueno = "dueno-guardas@plataforma.test";
+        String correoS = "super-guardas@grupo.test";
+        String ct = MediaType.APPLICATION_JSON_VALUE;
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        Long grupo = null;
+        try {
+            String plataforma = entrarALaPlataforma(dueno);
+            grupo = json.readTree(mvc.perform(post("/api/plataforma/grupos").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"nombre\":\"Grupo Guardas Fuga\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            String respuestaS = mvc.perform(post("/api/plataforma/grupos/" + grupo + "/super-admin")
+                            .header(HttpHeaders.AUTHORIZATION, plataforma).contentType(ct)
+                            .content("{\"nombre\":\"Super Guardas\",\"correo\":\"" + correoS + "\",\"password\":\"" + CLAVE_GRUPO + "\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+            Long idS = json.readTree(respuestaS).get("id").asLong();
+            mvc.perform(put("/api/plataforma/empresas/" + empresaA + "/grupo").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"grupoId\":" + grupo + "}"))
+                    .andExpect(status().isOk());
+            Long vinculadoId = jdbc.queryForObject("SELECT usuario_id FROM usuario_grupo_empresa WHERE usuario_grupo_id = ? "
+                    + "AND empresa_id = ?", Long.class, idS, empresaA);
+
+            // ---- el admin normal de la empresa no puede tocarlo: 409 USUARIO_DE_GRUPO y nada cambia
+            String admin = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+            String hashAntes = jdbc.queryForObject("SELECT hash_password FROM usuario WHERE id = ?", String.class, vinculadoId);
+            String base = "/api/usuarios/" + vinculadoId;
+            mvc.perform(put(base + "/password").header(HttpHeaders.AUTHORIZATION, admin).contentType(ct)
+                            .content("{\"passwordNueva\":\"ClaveFuerte-Nueva-2026\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("USUARIO_DE_GRUPO"));
+            mvc.perform(put(base).header(HttpHeaders.AUTHORIZATION, admin).contentType(ct)
+                            .content("{\"nombreCompleto\":\"Otro\",\"correo\":\"cambiado@x.test\",\"roles\":[\"CAJERO\"]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("USUARIO_DE_GRUPO"));
+            mvc.perform(patch(base + "/desactivar").header(HttpHeaders.AUTHORIZATION, admin))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("USUARIO_DE_GRUPO"));
+            mvc.perform(patch(base + "/activar").header(HttpHeaders.AUTHORIZATION, admin))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("USUARIO_DE_GRUPO"));
+            mvc.perform(patch(base + "/mfa/reiniciar").header(HttpHeaders.AUTHORIZATION, admin))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("USUARIO_DE_GRUPO"));
+            mvc.perform(put(base + "/permisos").header(HttpHeaders.AUTHORIZATION, admin).contentType(ct)
+                            .content("{\"ajustes\":[]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("USUARIO_DE_GRUPO"));
+            assertEquals(hashAntes, jdbc.queryForObject("SELECT hash_password FROM usuario WHERE id = ?", String.class, vinculadoId));
+            assertEquals(correoS, jdbc.queryForObject("SELECT correo FROM usuario WHERE id = ?", String.class, vinculadoId));
+
+            // ---- login normal: 401 con cualquier clave, incluso una conocida puesta directo en la base
+            jdbc.update("UPDATE usuario SET hash_password = ? WHERE id = ?", passwordEncoder.encode("ClaveConocida-2026"), vinculadoId);
+            for (String clave : new String[] { "ClaveConocida-2026", "otra-clave-cualquiera" }) {
+                mvc.perform(post("/api/auth/login").contentType(ct).content("{\"empresa\":\"demo\",\"correo\":\"" + correoS
+                                + "\",\"password\":\"" + clave + "\"}"))
+                        .andExpect(status().isUnauthorized());
+            }
+
+            // ---- la sesión de empresa abierta por el grupo se renueva... hasta que se reinicia el MFA del super administrador
+            String grupoS = entrarAlGrupo(correoS);
+            String sesion = mvc.perform(post("/api/grupo/entrar/" + empresaA).header(HttpHeaders.AUTHORIZATION, grupoS))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            String tokenEmpresa = "Bearer " + json.readTree(sesion).get("token").asText();
+            String refresh = json.readTree(sesion).get("refreshToken").asText();
+            mvc.perform(get("/api/usuarios").header(HttpHeaders.AUTHORIZATION, tokenEmpresa)).andExpect(status().isOk());
+
+            mvc.perform(post("/api/plataforma/grupos/" + grupo + "/super-admin/" + idS + "/reiniciar-mfa")
+                            .header(HttpHeaders.AUTHORIZATION, plataforma))
+                    .andExpect(status().isOk());
+            mvc.perform(get("/api/usuarios").header(HttpHeaders.AUTHORIZATION, tokenEmpresa)).andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/auth/refresh").contentType(ct).content("{\"refreshToken\":\"" + refresh + "\"}"))
+                    .andExpect(status().isUnauthorized());
+            // el usuario vinculado sigue activo (solo se cortaron sus sesiones)
+            assertEquals(1, jdbc.queryForObject("SELECT activo FROM usuario WHERE id = ?", Integer.class, vinculadoId));
+        } finally {
+            limpiarGrupos(dueno, List.of(correoS), List.of(empresaA), java.util.Arrays.asList(grupo), null);
+        }
+    }
+
+    // ------------------------------------------------------------------ traslados entre empresas del grupo (spec 035)
+
+    /** Valor entero de un campo de una respuesta JSON por su ruta con puntos (por ejemplo {@code resumen.id}). */
+    private static long entero(String cuerpo, String ruta) throws Exception {
+        com.fasterxml.jackson.databind.JsonNode n = new com.fasterxml.jackson.databind.ObjectMapper().readTree(cuerpo);
+        for (String parte : ruta.split("\\.")) {
+            n = n.get(parte);
+        }
+        return n.asLong();
+    }
+
+    /** Existencia de un producto en una bodega (0 si no hay fila). */
+    private java.math.BigDecimal existencia(Long producto, Long bodega) {
+        List<java.math.BigDecimal> l = jdbc.queryForList("SELECT cantidad FROM stock_producto_bodega WHERE producto_id = ? "
+                + "AND bodega_id = ?", java.math.BigDecimal.class, producto, bodega);
+        return l.isEmpty() ? java.math.BigDecimal.ZERO : l.get(0);
+    }
+
+    private static String envioJson(Long destino, Long bodega, Long producto, String cantidad) {
+        return "{\"empresaDestinoId\":" + destino + ",\"bodegaOrigenId\":" + bodega + ",\"lineas\":[{\"productoId\":" + producto
+                + ",\"cantidad\":" + cantidad + "}],\"nota\":\"Para la sede B\"}";
+    }
+
+    @Test
+    void losTrasladosEntreEmpresasDelGrupoMuevenElStockEnLasDosYNingunaOtraEmpresaLosVe() throws Exception {
+        String dueno = "dueno-traslado@plataforma.test";
+        String ct = MediaType.APPLICATION_JSON_VALUE;
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        Long empresaC = null;
+        Long grupo1 = null;
+        Long grupo2 = null;
+        // se guarda lo que había para dejar las demás pruebas como estaban
+        List<java.util.Map<String, Object>> stockPrevio = jdbc.queryForList("SELECT producto_id, bodega_id, cantidad FROM "
+                + "stock_producto_bodega WHERE producto_id IN (?, ?)", productoA, productoB);
+        java.util.Map<String, Object> costosPrevios = jdbc.queryForMap("SELECT "
+                + "(SELECT costo_promedio FROM producto WHERE id = ?) AS cpa, (SELECT costo_referencia FROM producto WHERE id = ?) AS cra, "
+                + "(SELECT costo_promedio FROM producto WHERE id = ?) AS cpb, (SELECT costo_referencia FROM producto WHERE id = ?) AS crb",
+                productoA, productoA, productoB, productoB);
+        try {
+            jdbc.update("UPDATE stock_producto_bodega SET cantidad = 0 WHERE producto_id IN (?, ?)", productoA, productoB);
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 20) "
+                    + "ON DUPLICATE KEY UPDATE cantidad = 20", empresaA, productoA, bodegaA);
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 5) "
+                    + "ON DUPLICATE KEY UPDATE cantidad = 5", empresaB, productoB, bodegaB);
+            jdbc.update("UPDATE producto SET costo_promedio = 80, costo_referencia = 80 WHERE id = ?", productoA);
+            jdbc.update("UPDATE producto SET costo_promedio = 100, costo_referencia = 100 WHERE id = ?", productoB);
+
+            String plataforma = entrarALaPlataforma(dueno);
+            jdbc.update("INSERT INTO empresa (razon_social, nit, moneda_base, codigo_publico) VALUES (?, ?, 'COP', ?)",
+                    "Empresa C Traslados S.A.S.", "900000888-8", "empresa-c-traslados");
+            empresaC = jdbc.queryForObject("SELECT id FROM empresa WHERE codigo_publico = 'empresa-c-traslados'", Long.class);
+            jdbc.update("INSERT INTO suscripcion (empresa_id, plan_id, estado) SELECT ?, id, 'ACTIVA' FROM plan "
+                    + "WHERE codigo = 'EMPRESARIAL'", empresaC);
+            Long usuarioC = EmpresaContexto.como(empresaC, () -> {
+                Usuario u = new Usuario();
+                u.setNombreCompleto("Dueño de C");
+                u.setCorreo("dueno@c.com");
+                u.setHashPassword(passwordEncoder.encode(CLAVE));
+                u.getRoles().add(roles.findByCodigo("ADMIN_SISTEMA").orElseThrow());
+                return usuarios.save(u).getId();
+            });
+            grupo1 = json.readTree(mvc.perform(post("/api/plataforma/grupos").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"nombre\":\"Grupo Traslados Uno\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            grupo2 = json.readTree(mvc.perform(post("/api/plataforma/grupos").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"nombre\":\"Grupo Traslados Dos\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            for (Long e : new Long[] { empresaA, empresaB }) {
+                mvc.perform(put("/api/plataforma/empresas/" + e + "/grupo").header(HttpHeaders.AUTHORIZATION, plataforma)
+                        .contentType(ct).content("{\"grupoId\":" + grupo1 + "}")).andExpect(status().isOk());
+            }
+            mvc.perform(put("/api/plataforma/empresas/" + empresaC + "/grupo").header(HttpHeaders.AUTHORIZATION, plataforma)
+                    .contentType(ct).content("{\"grupoId\":" + grupo2 + "}")).andExpect(status().isOk());
+
+            String ta = token(empresaA, usuarioA, "ALMACENISTA");
+            String tb = token(empresaB, usuarioB, "ALMACENISTA");
+            String tc = token(empresaC, usuarioC, "ADMIN_SISTEMA");
+            String cajeroA = token(empresaA, usuarioA, "CAJERO");
+            final String base = "/api/traslados-grupo";
+
+            // ---- destinos: solo las otras empresas del mismo grupo (id y nombre); el cajero no tiene el permiso
+            mvc.perform(get(base + "/destinos").header(HttpHeaders.AUTHORIZATION, ta)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].id").value(empresaB))
+                    .andExpect(jsonPath("$[0].nit").doesNotExist());
+            mvc.perform(get(base + "/destinos").header(HttpHeaders.AUTHORIZATION, tb)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].id").value(empresaA));
+            mvc.perform(get(base + "/destinos").header(HttpHeaders.AUTHORIZATION, tc)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(0));
+            mvc.perform(get(base + "/destinos").header(HttpHeaders.AUTHORIZATION, cajeroA)).andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.codigo").value("PERMISO_REQUERIDO"));
+            mvc.perform(post(base).header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(ct)
+                    .content(envioJson(empresaB, bodegaA, productoA, "1"))).andExpect(status().isForbidden());
+
+            // ---- enviar a otro grupo, a sí misma o a una que no existe: 404 y no se mueve nada
+            for (Long destino : new Long[] { empresaC, empresaA, 999999L }) {
+                mvc.perform(post(base).header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                        .content(envioJson(destino, bodegaA, productoA, "1"))).andExpect(status().isNotFound());
+            }
+            assertEquals(0, new java.math.BigDecimal("20").compareTo(existencia(productoA, bodegaA)));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM traslado_grupo", Integer.class));
+
+            // ---- sin pareja de código en la destino: 409 con la lista, y nada sale de la origen
+            jdbc.update("UPDATE producto SET codigo = 'P-777' WHERE id = ?", productoB);
+            mvc.perform(post(base).header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                            .content(envioJson(empresaB, bodegaA, productoA, "3")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PRODUCTOS_SIN_PAREJA"))
+                    .andExpect(jsonPath("$.mensaje").value(org.hamcrest.Matchers.containsString("P-001")));
+            assertEquals(0, new java.math.BigDecimal("20").compareTo(existencia(productoA, bodegaA)));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM traslado_grupo", Integer.class));
+            // con el mismo código de barras sí se empareja (aunque el código sea otro)
+            jdbc.update("UPDATE producto SET codigo_barras = '7701234567890' WHERE id IN (?, ?)", productoA, productoB);
+
+            // ---- un producto o una bodega de la otra empresa no existen para quien envía
+            mvc.perform(post(base).header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                    .content(envioJson(empresaB, bodegaB, productoA, "1"))).andExpect(status().isNotFound());
+            mvc.perform(post(base).header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                    .content(envioJson(empresaB, bodegaA, productoB, "1"))).andExpect(status().isNotFound());
+
+            // ---- enviar T1 (10 u): baja el stock de A al instante, con kardex y costo; queda en tránsito
+            String t1 = mvc.perform(post(base).header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                            .content(envioJson(empresaB, bodegaA, productoA, "10")))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.resumen.estado").value("EN_TRANSITO"))
+                    .andExpect(jsonPath("$.resumen.sentido").value("ENVIADO"))
+                    .andExpect(jsonPath("$.resumen.consecutivo").value(org.hamcrest.Matchers.startsWith("TG-")))
+                    .andExpect(jsonPath("$.lineas[0].codigo").value("P-001"))
+                    .andExpect(jsonPath("$.lineas[0].costoUnitario").value(80.0))
+                    .andReturn().getResponse().getContentAsString();
+            long id1 = entero(t1, "resumen.id");
+            long linea1 = json.readTree(t1).get("lineas").get(0).get("id").asLong();
+            assertEquals(0, new java.math.BigDecimal("10").compareTo(existencia(productoA, bodegaA)));
+            assertEquals(0, new java.math.BigDecimal("5").compareTo(existencia(productoB, bodegaB)), "B no recibe hasta que reciba");
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM movimiento_inventario WHERE empresa_id = ? AND "
+                    + "tipo = 'SALIDA_TRASLADO_GRUPO' AND referencia_tipo = 'TRASLADO_GRUPO' AND referencia_id = ? AND cantidad = 10 "
+                    + "AND costo_unitario = 80", Integer.class, empresaA, id1));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE empresa_id = ? AND accion = 'TRASLADO_GRUPO_ENVIAR'",
+                    Integer.class, empresaA));
+            // aviso a quien recibe en la destino, y a nadie en la origen
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM notificacion WHERE usuario_id = ? AND evento = "
+                    + "'TRASLADO_GRUPO_ENVIADO'", Integer.class, usuarioB));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM notificacion WHERE usuario_id = ? AND evento = "
+                    + "'TRASLADO_GRUPO_ENVIADO'", Integer.class, usuarioA));
+
+            // ---- sin stock suficiente: 409 y no queda ni el traslado ni el consecutivo gastado
+            int antes = jdbc.queryForObject("SELECT COUNT(*) FROM traslado_grupo", Integer.class);
+            mvc.perform(post(base).header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                            .content(envioJson(empresaB, bodegaA, productoA, "100")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("STOCK_INSUFICIENTE"));
+            assertEquals(antes, jdbc.queryForObject("SELECT COUNT(*) FROM traslado_grupo", Integer.class));
+            assertEquals(0, new java.math.BigDecimal("10").compareTo(existencia(productoA, bodegaA)));
+
+            // ---- ninguna otra empresa ve ni toca T1; la origen y la destino sí, cada una con SUS productos
+            String ruta1 = base + "/" + id1;
+            mvc.perform(get(ruta1).header(HttpHeaders.AUTHORIZATION, tc)).andExpect(status().isNotFound());
+            mvc.perform(post(ruta1 + "/recibir").header(HttpHeaders.AUTHORIZATION, tc).contentType(ct)
+                    .content("{\"bodegaDestinoId\":" + bodegaB + ",\"lineas\":[{\"lineaId\":" + linea1
+                            + ",\"cantidadRecibida\":1}]}")).andExpect(status().isNotFound());
+            mvc.perform(post(ruta1 + "/anular").header(HttpHeaders.AUTHORIZATION, tc).contentType(ct)
+                    .content("{\"motivo\":\"x\"}")).andExpect(status().isNotFound());
+            mvc.perform(get(base).header(HttpHeaders.AUTHORIZATION, tc)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido.length()").value(0));
+            mvc.perform(get(ruta1).header(HttpHeaders.AUTHORIZATION, ta)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.lineas[0].codigo").value("P-001"));
+            mvc.perform(get(ruta1).header(HttpHeaders.AUTHORIZATION, tb)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.resumen.sentido").value("RECIBIDO"))
+                    .andExpect(jsonPath("$.lineas[0].codigo").value("P-777"))
+                    .andExpect(jsonPath("$.lineas[0].productoId").value(productoB));
+            mvc.perform(get(base).header(HttpHeaders.AUTHORIZATION, tb)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido.length()").value(1));
+            mvc.perform(get(ruta1).header(HttpHeaders.AUTHORIZATION, cajeroA)).andExpect(status().isForbidden());
+            // la destino no anula y la origen no recibe: nada se mueve
+            mvc.perform(post(ruta1 + "/anular").header(HttpHeaders.AUTHORIZATION, tb).contentType(ct)
+                            .content("{\"motivo\":\"x\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("SOLO_ORIGEN_ANULA"));
+            mvc.perform(post(ruta1 + "/recibir").header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                            .content("{\"bodegaDestinoId\":" + bodegaA + ",\"lineas\":[{\"lineaId\":" + linea1
+                                    + ",\"cantidadRecibida\":1}]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("SOLO_DESTINO_RECIBE"));
+            assertEquals(0, new java.math.BigDecimal("10").compareTo(existencia(productoA, bodegaA)));
+
+            // ---- T2 (4 u): anular devuelve el stock a la origen con su movimiento y ya no se puede recibir
+            String t2 = mvc.perform(post(base).header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                            .content(envioJson(empresaB, bodegaA, productoA, "4")))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+            long id2 = entero(t2, "resumen.id");
+            long linea2 = json.readTree(t2).get("lineas").get(0).get("id").asLong();
+            assertEquals(0, new java.math.BigDecimal("6").compareTo(existencia(productoA, bodegaA)));
+            String reciboT2 = "{\"bodegaDestinoId\":" + bodegaB + ",\"lineas\":[{\"lineaId\":" + linea2 + ",\"cantidadRecibida\":%s}]}";
+            mvc.perform(post(base + "/" + id2 + "/recibir").header(HttpHeaders.AUTHORIZATION, tb).contentType(ct)
+                            .content(reciboT2.formatted("5")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CANTIDAD_INVALIDA"));
+            mvc.perform(post(base + "/" + id2 + "/recibir").header(HttpHeaders.AUTHORIZATION, tb).contentType(ct)
+                            .content("{\"bodegaDestinoId\":" + bodegaA + ",\"lineas\":[{\"lineaId\":" + linea2
+                                    + ",\"cantidadRecibida\":1}]}"))
+                    .andExpect(status().isNotFound()); // una bodega de la OTRA empresa no existe para la destino
+            mvc.perform(post(base + "/" + id2 + "/anular").header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                    .content("{\"motivo\":\" \"}")).andExpect(status().isBadRequest());
+            mvc.perform(post(base + "/" + id2 + "/anular").header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                            .content("{\"motivo\":\"Me equivoqué de cantidad\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.resumen.estado").value("ANULADO"))
+                    .andExpect(jsonPath("$.motivoAnulacion").value("Me equivoqué de cantidad"));
+            assertEquals(0, new java.math.BigDecimal("10").compareTo(existencia(productoA, bodegaA)));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM movimiento_inventario WHERE empresa_id = ? AND "
+                    + "tipo = 'ENTRADA_TRASLADO_GRUPO' AND referencia_id = ? AND cantidad = 4", Integer.class, empresaA, id2));
+            mvc.perform(post(base + "/" + id2 + "/recibir").header(HttpHeaders.AUTHORIZATION, tb).contentType(ct)
+                            .content(reciboT2.formatted("4")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TRASLADO_NO_EN_TRANSITO"));
+            mvc.perform(post(base + "/" + id2 + "/anular").header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                            .content("{\"motivo\":\"otra vez\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TRASLADO_NO_EN_TRANSITO"));
+            assertEquals(0, new java.math.BigDecimal("5").compareTo(existencia(productoB, bodegaB)));
+
+            // ---- con un traslado en tránsito no se saca a A ni a B del grupo ni se pasa a otro (409)
+            mvc.perform(put("/api/plataforma/empresas/" + empresaA + "/grupo").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"grupoId\":null}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TRASLADOS_EN_TRANSITO"));
+            mvc.perform(put("/api/plataforma/empresas/" + empresaA + "/grupo").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"grupoId\":" + grupo2 + "}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TRASLADOS_EN_TRANSITO"));
+            mvc.perform(put("/api/plataforma/empresas/" + empresaB + "/grupo").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"grupoId\":null}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TRASLADOS_EN_TRANSITO"));
+            assertEquals(grupo1, jdbc.queryForObject("SELECT grupo_id FROM empresa WHERE id = ?", Long.class, empresaA));
+            assertEquals(grupo1, jdbc.queryForObject("SELECT grupo_id FROM empresa WHERE id = ?", Long.class, empresaB));
+
+            // ---- recibir T1 con faltante: sube B con lo que llegó (7), al costo de la línea y con su costo promedio
+            mvc.perform(post(ruta1 + "/recibir").header(HttpHeaders.AUTHORIZATION, tb).contentType(ct)
+                            .content("{\"bodegaDestinoId\":" + bodegaB + ",\"lineas\":[{\"lineaId\":" + linea1
+                                    + ",\"cantidadRecibida\":7}],\"nota\":\"Faltaron 3\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.resumen.estado").value("RECIBIDO"))
+                    .andExpect(jsonPath("$.lineas[0].cantidad").value(10.0))
+                    .andExpect(jsonPath("$.lineas[0].cantidadRecibida").value(7.0))
+                    .andExpect(jsonPath("$.lineas[0].faltante").value(3.0))
+                    .andExpect(jsonPath("$.notaRecepcion").value("Faltaron 3"));
+            assertEquals(0, new java.math.BigDecimal("12").compareTo(existencia(productoB, bodegaB)));
+            assertEquals(0, new java.math.BigDecimal("10").compareTo(existencia(productoA, bodegaA)));
+            // (5 × 100 + 7 × 80) ÷ 12 = 88,3333
+            java.math.BigDecimal promedioB = jdbc.queryForObject("SELECT costo_promedio FROM producto WHERE id = ?",
+                    java.math.BigDecimal.class, productoB);
+            assertTrue(promedioB.subtract(new java.math.BigDecimal("88.3333")).abs().compareTo(new java.math.BigDecimal("0.001")) < 0,
+                    "costo promedio de B: " + promedioB);
+            assertEquals(0, new java.math.BigDecimal("80").compareTo(jdbc.queryForObject("SELECT costo_promedio FROM producto "
+                    + "WHERE id = ?", java.math.BigDecimal.class, productoA)), "el costo de A no cambia");
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM movimiento_inventario WHERE empresa_id = ? AND "
+                    + "tipo = 'ENTRADA_TRASLADO_GRUPO' AND referencia_id = ? AND cantidad = 7 AND costo_unitario = 80 "
+                    + "AND bodega_destino_id = ?", Integer.class, empresaB, id1, bodegaB));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE empresa_id = ? AND accion = 'TRASLADO_GRUPO_RECIBIR'",
+                    Integer.class, empresaB));
+            // los 3 que no llegaron no aparecen en ninguna: el stock total del grupo bajó en 3
+            assertEquals(0, new java.math.BigDecimal("22").compareTo(existencia(productoA, bodegaA).add(existencia(productoB, bodegaB))));
+            // no se recibe dos veces ni se anula uno recibido
+            mvc.perform(post(ruta1 + "/recibir").header(HttpHeaders.AUTHORIZATION, tb).contentType(ct)
+                            .content("{\"bodegaDestinoId\":" + bodegaB + ",\"lineas\":[{\"lineaId\":" + linea1
+                                    + ",\"cantidadRecibida\":7}]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TRASLADO_NO_EN_TRANSITO"));
+            mvc.perform(post(ruta1 + "/anular").header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                            .content("{\"motivo\":\"tarde\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TRASLADO_NO_EN_TRANSITO"));
+            assertEquals(0, new java.math.BigDecimal("12").compareTo(existencia(productoB, bodegaB)));
+
+            // ---- si A ya no es del grupo del traslado, B no lo recibe (409); se simula por SQL porque la API ya lo impide
+            String t3 = mvc.perform(post(base).header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                            .content(envioJson(empresaB, bodegaA, productoA, "2")))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+            long id3 = entero(t3, "resumen.id");
+            long linea3 = json.readTree(t3).get("lineas").get(0).get("id").asLong();
+            jdbc.update("UPDATE empresa SET grupo_id = NULL WHERE id = ?", empresaA);
+            mvc.perform(post(base + "/" + id3 + "/recibir").header(HttpHeaders.AUTHORIZATION, tb).contentType(ct)
+                            .content("{\"bodegaDestinoId\":" + bodegaB + ",\"lineas\":[{\"lineaId\":" + linea3
+                                    + ",\"cantidadRecibida\":2}]}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TRASLADO_FUERA_DEL_GRUPO"));
+            assertEquals(0, new java.math.BigDecimal("12").compareTo(existencia(productoB, bodegaB)));
+            jdbc.update("UPDATE empresa SET grupo_id = ? WHERE id = ?", grupo1, empresaA);
+            // anulado T3, ya se puede sacar a A del grupo
+            mvc.perform(post(base + "/" + id3 + "/anular").header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                    .content("{\"motivo\":\"Prueba\"}")).andExpect(status().isOk());
+            assertEquals(0, new java.math.BigDecimal("10").compareTo(existencia(productoA, bodegaA)));
+            mvc.perform(put("/api/plataforma/empresas/" + empresaA + "/grupo").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"grupoId\":null}"))
+                    .andExpect(status().isOk());
+            // y ya sin grupo no tiene a quién enviar
+            mvc.perform(get(base + "/destinos").header(HttpHeaders.AUTHORIZATION, ta)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(0));
+            mvc.perform(post(base).header(HttpHeaders.AUTHORIZATION, ta).contentType(ct)
+                    .content(envioJson(empresaB, bodegaA, productoA, "1"))).andExpect(status().isNotFound());
+        } finally {
+            jdbc.update("DELETE FROM movimiento_inventario WHERE referencia_tipo = 'TRASLADO_GRUPO'");
+            jdbc.update("DELETE FROM traslado_grupo_linea");
+            jdbc.update("DELETE FROM traslado_grupo");
+            jdbc.update("DELETE FROM consecutivo WHERE prefijo = 'TG'");
+            jdbc.update("DELETE FROM auditoria WHERE entidad = 'TRASLADO_GRUPO'");
+            jdbc.update("DELETE FROM notificacion WHERE evento = 'TRASLADO_GRUPO_ENVIADO'");
+            jdbc.update("UPDATE producto SET codigo = 'P-001', codigo_barras = NULL WHERE id IN (?, ?)", productoA, productoB);
+            jdbc.update("UPDATE producto SET costo_promedio = ?, costo_referencia = ? WHERE id = ?", costosPrevios.get("cpa"),
+                    costosPrevios.get("cra"), productoA);
+            jdbc.update("UPDATE producto SET costo_promedio = ?, costo_referencia = ? WHERE id = ?", costosPrevios.get("cpb"),
+                    costosPrevios.get("crb"), productoB);
+            jdbc.update("DELETE FROM stock_producto_bodega WHERE producto_id IN (?, ?)", productoA, productoB);
+            for (var fila : stockPrevio) {
+                jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES "
+                        + "((SELECT empresa_id FROM producto WHERE id = ?), ?, ?, ?)", fila.get("producto_id"),
+                        fila.get("producto_id"), fila.get("bodega_id"), fila.get("cantidad"));
+            }
+            for (Long e : new Long[] { empresaA, empresaB, empresaC }) {
+                if (e != null) {
+                    jdbc.update("UPDATE empresa SET grupo_id = NULL WHERE id = ?", e);
+                }
+            }
+            jdbc.update("DELETE FROM grupo_empresa WHERE nombre IN ('Grupo Traslados Uno', 'Grupo Traslados Dos')");
+            jdbc.update("DELETE FROM auditoria_plataforma WHERE accion LIKE 'GRUPO_%'");
+            if (empresaC != null) {
+                borrarEmpresaDePrueba(empresaC);
+            }
+            borrarDuenoDePrueba(dueno);
+        }
     }
 }

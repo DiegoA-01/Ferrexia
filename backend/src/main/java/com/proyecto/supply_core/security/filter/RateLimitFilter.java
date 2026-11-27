@@ -35,7 +35,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final long VENTANA_MS = 60_000L;
     private static final List<String> RUTAS_LIMITADAS = List.of("/api/auth/login", "/api/auth/refresh",
             "/api/auth/recuperar", "/api/auth/restablecer", "/api/auth/mfa", "/api/portal/registro/**",
-            "/api/plataforma/auth/**", "/api/autorizaciones");
+            "/api/plataforma/auth/**", "/api/grupo/auth/**", "/api/autorizaciones");
     /** Cotizar con un enlace (spec 031): se limita con todo método, por IP y por enlace. */
     private static final String PREFIJO_ENLACE = "/api/publico/cotizar/";
 

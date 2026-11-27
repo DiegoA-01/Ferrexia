@@ -30,6 +30,8 @@ export const ROLES_RFQ = conPermiso(['COMPRADOR', 'ADMIN_COMPRAS', 'APROBADOR', 
 export const ROLES_PAGOS = conPermiso(['ADMINISTRATIVO', 'ADMIN_COMPRAS', 'AUDITOR'], 'PAGO_BUSCAR');
 /** Roles que leen despachos (mismos que {@code GET /api/despachos}). */
 export const ROLES_DESPACHOS = conPermiso(['ALMACENISTA', 'ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR'], 'DESPACHO_VER');
+/** Roles con permiso para enviar o recibir traslados entre empresas del grupo (spec 035). */
+export const ROLES_TRASLADOS_GRUPO = conPermiso(['ADMIN_SISTEMA', 'ADMINISTRADOR', 'ALMACENISTA'], ['TRASLADO_GRUPO_ENVIAR', 'TRASLADO_GRUPO_RECIBIR']);
 /** Roles que ven la rotación de productos (mismos que {@code GET /api/reportes/rotacion}). */
 export const ROLES_ROTACION = conPermiso(['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO', 'AUDITOR', 'ALMACENISTA'], 'REPORTE_ROTACION');
 /** Roles que leen reportes de gasto y proveedores. */
@@ -136,6 +138,7 @@ export const MENU: SeccionMenu[] = [
     opciones: [
       { texto: 'Productos y stock', icono: 'inventory_2', ruta: '/app/inventario', modulo: 'INVENTARIO', contador: 'bajoMinimo', exacta: true },
       { texto: 'Movimientos de stock', icono: 'swap_horiz', ruta: '/app/inventario/movimientos', modulo: 'INVENTARIO' },
+      { texto: 'Traslados entre empresas', icono: 'local_shipping', ruta: '/app/inventario/traslados-grupo', roles: ROLES_TRASLADOS_GRUPO, modulo: 'INVENTARIO' },
       { texto: 'Despachos', icono: 'outbox', ruta: '/app/despachos', roles: ROLES_DESPACHOS, modulo: 'DESPACHOS' },
       { texto: 'Plan de reabastecimiento', icono: 'event_repeat', ruta: '/app/inventario/reabastecimiento', roles: ROLES_REABASTECIMIENTO, modulo: 'COMPRAS' },
     ],

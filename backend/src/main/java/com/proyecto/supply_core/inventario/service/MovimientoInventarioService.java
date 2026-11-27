@@ -367,6 +367,44 @@ public class MovimientoInventarioService {
     }
 
     /**
+     * Salida de la empresa origen al enviar un traslado a otra empresa del grupo (spec 035). Valida stock: nunca queda
+     * negativo.
+     *
+     * @param productoId producto de la empresa origen
+     * @param bodegaId   bodega de la que sale
+     * @param cantidad   cantidad en la unidad del producto (> 0)
+     * @param costo      costo unitario con que sale (el vigente del producto)
+     * @param trasladoId traslado que la origina
+     * @return movimiento registrado
+     * @throws NegocioException si el stock no alcanza (STOCK_INSUFICIENTE)
+     */
+    @Transactional
+    public RegistroMovimientoResponse registrarSalidaTrasladoGrupo(Long productoId, Long bodegaId, BigDecimal cantidad,
+            BigDecimal costo, Long trasladoId) {
+        return aplicar(TipoMovimiento.SALIDA_TRASLADO_GRUPO, productoId, bodegaId, null, cantidad, null,
+                "TRASLADO_GRUPO", trasladoId, costo);
+    }
+
+    /**
+     * Entrada por un traslado de otra empresa del grupo, o por la anulación de uno propio (devuelve el stock a la
+     * origen). Quien llama actualiza antes el costo promedio con {@code CostoPromedioService}.
+     *
+     * @param productoId producto de la empresa que recibe
+     * @param bodegaId   bodega a la que entra
+     * @param cantidad   cantidad en la unidad del producto (> 0)
+     * @param costo      costo unitario con que salió de la origen
+     * @param motivo     motivo (la anulación lo explica) o {@code null}
+     * @param trasladoId traslado que la origina
+     * @return movimiento registrado
+     */
+    @Transactional
+    public RegistroMovimientoResponse registrarEntradaTrasladoGrupo(Long productoId, Long bodegaId, BigDecimal cantidad,
+            BigDecimal costo, String motivo, Long trasladoId) {
+        return aplicar(TipoMovimiento.ENTRADA_TRASLADO_GRUPO, productoId, null, bodegaId, cantidad, motivo,
+                "TRASLADO_GRUPO", trasladoId, costo);
+    }
+
+    /**
      * Kardex con filtros, más recientes primero.
      *
      * @param filtro   filtros validados

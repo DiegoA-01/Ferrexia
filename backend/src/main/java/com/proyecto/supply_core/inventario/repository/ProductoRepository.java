@@ -99,6 +99,14 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     boolean existsByCodigoBarras(String codigoBarras);
 
     /**
+     * Busca un producto de la empresa por su código de barras (emparejar traslados entre empresas, spec 035).
+     *
+     * @param codigoBarras código de barras
+     * @return producto, si existe
+     */
+    Optional<Producto> findFirstByCodigoBarras(String codigoBarras);
+
+    /**
      * Productos activos cuyo stock total (todas las bodegas) es menor que su stock mínimo.
      *
      * @return productos con alerta de reposición, por código

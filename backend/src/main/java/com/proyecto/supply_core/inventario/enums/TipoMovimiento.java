@@ -28,7 +28,11 @@ public enum TipoMovimiento {
     /** Entrada que devuelve al stock lo de una venta anulada en su turno (spec 006). */
     ANULACION_VENTA,
     /** Entrada por la mercancía que devuelve un cliente (spec 006). */
-    DEVOLUCION_CLIENTE;
+    DEVOLUCION_CLIENTE,
+    /** Salida de la empresa origen al enviar un traslado a otra empresa del grupo (spec 035). */
+    SALIDA_TRASLADO_GRUPO,
+    /** Entrada en la empresa destino al recibir un traslado de otra empresa del grupo (spec 035). */
+    ENTRADA_TRASLADO_GRUPO;
 
     /**
      * Indica si el almacenista lo puede registrar directamente (UC-03).
@@ -42,11 +46,11 @@ public enum TipoMovimiento {
     /**
      * Indica si resta stock de una bodega de origen.
      *
-     * @return {@code true} para salidas (consumo y venta), ajuste negativo, devolución y traslado
+     * @return {@code true} para salidas (consumo, venta y traslado a otra empresa), ajuste negativo, devolución y traslado
      */
     public boolean usaOrigen() {
         return this == SALIDA_CONSUMO || this == AJUSTE_NEGATIVO || this == DEVOLUCION_PROVEEDOR || this == TRASLADO
-                || this == SALIDA_VENTA;
+                || this == SALIDA_VENTA || this == SALIDA_TRASLADO_GRUPO;
     }
 
     /**
@@ -56,7 +60,8 @@ public enum TipoMovimiento {
      */
     public boolean usaDestino() {
         return this == ENTRADA_COMPRA || this == AJUSTE_POSITIVO || this == TRASLADO || this == ANULACION_DESPACHO
-                || this == ANULACION_VENTA || this == DEVOLUCION_CLIENTE;
+                || this == ANULACION_VENTA || this == DEVOLUCION_CLIENTE
+                || this == ENTRADA_TRASLADO_GRUPO;
     }
 
     /**

@@ -19,5 +19,19 @@ public enum AccionPlataforma {
     /** Alta de un plan. */
     PLAN_CREAR,
     /** Cambio de los módulos o del nombre de un plan. */
-    PLAN_EDITAR
+    PLAN_EDITAR,
+    /** Alta de un grupo de empresas (spec 035). */
+    GRUPO_CREAR,
+    /** Una empresa entró a un grupo, cambió de grupo o salió de él. */
+    GRUPO_ASIGNAR_EMPRESA,
+    /** Alta del super administrador de un grupo. */
+    GRUPO_SUPER_ADMIN_CREAR,
+    /** Un super administrador de grupo se activó o se desactivó. */
+    GRUPO_SUPER_ADMIN_ESTADO,
+    /** Contraseña de un super administrador de grupo verificada (EXITO o FALLO). */
+    GRUPO_LOGIN,
+    /** Código de MFA de un super administrador de grupo verificado: sesión de grupo emitida (EXITO o FALLO). */
+    GRUPO_MFA,
+    /** La plataforma borró el segundo factor de un super administrador de grupo y cortó sus sesiones. */
+    GRUPO_SUPER_ADMIN_REINICIAR_MFA
 }

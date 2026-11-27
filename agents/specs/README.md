@@ -64,7 +64,7 @@ decisiones y se aprueban antes de escribir el plan.
 | [032-domicilios](032-domicilios/spec.md) | 4 | Venta a domicilio, domiciliarios, estados y dinero contraentrega | `feature/domicilios` | 004, 021 | Persona 1 | Hecha (V53); falta revisión en Docker |
 | [033-solicitudes-compra-mejoradas](033-solicitudes-compra-mejoradas/spec.md) | 4 | Proveedor específico o abierta, historial y edición, alertas que bloquean | `fix/ajustes-prueba-usuarios` (por pedido del usuario) | — | Persona 2 | Hecha (V55; aprobada en Docker 2026-11-26) |
 | [034-reportes-ventas-ampliados](034-reportes-ventas-ampliados/spec.md) | 4 | Ventas por categoría, empleado, producto, medio de pago, tipo de servicio y caja | `feature/reportes-ventas-ampliados` | 009, 019, 023, 032 | Persona 1 | Hecha (V56); falta revisión en Docker |
-| [035-sedes-super-admin](035-sedes-super-admin/spec.md) | 4 | Grupo de empresas con un super administrador | `feature/sedes-super-admin` | 020, 022 | Persona 2 | Propuesta (aclarar D12) |
+| [035-sedes-super-admin](035-sedes-super-admin/spec.md) | 4 | Grupo de empresas con un super administrador | `feature/sedes-super-admin` | 020, 022 | Persona 2 | Hecha (V57); falta revisión en Docker |
 | [036-ajustes-prueba-usuarios](036-ajustes-prueba-usuarios/spec.md) | 4 | Ajustes de la prueba con usuarios: avisos al crear empresa, cantidad y existencia en el POS, detalle de venta en su fila, Inicio solo con categorías y pendientes | `fix/ajustes-prueba-usuarios` | 005, 012, 020, 024 | Persona 1 | Hecha (sin migración; aprobada en Docker 2026-11-26) |
 
 Al terminar la 006 el negocio ya puede **vender y cuadrar caja**. De la 007 en adelante se suman crédito, márgenes y
@@ -88,7 +88,7 @@ referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real
 | D9 | ¿Precio distinto por caja y por unidad del mismo producto? | **Sí**, como pedía la spec original; hoy el precio se guarda solo en la unidad del producto. | **Tomada** (2026-11-19) | 001 |
 | D10 | ¿Cómo son las contraseñas del personal y quién las ve? | Dueño y administradores: clave fuerte (12+, mayúscula, número, símbolo) y MFA. Personal: clave corta o PIN de 6 dígitos que asigna el jefe. Nadie **ve** una clave (se guardan cifradas): se **restablece** y queda auditado. | Tomada (2026-11-25, tal como está; se construye en la Parte B de la 022) | 022 |
 | D11 | ¿Qué pasa con los planes? | Se quitan los planes. Al crear una empresa, el dueño de la plataforma marca en un panel los módulos que necesita; después los prende o apaga uno por uno. Las empresas que ya existían quedan con todos los módulos. Las tablas de planes se conservan sin uso. | Tomada (2026-11-25, por el equipo: sin planes, módulos por empresa) | 024 |
-| D12 | ¿Las sedes pasan a ser empresas separadas con un super administrador? | Grupo de empresas aisladas con un super administrador que cambia de empresa sin volver a ingresar. Faltan las tres preguntas de la spec 035. | **Pendiente: aclarar** | 035 |
+| D12 | ¿Las sedes pasan a ser empresas separadas con un super administrador? | Grupo de empresas aisladas con un super administrador que cambia de empresa sin volver a ingresar. Faltan las tres preguntas de la spec 035. | Tomada (2026-11-27: empresas aparte en un grupo con super administrador; productos y precios propios; traslados entre empresas por código con recepción en la destino) | 035 |
 | D13 | ¿Se permite vender sin existencia? (revisa D1) | Sí, solo con permiso y motivo, con aviso y reporte. Falta elegir: stock negativo marcado o faltante pendiente sin bajar de cero. | Tomada (2026-11-26: faltante pendiente, el stock nunca baja de cero; permiso para Dueño, Administrador y Supervisor) | 030 |
 | D14 | ¿El proveedor deja de tener cuenta? | Sí: cotiza con un enlace de un solo uso, solo el nombre obligatorio, límite de peticiones y anti-bot. El portal se deja de usar. | Tomada (2026-11-26: tal como está, portal retirado; anti-bot con Turnstile por HTTP; no espera a la 033) | 031 |
 | D15 | ¿Retiros y gastos sin PIN? | Con el permiso, sin PIN; sin el permiso, PIN del supervisor como hoy. | Tomada (2026-11-25, tal como está) | 025 |
@@ -134,7 +134,8 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V54 | `feature/proveedor-sin-perfil` | Proveedor sin perfil: `enlace_cotizacion` y usuarios PROVEEDOR desactivados (spec 031) |
 | V55 | `fix/ajustes-prueba-usuarios` | Solicitud a proveedores: `solicitud_compra.modo_proveedor`, `solicitud_proveedor` y permiso `SOLICITUD_EXCEPCION` (spec 033) |
 | V56 | `feature/reportes-ventas-ampliados` | Permiso `REPORTE_MARGEN` para Dueño, Administrador y Contador/Auditor (spec 034) |
-| V57 en adelante | libre | Se reserva al empezar cada spec |
+| V57 | `feature/sedes-super-admin` | Grupo de empresas: `grupo_empresa`, `usuario_grupo`, vínculos, traslados entre empresas, permisos y tipos de movimiento (spec 035) |
+| V58 en adelante | libre | Se reserva al empezar cada spec |
 
 **Numeración propuesta en los planes 018 a 035 (no es reserva):** V41 (020), V42 (021), V43 y V44 (022), V45 (023),
 V46 (025), V47 (026), V48 (028), V49 (029), V50 (030), V51 (031), V52 (032), V53 (033), V54 (035). Las specs 018, 019,

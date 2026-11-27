@@ -1,13 +1,12 @@
 # Ferrexia (antes Supply-Core) — Progreso
 
 > **Última actualización: 2026-11-27.** El proyecto sigue en el repositorio `DiegoA-01/Ferrexia` (Supply-Core quedó como
-> histórico). Estado: **specs 000 a 033 y 036 mezcladas en `develop`** (`69dbd42`, PR #37) y **034 (reportes de ventas
-> ampliados) en su rama `feature/reportes-ventas-ampliados`** (PR por abrir). Hechas y verificadas con pruebas: 000 a 022
-> y 028 a 034 (la 028 a la 032 y la 034 sin la revisión en Docker). **Mezcladas pero sin cerrar: 023 a 027** (PR #29, de Martin): les
-> faltan la revisión en Docker, la aprobación y marcar sus criterios, y la 026 tiene una decisión abierta. **Falta la
-> spec 035** (espera aclarar D12; ver la **sección 8**, que manda sobre las anteriores). Migraciones: 56 (V1 a V56),
-> **próxima V57**.
-> Pruebas (rama de la 034): backend 953 en verde (1 omitida, Gemini en vivo); frontend 343; e2e con 4 pruebas en el CI.
+> histórico). Estado: **specs 000 a 034 y 036 mezcladas en `develop`** (`a43242f`, PR #38) y **035 (sedes con super
+> administrador) en su rama `feature/sedes-super-admin`** (PR por abrir). **Todas las specs de la reunión 2 están hechas**
+> (000 a 036); a la 028 a la 032, la 034 y la 035 les falta la revisión en Docker. **Mezcladas pero sin cerrar: 023 a 027** (PR #29, de Martin): les
+> faltan la revisión en Docker, la aprobación y marcar sus criterios, y la 026 tiene una decisión abierta (ver la
+> **sección 8**, que manda sobre las anteriores). Migraciones: 57 (V1 a V57), **próxima V58**.
+> Pruebas (rama de la 035): backend 1044 en verde (1 omitida, Gemini en vivo); frontend 372; e2e con 4 pruebas en el CI.
 > Las secciones 0 a 7 se dejan como historia.
 
 > Estado al 2026-11-19 (historia): **Ventas y Caja en construcción por specs: hechas la 000 (CI), 001 (catálogo de venta), 002 (clientes) y 003 (cajas y turnos); sigue la 004, la venta (ver sección 7)**. Antes: frontend completo (fases 0 a 8), stack de Docker e informe de compras para el dueño (V25). Antes: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), exportación a Excel y PDF con archivos legibles, y cruce de totales de la IA con Gemini como proveedor de lectura (sin migración)**.
@@ -669,7 +668,8 @@ de aceptación verificados → rama propia desde `develop` → PR que crea y mez
 | 031 | Proveedor sin perfil (D14): el portal y el registro público se retiran (410 `PORTAL_RETIRADO`, `PORTAL_HABILITADO=true` los prende), los usuarios PROVEEDOR quedan desactivados; al abrir la RFQ cada invitado recibe un enlace de un solo uso (`{id}.{firma HMAC}`, nada secreto en la base) para cotizar sin cuenta en `/cotizar/:token`, con límite por IP y por enlace, campo trampa y Cloudflare Turnstile por HTTP; compras copia, manda por WhatsApp o regenera el enlace en la RFQ, registra la respuesta del proveedor a la orden y le envía la orden en PDF; aviso de pago por correo; "Nuevo proveedor" con solo el nombre | V54 | #35 |
 | 033 y 036 (Martin) | Solicitud a proveedores específicos o abierta, recorrido de la solicitud, editar en borrador o devuelta, alertas de duplicada y presupuesto que bloquean salvo `SOLICITUD_EXCEPCION` (D21, solo el Dueño); ajustes de la prueba con usuarios | V55 | #36 |
 | Arreglos 2026-11-27 | El cajero ve y filtra en Ventas las ventas que él cobró (con el consecutivo encuentra la de otro); aprobar y anular la factura del proveedor por permiso (`FACTURA_APROBAR`, `FACTURA_ANULAR`) y no por rol | — | #37 |
-| 034 | Reportes de ventas ampliados: vista por tipo de servicio, filtro por sede (también al exportar), costo y margen solo con el permiso nuevo `REPORTE_MARGEN` (Dueño, Administrador y Contador/Auditor) | V56 | rama `feature/reportes-ventas-ampliados` |
+| 034 | Reportes de ventas ampliados: vista por tipo de servicio, filtro por sede (también al exportar), costo y margen solo con el permiso nuevo `REPORTE_MARGEN` (Dueño, Administrador y Contador/Auditor) | V56 | #38 |
+| 035 | Sedes como empresas en un grupo (D12): la plataforma crea grupos, asigna empresas y crea el super administrador (login propio en `/grupo/ingreso`, MFA obligatorio, token `grp` que no sirve en empresas ni plataforma); entra a cualquier empresa del grupo sin reingresar con su usuario Dueño vinculado (que solo administra la plataforma y no entra por el login normal) y vuelve con "Cambiar de empresa"; tablero del grupo; traslados entre empresas del grupo emparejados por código, con salida al enviar y entrada al recibir en la destino (faltantes, anular, kardex y costo promedio). Revisión de seguridad del arquitecto con 2 hallazgos altos corregidos | V57 | rama `feature/sedes-super-admin` |
 | Docker | El proyecto de Compose y las imágenes pasan a llamarse `ferrexia` (ver "Docker" más abajo) | — | #23 |
 
 Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agents/specs/018-mi-turno-claro/revision-flujo-cajas.md`.
@@ -686,8 +686,8 @@ Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agen
 ### Specs: hechas y faltantes (corte 2026-11-26, para retomar tras compactar)
 **Hechas y verificadas en `develop`:** 000 a 022, 028 a 033 y 036. Las últimas: 028 (V50, #31), 029 (V51, #32),
 030 (V52, #33), 032 (V53, #34), 031 (V54, #35) y 033 con 036 (V55, #36, de Martin; la 033 aprobada en Docker).
-**Hecha en su rama:** 034 (V56, `feature/reportes-ventas-ampliados`). A la 028 a la 032 y a la 034 les falta la revisión
-en Docker. Detalle en su `spec.md` (criterios marcados) y su `tasks.md`.
+034 (V56, #38). **Hecha en su rama:** 035 (V57, `feature/sedes-super-admin`). A la 028 a la 032, la 034 y la 035 les
+falta la revisión en Docker. Detalle en su `spec.md` (criterios marcados) y su `tasks.md`.
 
 **Mezcladas pero sin cerrar (PR #29, rama `feature/cierre-por-denominacion` de Martin):** el código está en `develop`, pero
 cada `spec.md` sigue "En construcción" y sin criterios marcados.
@@ -700,29 +700,28 @@ cada `spec.md` sigue "En construcción" y sin criterios marcados.
 | 026 Producto completo | V49 | **Decidir qué pasa con la unidad de un producto que ya tiene movimientos**; revisión y criterios |
 | 027 Venta ágil | — | Revisión en Docker y marcar criterios |
 
-**Falta (en Propuesta, con `plan.md` y `tasks.md`). La migración se reserva al empezar (próxima libre V57):**
+**No falta ninguna spec de la reunión 2.** La próxima migración libre es la V58.
 
-| Spec | Qué entrega | Responsable | Decisión que la bloquea |
-|---|---|---|---|
-| 035 Sedes con super administrador | Grupo de empresas con un super administrador | Persona 2 | D12 (hay que aclararla antes) |
-
-La única decisión abierta en `agents/specs/README.md` es D12 (las demás, D10 a D21, ya se tomaron). Hay que tomarlas antes de aprobar la spec que bloquean.
+No queda ninguna decisión abierta en `agents/specs/README.md` (D1 a D21 tomadas). Hay que tomarlas antes de aprobar la spec que bloquean.
 
 ### Qué sigue, en orden
 1. **Revisión en Docker de lo mezclado** (con la demo sembrada en el stack `ferrexia`): 018 y 021 (cajero y supervisor),
    022 (un rol propio con PIN, quitar un permiso suelto, los usuarios de la demo ven lo mismo que antes) y 023 a 027.
    Al terminar, marcar los criterios de 023 a 027 y pasarlas a "Hecha" en el índice.
 2. **Decidir la unidad de la 026** (producto con movimientos) y aprobar la 025.
-3. **Mezclar la 034** (`feature/reportes-ventas-ampliados`, V56) y hacer la **revisión en Docker de la 028 a la 032 y
-   la 034** (reportes por tipo de servicio y sede; el cajero sin costo ni margen):
+3. **Mezclar la 035** (`feature/sedes-super-admin`, V57) y hacer la **revisión en Docker de la 028 a la 032, la 034
+   y la 035** (reportes por tipo de servicio y sede, el cajero sin margen; un grupo con dos empresas y una fuera: ingreso
+   del super administrador con MFA, entrar y cambiar de empresa, tablero, un traslado enviado, recibido con faltante y
+   otro anulado):
    variantes (crear, comprar, recibir y vender por código de barras), cambio de pago y anulación de una factura de ayer,
    venta sin existencia que se regulariza al recibir, un domicilio contraentrega de punta a punta con vendedor, cajero y
    domiciliario (este último con el permiso suelto `DOMICILIO_REPARTIR`) a 360 px, y la 031 (con las claves de prueba de
    Turnstile en `.env`: crear un proveedor solo con nombre, abrir una RFQ, cotizar desde el enlace en una ventana
    privada, analizar, emitir la orden y registrar el despacho). Ojo: la demo hay que volver a sembrarla con el
    `sembrar_demo.py` nuevo (el viejo usaba el registro público, que ahora da 410).
-4. **Aclarar D12 y hacer la 035** (sedes con super administrador; plan con V54, usar V57). Queda para una spec aparte
-   la carga del catálogo de precios del proveedor (antes la hacía él en el portal). La prueba de fuga de la 033 se puede
+4. Specs nuevas por definir: carga del catálogo de precios del proveedor (antes la hacía él en el portal). Quedan
+   abiertas de la 035: reinicio del segundo factor ya existe, pero el super administrador no puede cambiar su propia
+   clave (lo hace la plataforma al crearlo). La prueba de fuga de la 033 se puede
    reforzar (ver una solicitud real de otra empresa y crear una con un proveedor de otra empresa).
 5. Pendientes menores de la 022: botones internos de algunas pantallas que usan listas de roles sueltas y los avisos por
    rol (`notificarRol`), que no llegan a quien tiene un rol propio.
@@ -732,12 +731,12 @@ La única decisión abierta en `agents/specs/README.md` es D12 (las demás, D10 
 `agents/specs/022-permisos-plantillas-rol/permisos.md`); un permiso nuevo se siembra en su migración y se da a los roles.
 
 ### Entorno local de DiegoA-01 (2026-11-26)
-- Copia local en la rama `feature/reportes-ventas-ampliados` (sobre `develop` = `69dbd42`). `backend/mvnw.cmd` aparece modificado solo
+- Copia local en la rama `feature/sedes-super-admin` (sobre `develop` = `a43242f`). `backend/mvnw.cmd` aparece modificado solo
   por el fin de línea: no se sube. Siguen 11 ramas locales viejas ya mezcladas (`docs/progreso-2026-11-25`,
   `feature/menu-*`, `feature/inicio-categorias`, `feature/pestanas-categoria`, `feature/cajas-ocupadas`,
   `feature/pos-ajustes-rapidos`, `feature/interfaz-general`, `feature/mi-turno-movimientos`,
   `feature/permisos-plantillas-rol`, `feature/permisos-parte-b`) que se pueden borrar.
-- La base local de desarrollo (`supply_core`) ya tiene aplicadas hasta la V56 (tiene `superadmin@demo.local` y
+- La base local de desarrollo (`supply_core`) ya tiene aplicadas hasta la V57 (tiene `superadmin@demo.local` y
   `cajero@demo.local`, claves en `credenciales-local.local.txt`): se levantó el backend para regenerar los
   tipos del frontend (`npm run api:tipos`), que se hace en cada spec que cambia la API.
 - `gh` no está instalado: los PR se abren desde el enlace que da `git push`.
