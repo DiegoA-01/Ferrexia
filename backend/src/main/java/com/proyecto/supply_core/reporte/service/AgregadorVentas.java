@@ -56,11 +56,12 @@ public final class AgregadorVentas {
      * @param base        valor sin IVA
      * @param costo       costo de esas unidades ({@code null} si la línea no tenía costo)
      * @param devolucion  {@code true} si es una devolución (resta)
+     * @param tipoServicio {@code MOSTRADOR} o {@code DOMICILIO} (spec 034)
      */
     public record Linea(long ventaId, LocalDate fecha, Long cajaId, String caja, Long cajeroId, String cajero,
             Long vendedorId, String vendedor, Long clienteId, String cliente, Long productoId, String producto,
             Long categoriaId, String categoria, BigDecimal unidades, BigDecimal total, BigDecimal base, BigDecimal costo,
-            boolean devolucion) {
+            boolean devolucion, String tipoServicio) {
     }
 
     /**
@@ -220,6 +221,8 @@ public final class AgregadorVentas {
                     : new String[] { String.valueOf(l.vendedorId()), l.vendedor() };
             case CAJERO -> new String[] { String.valueOf(l.cajeroId()), l.cajero() };
             case CAJA -> new String[] { String.valueOf(l.cajaId()), l.caja() };
+            case TIPO_SERVICIO -> "DOMICILIO".equals(l.tipoServicio()) ? new String[] { "DOMICILIO", "Domicilio" }
+                    : new String[] { "MOSTRADOR", "Mostrador" };
             case MEDIO_PAGO -> throw new IllegalArgumentException("El medio de pago se agrupa con los cobros");
         };
     }

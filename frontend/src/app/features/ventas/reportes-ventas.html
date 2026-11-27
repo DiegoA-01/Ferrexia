@@ -26,6 +26,7 @@
           <select class="entrada" [ngModel]="agrupar()" (ngModelChange)="agrupar.set($event)">
             @for (a of ordenAgrupaciones; track a) { <option [ngValue]="a">{{ agrupaciones[a] }}</option> }
           </select></label>
+        <sc-selector-sede [(sede)]="sedeId" />
       }
       @if (pestana() === 'turnos') {
         <label>Caja
@@ -58,11 +59,13 @@
         <div class="tarjeta kpi"><div class="etiqueta">Ventas</div><div class="valor">{{ r.totales?.ventas }}</div></div>
         <div class="tarjeta kpi"><div class="etiqueta">Ticket promedio</div><div class="valor">{{ r.totales?.ticketPromedio | pesos }}</div></div>
         <div class="tarjeta kpi"><div class="etiqueta">Devoluciones</div><div class="valor">{{ r.totales?.devoluciones | pesos }}</div></div>
+        @if (verMargen()) {
         <div class="tarjeta kpi"><div class="etiqueta">Margen</div>
           <div class="valor">{{ r.totales?.margen | pesos }}</div>
           @if (r.totales?.margenPct != null) { <div class="sub">{{ r.totales?.margenPct | numero }} % sobre la base</div> }</div>
+        }
       </div>
-      @if ((r.totales?.baseSinCosto ?? 0) > 0) {
+      @if (verMargen() && (r.totales?.baseSinCosto ?? 0) > 0) {
         <p class="aviso ambar">{{ r.totales?.baseSinCosto | pesos }} se vendieron sin costo conocido y no entran al margen.</p>
       }
       <section class="tarjeta sin-relleno"><div class="tabla-contenedor"><table class="tabla">
@@ -70,7 +73,7 @@
           <th>{{ agrupaciones[r.agrupar!] }}</th><th class="num">Ventas</th>
           @if (!porMedio()) { <th class="num">Unidades</th> }
           <th class="num">{{ porMedio() ? 'Cobrado' : 'Bruto' }}</th><th class="num">Devuelto</th><th class="num">Neto</th>
-          @if (!porMedio()) { <th class="num">Costo</th><th class="num">Margen</th><th class="num">Margen %</th> }
+          @if (!porMedio() && verMargen()) { <th class="num">Costo</th><th class="num">Margen</th><th class="num">Margen %</th> }
         </tr></thead>
         <tbody>
           @for (f of r.filas; track f.clave) {
@@ -78,7 +81,7 @@
               @if (!porMedio()) { <td class="num">{{ f.unidades | numero }}</td> }
               <td class="num">{{ f.bruto | pesos }}</td><td class="num">{{ f.devoluciones | pesos }}</td>
               <td class="num"><strong>{{ f.neto | pesos }}</strong></td>
-              @if (!porMedio()) {
+              @if (!porMedio() && verMargen()) {
                 <td class="num">{{ f.costo | pesos }}</td><td class="num">{{ f.margen | pesos }}</td>
                 <td class="num">{{ f.margenPct == null ? '—' : (f.margenPct | numero) + ' %' }}</td>
               }

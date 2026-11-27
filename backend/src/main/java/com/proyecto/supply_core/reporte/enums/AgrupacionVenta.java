@@ -20,6 +20,8 @@ public enum AgrupacionVenta {
     CAJERO,
     /** Un renglón por caja. */
     CAJA,
+    /** Un renglón por tipo de servicio: mostrador o domicilio (spec 034). */
+    TIPO_SERVICIO,
     /** Un renglón por medio de pago (lo cobrado menos lo reembolsado por ese medio). */
     MEDIO_PAGO;
 

@@ -101,7 +101,7 @@ ExportacionController#kardexPorCorreo(String,MovimientoFiltro)	-|I
 ExportacionController#orden(Long,String)	ADMINISTRATIVO,ADMIN_COMPRAS,ALMACENISTA,APROBADOR,AUDITOR,COMPRADOR|I
 ExportacionController#ordenPorCorreo(Long,String)	ADMINISTRATIVO,ADMIN_COMPRAS,ALMACENISTA,APROBADOR,AUDITOR,COMPRADOR|I
 ExportacionController#reporteCaja(String,LocalDate,LocalDate)	ADMIN_SISTEMA,AUDITOR,SUPERVISOR_VENTAS|I
-ExportacionController#reporteVentas(String,LocalDate,LocalDate,AgrupacionVenta)	ADMIN_SISTEMA,AUDITOR,CAJERO,SUPERVISOR_VENTAS,VENDEDOR|I
+ExportacionController#reporteVentas(String,LocalDate,LocalDate,AgrupacionVenta,Long)	ADMIN_SISTEMA,AUDITOR,CAJERO,SUPERVISOR_VENTAS,VENDEDOR|I
 ExportacionController#solicitudes(String,String,EstadoSolicitud,Long,Long)	-|I
 ExportacionController#solicitudesPorCorreo(String,String,EstadoSolicitud,Long,Long)	-|I
 ExportacionController#stock(String,Long,Long)	-|I
@@ -308,4 +308,4 @@ VentaReporteController#caja(LocalDate,LocalDate)	ADMIN_SISTEMA,AUDITOR,SUPERVISO
 VentaReporteController#cuadres(boolean,Pageable)	ADMIN_SISTEMA,AUDITOR|I
 VentaReporteController#revisar(LocalDate)	ADMIN_SISTEMA|I
 VentaReporteController#tablero()	ADMIN_SISTEMA,AUDITOR|I
-VentaReporteController#ventas(LocalDate,LocalDate,AgrupacionVenta)	ADMIN_SISTEMA,AUDITOR,CAJERO,SUPERVISOR_VENTAS,VENDEDOR|I
+VentaReporteController#ventas(LocalDate,LocalDate,AgrupacionVenta,Long)	ADMIN_SISTEMA,AUDITOR,CAJERO,SUPERVISOR_VENTAS,VENDEDOR|I

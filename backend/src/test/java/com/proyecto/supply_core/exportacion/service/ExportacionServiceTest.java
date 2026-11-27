@@ -316,6 +316,46 @@ class ExportacionServiceTest {
         verify(usuarios, times(1)).obtener(40L);
     }
 
+    /**
+     * Spec 034: sin REPORTE_MARGEN la exportación no trae las columnas de costo y margen; con él sí.
+     *
+     * @throws Exception si falla leer el Excel
+     */
+    @Test
+    void elReporteDeVentasExportaCostoYMargenSoloConElPermiso() throws Exception {
+        com.proyecto.supply_core.reporte.dto.VentaReporte r = new com.proyecto.supply_core.reporte.dto.VentaReporte(
+                LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 27),
+                com.proyecto.supply_core.reporte.enums.AgrupacionVenta.TIPO_SERVICIO,
+                List.of(new com.proyecto.supply_core.reporte.dto.VentaReporte.Fila("MOSTRADOR", "Mostrador", 1,
+                        BigDecimal.ONE, new BigDecimal("119.00"), BigDecimal.ZERO, new BigDecimal("119.00"),
+                        new BigDecimal("100.00"), new BigDecimal("60.00"), new BigDecimal("40.00"),
+                        new BigDecimal("40.00"), BigDecimal.ZERO)),
+                new com.proyecto.supply_core.reporte.dto.VentaReporte.Totales(1, new BigDecimal("119.00"), BigDecimal.ZERO,
+                        BigDecimal.ZERO, new BigDecimal("119.00"), new BigDecimal("100.00"), new BigDecimal("60.00"),
+                        new BigDecimal("40.00"), new BigDecimal("40.00"), BigDecimal.ZERO, new BigDecimal("119.00")),
+                false);
+        when(ventaReporte.reporte(null, null, null, 4L)).thenReturn(r);
+
+        ArchivoExportado sin = service.ventas("xlsx", null, null, null, 4L, DestinoExportacion.DESCARGA);
+        try (XSSFWorkbook libro = new XSSFWorkbook(new ByteArrayInputStream(sin.contenido()))) {
+            Sheet hoja = libro.getSheetAt(0);
+            assertEquals("Tipo de servicio", hoja.getRow(4).getCell(0).getStringCellValue());
+            assertEquals("Base sin IVA", hoja.getRow(4).getCell(6).getStringCellValue());
+            assertEquals(7, hoja.getRow(4).getLastCellNum(), "sin costo, margen ni margen %");
+        }
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute(SesionActual.ATRIBUTO,
+                new UsuarioAutenticado(3L, "ana@ferreteria.com", "Ana", Set.of("ADMIN_SISTEMA"), null, 1L));
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+        ArchivoExportado con = service.ventas("xlsx", null, null, null, 4L, DestinoExportacion.DESCARGA);
+        try (XSSFWorkbook libro = new XSSFWorkbook(new ByteArrayInputStream(con.contenido()))) {
+            Sheet hoja = libro.getSheetAt(0);
+            assertEquals(10, hoja.getRow(4).getLastCellNum());
+            assertEquals("Costo", hoja.getRow(4).getCell(7).getStringCellValue());
+        }
+    }
+
     private static UsuarioResponse usuario(Long id, String nombre) {
         return new UsuarioResponse(id, nombre, "u" + id + "@ferreteria.com", true, Set.of("COMPRADOR"), null, null,
                 null, null, false, com.proyecto.supply_core.usuario.enums.TipoCredencial.CLAVE);

@@ -17,9 +17,9 @@ const reporte: VentaReporte = {
   totales: { ventas: 2, bruto: 50000, devoluciones: 10000, redondeo: 0, neto: 40000, baseNeta: 33613.45, costo: 24000,
     margen: 9613.45, margenPct: 28.6, baseSinCosto: 0, ticketPromedio: 20000 },
 };
-const sesion = (roles: string[], modulos = ['VENTAS', 'REPORTES']) => ({ provide: SesionService, useValue: {
+const sesion = (roles: string[], modulos = ['VENTAS', 'REPORTES'], permisos: string[] = []) => ({ provide: SesionService, useValue: {
   tieneRol: (r: string[]) => r.some(x => roles.includes(x)), tieneModulo: (m: string) => modulos.includes(m),
-  soloLectura: () => false, empresa: signal(null) } });
+  tienePermiso: (p: string) => permisos.includes(p), soloLectura: () => false, empresa: signal(null) } });
 
 describe('Reportes de ventas', () => {
   let fixture: ComponentFixture<ReportesVentas>;
@@ -27,17 +27,19 @@ describe('Reportes de ventas', () => {
   const c = () => fixture.componentInstance as unknown as Record<string, any>;
   const texto = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
 
-  const crear = (roles: string[]) => {
-    TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), sesion(roles)] });
+  const crear = (roles: string[], permisos: string[] = [], sedes: object[] = []) => {
+    TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), sesion(roles, ['VENTAS', 'REPORTES'], permisos)] });
     backend = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(ReportesVentas);
+    fixture.detectChanges();
+    backend.match(r => r.url === '/api/sedes').forEach(r => r.flush(sedes));
     fixture.detectChanges();
   };
 
   afterEach(() => backend.verify());
 
   it('muestra las cifras del servidor tal como llegan y pide la agrupación elegida', () => {
-    crear(['ADMIN_SISTEMA']);
+    crear(['ADMIN_SISTEMA'], ['REPORTE_MARGEN']);
     backend.expectOne(r => r.url === '/api/reportes/ventas' && r.params.get('agrupar') === 'DIA').flush({ ...reporte, agrupar: 'DIA' });
     c()['agrupar'].set('PRODUCTO');
     c()['consultar']();
@@ -139,6 +141,47 @@ describe('Reportes de ventas', () => {
     expect(req.request.params.get('formato')).toBe('pdf');
     expect(req.request.params.get('agrupar')).toBe('MEDIO_PAGO');
     req.flush(new Blob(['%PDF']));
+  });
+
+  it('spec 034: ofrece "Tipo de servicio", filtra por sede y exporta con los mismos filtros', () => {
+    crear(['ADMIN_SISTEMA'], ['REPORTE_MARGEN'], [{ id: 1, nombre: 'Centro' }, { id: 2, nombre: 'Norte' }]);
+    backend.expectOne(r => r.url === '/api/reportes/ventas').flush(reporte);
+    fixture.detectChanges();
+    expect(texto()).toContain('Tipo de servicio');
+    expect(texto()).toContain('Norte');
+    c()['agrupar'].set('TIPO_SERVICIO');
+    c()['sedeId'].set(2);
+    c()['consultar']();
+    const req = backend.expectOne(r => r.url === '/api/reportes/ventas');
+    expect(req.request.params.get('agrupar')).toBe('TIPO_SERVICIO');
+    expect(req.request.params.get('sedeId')).toBe('2');
+    req.flush({ ...reporte, agrupar: 'TIPO_SERVICIO', filas: [{ ...reporte.filas![0], clave: 'DOMICILIO', nombre: 'Domicilio' }] });
+    fixture.detectChanges();
+    expect(texto()).toContain('Domicilio');
+    c()['exportar']('xlsx');
+    const exp = backend.expectOne(r => r.url === '/api/exportaciones/reportes/ventas');
+    expect(exp.request.params.get('agrupar')).toBe('TIPO_SERVICIO');
+    expect(exp.request.params.get('sedeId')).toBe('2');
+    exp.flush(new Blob(['xlsx']));
+  });
+
+  it('spec 034: sin REPORTE_MARGEN no se muestran las columnas ni la tarjeta de costo y margen', () => {
+    crear(['CAJERO']);
+    backend.expectOne(r => r.url === '/api/reportes/ventas').flush({ ...reporte, agrupar: 'DIA', soloPropio: true,
+      filas: [{ ...reporte.filas![0], costo: null, margen: null, margenPct: null, baseSinCosto: null }],
+      totales: { ...reporte.totales!, costo: null, margen: null, margenPct: null, baseSinCosto: null } });
+    fixture.detectChanges();
+    expect(texto()).toContain('Ventas netas');
+    expect(texto()).not.toContain('Margen');
+    expect(texto()).not.toContain('Costo');
+  });
+
+  it('spec 034: con REPORTE_MARGEN se ven las columnas de costo y margen', () => {
+    crear(['AUDITOR'], ['REPORTE_MARGEN']);
+    backend.expectOne(r => r.url === '/api/reportes/ventas').flush(reporte);
+    fixture.detectChanges();
+    expect(texto()).toContain('Margen %');
+    expect(texto()).toContain('Costo');
   });
 });
 

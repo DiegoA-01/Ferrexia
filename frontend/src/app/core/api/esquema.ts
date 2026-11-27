@@ -3092,6 +3092,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/solicitudes/{id}/recorrido": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["recorrido"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/proveedores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["proveedores"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/solicitudes/pendientes-aprobacion": {
         parameters: {
             query?: never;
@@ -3243,7 +3275,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["proveedores"];
+        get: operations["proveedores_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4638,18 +4670,6 @@ export interface components {
             lineasSinRepetir?: boolean;
             proveedoresDelModo?: boolean;
         };
-        ProveedorElegidoResponse: {
-            /** Format: int64 */
-            id?: number;
-            razonSocial?: string;
-        };
-        PasoRecorridoResponse: {
-            /** Format: date-time */
-            fecha?: string;
-            tipo?: string;
-            titulo?: string;
-            detalle?: string;
-        };
         AprobacionResponse: {
             /** Format: int64 */
             id?: number;
@@ -4673,6 +4693,11 @@ export interface components {
             unidadCodigo?: string;
             cantidad?: number;
             costoReferencia?: number;
+        };
+        ProveedorElegidoResponse: {
+            /** Format: int64 */
+            id?: number;
+            razonSocial?: string;
         };
         SolicitudResponse: {
             /** Format: int64 */
@@ -6198,8 +6223,8 @@ export interface components {
             /** @enum {string} */
             motivoRechazo?: "DANADO" | "NO_CUMPLE_ESPECIFICACION" | "VENCIDO" | "CANTIDAD_ERRADA" | "OTRO";
             observacionCalidad?: string;
-            motivoPresenteSiRechaza?: boolean;
             rechazoNoSuperaRecibido?: boolean;
+            motivoPresenteSiRechaza?: boolean;
         };
         RegistrarRecepcionRequest: {
             /** Format: int64 */
@@ -7178,6 +7203,13 @@ export interface components {
             /** Format: date-time */
             creadoEn?: string;
         };
+        PasoRecorridoResponse: {
+            /** Format: date-time */
+            fecha?: string;
+            tipo?: string;
+            titulo?: string;
+            detalle?: string;
+        };
         PermisoResponse: {
             codigo?: string;
             nombre?: string;
@@ -7227,7 +7259,7 @@ export interface components {
             /** Format: date */
             hasta?: string;
             /** @enum {string} */
-            agrupar?: "DIA" | "SEMANA" | "MES" | "PRODUCTO" | "CATEGORIA" | "CLIENTE" | "VENDEDOR" | "CAJERO" | "CAJA" | "MEDIO_PAGO";
+            agrupar?: "DIA" | "SEMANA" | "MES" | "PRODUCTO" | "CATEGORIA" | "CLIENTE" | "VENDEDOR" | "CAJERO" | "CAJA" | "TIPO_SERVICIO" | "MEDIO_PAGO";
             filas?: components["schemas"]["FilaVentaReporte"][];
             totales?: components["schemas"]["TotalesVentaReporte"];
             soloPropio?: boolean;
@@ -14401,6 +14433,48 @@ export interface operations {
             };
         };
     };
+    recorrido: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PasoRecorridoResponse"][];
+                };
+            };
+        };
+    };
+    proveedores: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProveedorElegidoResponse"][];
+                };
+            };
+        };
+    };
     pendientes: {
         parameters: {
             query: {
@@ -14492,7 +14566,8 @@ export interface operations {
             query?: {
                 desde?: string;
                 hasta?: string;
-                agrupar?: "DIA" | "SEMANA" | "MES" | "PRODUCTO" | "CATEGORIA" | "CLIENTE" | "VENDEDOR" | "CAJERO" | "CAJA" | "MEDIO_PAGO";
+                agrupar?: "DIA" | "SEMANA" | "MES" | "PRODUCTO" | "CATEGORIA" | "CLIENTE" | "VENDEDOR" | "CAJERO" | "CAJA" | "TIPO_SERVICIO" | "MEDIO_PAGO";
+                sedeId?: number;
             };
             header?: never;
             path?: never;
@@ -14603,7 +14678,7 @@ export interface operations {
             };
         };
     };
-    proveedores: {
+    proveedores_1: {
         parameters: {
             query?: {
                 desde?: string;
@@ -15592,7 +15667,8 @@ export interface operations {
                 formato?: string;
                 desde?: string;
                 hasta?: string;
-                agrupar?: "DIA" | "SEMANA" | "MES" | "PRODUCTO" | "CATEGORIA" | "CLIENTE" | "VENDEDOR" | "CAJERO" | "CAJA" | "MEDIO_PAGO";
+                agrupar?: "DIA" | "SEMANA" | "MES" | "PRODUCTO" | "CATEGORIA" | "CLIENTE" | "VENDEDOR" | "CAJERO" | "CAJA" | "TIPO_SERVICIO" | "MEDIO_PAGO";
+                sedeId?: number;
             };
             header?: never;
             path?: never;

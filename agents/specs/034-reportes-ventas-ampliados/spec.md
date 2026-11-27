@@ -1,10 +1,14 @@
 # 034 - Reportes de ventas ampliados
 
-**Estado:** Propuesta · **Rama:** `feature/reportes-ventas-ampliados` · **Depende de:** 009, 019, 023, 032 ·
-**Responsable:** Persona 1 · **Puntos de la reunión 2:** 47
+**Estado:** Hecha (2026-11-27; falta revisión en Docker) · **Rama:** `feature/reportes-ventas-ampliados` · **Depende de:** 009, 019, 023, 032 ·
+**Responsable:** Persona 1 · **Puntos de la reunión 2:** 47 · **Migración:** V56
 
 ## Objetivo
 Que el dueño vea sus ventas desde todos los ángulos que pidió en la reunión, en la categoría Reportes.
+
+## Decisiones (2026-11-27)
+- El costo y el margen los ve quien tenga el permiso nuevo `REPORTE_MARGEN`: Dueño, Administrador y Contador/Auditor.
+- Se reutilizan las cinco vistas y la exportación que ya existían; se agregan tipo de servicio y filtro por sede.
 
 ## Historias
 - Como dueño, quiero ver cuánto vendo por categoría, por empleado, por producto, por medio de pago, por tipo de
@@ -24,11 +28,13 @@ Que el dueño vea sus ventas desde todos los ángulos que pidió en la reunión,
 - Java calcula y redondea todos los totales; las ventas anuladas no cuentan y las devoluciones restan.
 
 ## Criterios de aceptación
-- [ ] Están las seis vistas con filtro de fechas y sede.
-- [ ] Los totales cuadran con el reporte de ventas y caja de la spec 009.
-- [ ] El margen solo lo ve quien tiene permiso.
-- [ ] Se exportan a Excel y PDF.
-- [ ] Prueba de fuga entre empresas para los reportes.
+- [x] Están las seis vistas con filtro de fechas y sede (se sumó "Tipo de servicio"; la sede sale si la empresa
+  tiene más de una).
+- [x] Los totales cuadran con el reporte de ventas y caja de la spec 009 (toda agrupación suma lo mismo que el total,
+  con anuladas y devoluciones: `AislamientoEmpresasTest` y `AgregadorVentasTest`).
+- [x] El margen solo lo ve quien tiene permiso (`REPORTE_MARGEN`: Dueño, Administrador y Contador/Auditor).
+- [x] Se exportan a Excel y PDF (con los mismos filtros; sin permiso, sin las columnas de costo y margen).
+- [x] Prueba de fuga entre empresas para los reportes (la sede de otra empresa da 404, también al exportar).
 
 ## Fuera de alcance
 - Reporte de ventas sin existencia (spec 030).

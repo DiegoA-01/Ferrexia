@@ -238,6 +238,8 @@ public final class Permisos {
     public static final String SOLICITUD_CANCELAR_AJENA = "SOLICITUD_CANCELAR_AJENA";
     /** Enviar una solicitud con alerta de presupuesto excedido o duplicada, con justificación (spec 033, D21). */
     public static final String SOLICITUD_EXCEPCION = "SOLICITUD_EXCEPCION";
+    /** Ver el costo y el margen en el reporte de ventas y su exportación (spec 034). */
+    public static final String REPORTE_MARGEN = "REPORTE_MARGEN";
     /** Revocar delegaciones de aprobación de otras personas. */
     public static final String DELEGACION_REVOCAR_AJENA = "DELEGACION_REVOCAR_AJENA";
     /** Ver los pedidos internos de todas las sedes. */

@@ -340,7 +340,7 @@ class AislamientoEmpresasTest {
             }
         });
         assertEquals(List.of(), diferencias);
-        assertEquals(116, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 (V47) + 2 (V51) + 1 (V52) + 2 (V53) + 1 (V55)
+        assertEquals(117, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 (V47) + 2 (V51) + 1 (V52) + 2 (V53) + 1 (V55) + 1 (V56)
         assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM rol WHERE es_plantilla AND empresa_id IS NULL", Integer.class));
     }
 
@@ -4399,7 +4399,8 @@ class AislamientoEmpresasTest {
             assertEquals(0, dinero.apply(tot.get("baseNeta")).subtract(dinero.apply(tot.get("costo")))
                     .compareTo(dinero.apply(tot.get("margen"))), "margen = base neta - costo");
             // 2) cualquier agrupación suma lo mismo, y por medio de pago también
-            for (String a : List.of("DIA", "SEMANA", "MES", "CATEGORIA", "CLIENTE", "VENDEDOR", "CAJERO", "CAJA", "MEDIO_PAGO")) {
+            for (String a : List.of("DIA", "SEMANA", "MES", "CATEGORIA", "CLIENTE", "VENDEDOR", "CAJERO", "CAJA", "TIPO_SERVICIO",
+                    "MEDIO_PAGO")) {
                 com.fasterxml.jackson.databind.JsonNode r = leer.apply("/api/reportes/ventas?agrupar=" + a);
                 java.math.BigDecimal suma = java.math.BigDecimal.ZERO;
                 for (com.fasterxml.jackson.databind.JsonNode f : r.get("filas")) {
@@ -4411,6 +4412,32 @@ class AislamientoEmpresasTest {
             }
             com.fasterxml.jackson.databind.JsonNode medios = leer.apply("/api/reportes/ventas?agrupar=MEDIO_PAGO");
             assertEquals("Efectivo", medios.get("filas").get(0).get("nombre").asText());
+            // 2-bis) spec 034: por tipo de servicio todo es mostrador; el filtro por sede deja las ventas de la sede de A
+            com.fasterxml.jackson.databind.JsonNode porServicio = leer.apply("/api/reportes/ventas?agrupar=TIPO_SERVICIO");
+            assertEquals(1, porServicio.get("filas").size());
+            assertEquals("Mostrador", porServicio.get("filas").get(0).get("nombre").asText());
+            assertEquals(0, dinero.apply(porServicio.get("totales").get("neto")).compareTo(
+                    dinero.apply(porServicio.get("filas").get(0).get("neto")).add(dinero.apply(porServicio.get("totales").get("redondeo")))));
+            assertEquals(2, leer.apply("/api/reportes/ventas?agrupar=DIA&sedeId=" + sedeA).get("totales").get("ventas").asLong());
+            // fuga por sede: A pide la sede de B (404), B pide la sede de A (404) y B con su sede no ve las ventas de A
+            Long sedeB = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaB);
+            mvc.perform(get("/api/reportes/ventas?sedeId=" + sedeB).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/reportes/ventas?sedeId=" + sedeA).header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/exportaciones/reportes/ventas?formato=xlsx&sedeId=" + sedeB).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/reportes/ventas?agrupar=PRODUCTO&sedeId=" + sedeB).header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totales.ventas").value(0))
+                    .andExpect(jsonPath("$.filas.length()").value(0));
+            // costo y margen solo con REPORTE_MARGEN: el dueño los ve, el cajero no (ni en filas ni en totales)
+            mvc.perform(get("/api/reportes/ventas?agrupar=PRODUCTO").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.totales.costo").isNotEmpty()).andExpect(jsonPath("$.filas[0].margen").isNotEmpty());
+            mvc.perform(get("/api/reportes/ventas?agrupar=PRODUCTO").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totales.ventas").value(2))
+                    .andExpect(jsonPath("$.totales.costo").doesNotExist()).andExpect(jsonPath("$.totales.margen").doesNotExist())
+                    .andExpect(jsonPath("$.totales.baseSinCosto").doesNotExist())
+                    .andExpect(jsonPath("$.filas[0].costo").doesNotExist()).andExpect(jsonPath("$.filas[0].margenPct").doesNotExist());
             // 3) el cajero ve lo suyo; un vendedor sin pedidos no ve nada
             mvc.perform(get("/api/reportes/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.soloPropio").value(true))
