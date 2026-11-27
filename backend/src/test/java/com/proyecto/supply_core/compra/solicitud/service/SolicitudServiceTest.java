@@ -56,6 +56,11 @@ import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
 import com.proyecto.supply_core.presupuesto.dto.EvaluacionPresupuesto;
 import com.proyecto.supply_core.presupuesto.service.PresupuestoService;
+import com.proyecto.supply_core.compra.solicitud.enums.ModoProveedor;
+import com.proyecto.supply_core.proveedor.entity.Proveedor;
+import com.proyecto.supply_core.proveedor.enums.EstadoProveedor;
+import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
+import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.usuario.entity.Rol;
@@ -76,8 +81,10 @@ class SolicitudServiceTest {
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final NotificacionService notificaciones = mock(NotificacionService.class);
     private final PresupuestoService presupuestos = mock(PresupuestoService.class);
+    private final ProveedorRepository proveedores = mock(ProveedorRepository.class);
     private final SolicitudService service = new SolicitudService(solicitudes, aprobaciones, productos, unidades,
-            unidadService, usuarios, centros, politicas, consecutivos, auditoria, notificaciones, presupuestos);
+            unidadService, usuarios, centros, politicas, consecutivos, auditoria, notificaciones, presupuestos,
+            proveedores);
 
     private MockHttpServletRequest request;
     private UnidadMedida und;
@@ -252,6 +259,7 @@ class SolicitudServiceTest {
 
     @Test
     void excederConJustificacionPasaPorLaPoliticaDeMayorTramoYQuedaAuditado() {
+        sesion(10L, "ADMIN_SISTEMA"); // spec 033 (D21): solo con el permiso SOLICITUD_EXCEPCION
         SolicitudCompra s = existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 1L, "10"));
         when(presupuestos.evaluar(any(), any(), any(), any())).thenReturn(excedido());
         when(politicas.deMayorTramo(TipoPolitica.SOLICITUD)).thenReturn(Optional.of(politica(9L, "ADMIN_COMPRAS")));
@@ -269,6 +277,7 @@ class SolicitudServiceTest {
 
     @Test
     void excederSinPoliticaQueLaAutoriceNoSePuedeEnviar() {
+        sesion(10L, "ADMIN_SISTEMA");
         existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 1L, "10"));
         when(presupuestos.evaluar(any(), any(), any(), any())).thenReturn(excedido());
         when(politicas.deMayorTramo(TipoPolitica.SOLICITUD)).thenReturn(Optional.empty());
@@ -293,6 +302,7 @@ class SolicitudServiceTest {
 
     @Test
     void unaDuplicadaConJustificacionSeEnviaPorLaPoliticaNormalYQuedaAuditada() {
+        sesion(10L, "ADMIN_SISTEMA");
         SolicitudCompra s = existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 1L, "1"));
         when(solicitudes.consecutivosConProductos(eq(5L), any(), any(), eq(1L))).thenReturn(List.of("SOL-000007"));
         when(politicas.aplicable(any(), any())).thenReturn(Optional.empty());
@@ -304,6 +314,60 @@ class SolicitudServiceTest {
         assertEquals("Es para otra sede", s.getJustificacionExcepcion());
         verify(auditoria).exito(eq(AccionAuditoria.SOLICITUD_EXCEPCION), eq(EntidadAuditada.SOLICITUD_COMPRA), eq(1L),
                 anyString());
+    }
+
+    @Test
+    void sinElPermisoLaAlertaBloqueaAunqueTraigaJustificacion() {
+        SolicitudCompra s = existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 1L, "1"));
+        when(presupuestos.evaluar(any(), any(), any(), any())).thenReturn(excedido());
+
+        var ex = assertThrows(NegocioException.class, () -> service.enviar(1L, "Obra urgente"));
+
+        assertEquals("PRESUPUESTO_EXCEDIDO", ex.getCodigo());
+        assertTrue(ex.getMessage().contains("Ajuste las cantidades"));
+        assertEquals(EstadoSolicitud.BORRADOR, s.getEstado());
+
+        when(presupuestos.evaluar(any(), any(), any(), any())).thenReturn(EvaluacionPresupuesto.SIN_PRESUPUESTO);
+        when(solicitudes.consecutivosConProductos(eq(5L), any(), any(), eq(1L))).thenReturn(List.of("SOL-000007"));
+        var dup = assertThrows(NegocioException.class, () -> service.enviar(1L, "Es para otra sede"));
+        assertEquals("SOLICITUD_DUPLICADA", dup.getCodigo());
+        assertTrue(dup.getMessage().contains("Quite esos productos"));
+        verify(auditoria, never()).exito(eq(AccionAuditoria.SOLICITUD_EXCEPCION), any(), any(), anyString());
+    }
+
+    @Test
+    void aProveedoresEspecificosGuardaLosElegidosSiEstanHabilitados() {
+        when(proveedores.findById(7L)).thenReturn(Optional.of(proveedor(7L, EstadoProveedor.HABILITADO)));
+        when(proveedores.findAllById(any())).thenReturn(List.of(proveedor(7L, EstadoProveedor.HABILITADO)));
+
+        var r = service.crear(new SolicitudRequest("Cemento", LocalDate.now().plusDays(3), List.of(linea(100L, 1L, "2")),
+                ModoProveedor.ESPECIFICA, Set.of(7L)));
+
+        assertEquals(ModoProveedor.ESPECIFICA, r.modoProveedor());
+        assertEquals(List.of(7L), r.proveedores().stream().map(x -> x.id()).toList());
+        assertEquals("Proveedor 7", r.proveedores().get(0).razonSocial());
+    }
+
+    @Test
+    void unProveedorNoHabilitadoODeOtraEmpresaNoSePuedeElegir() {
+        when(proveedores.findById(8L)).thenReturn(Optional.of(proveedor(8L, EstadoProveedor.SUSPENDIDO)));
+        when(proveedores.findById(9L)).thenReturn(Optional.empty()); // de otra empresa: el filtro de empresa no lo trae
+
+        var ex = assertThrows(NegocioException.class, () -> service.crear(new SolicitudRequest("Cemento",
+                LocalDate.now().plusDays(3), List.of(linea(100L, 1L, "2")), ModoProveedor.ESPECIFICA, Set.of(8L))));
+        assertEquals("PROVEEDOR_NO_HABILITADO", ex.getCodigo());
+        assertThrows(NoEncontradoException.class, () -> service.crear(new SolicitudRequest("Cemento",
+                LocalDate.now().plusDays(3), List.of(linea(100L, 1L, "2")), ModoProveedor.ESPECIFICA, Set.of(9L))));
+    }
+
+    @Test
+    void abiertaNoGuardaProveedoresAunqueVengan() {
+        var r = service.crear(new SolicitudRequest("Cemento", LocalDate.now().plusDays(3), List.of(linea(100L, 1L, "2")),
+                ModoProveedor.ABIERTA, Set.of(7L)));
+
+        assertEquals(ModoProveedor.ABIERTA, r.modoProveedor());
+        assertTrue(r.proveedores().isEmpty());
+        verify(proveedores, never()).findById(any());
     }
 
     @Test
@@ -405,6 +469,14 @@ class SolicitudServiceTest {
 
     private static SolicitudRequest req(LineaSolicitudRequest... lineas) {
         return new SolicitudRequest("Reposición de papelería", LocalDate.now().plusDays(5), List.of(lineas));
+    }
+
+    private static Proveedor proveedor(Long id, EstadoProveedor estado) {
+        Proveedor p = new Proveedor();
+        p.setId(id);
+        p.setRazonSocial("Proveedor " + id);
+        p.setEstado(estado);
+        return p;
     }
 
     private void sesion(Long id, String rol) {

@@ -254,9 +254,21 @@ public class ContratoService {
         }
         List<Long> productoIds = s.getLineas().stream().map(l -> l.getProducto().getId()).toList();
         List<Contrato> contratos = contratoRepository.vigentesConProductos(productoIds, LocalDate.now());
-        return contratos.stream().map(c -> calcular(s, c, consumoDe(c)))
+        return contratos.stream().filter(c -> proveedorPermitido(s, c)).map(c -> calcular(s, c, consumoDe(c)))
                 .sorted(Comparator.comparing((CalculoContrato c) -> !c.puedeEmitirse()).thenComparing(CalculoContrato::total))
                 .map(OfertaContratoResponse::of).toList();
+    }
+
+    /**
+     * Spec 033: una solicitud dirigida a proveedores específicos solo se compra por contrato con uno de ellos.
+     *
+     * @param s solicitud
+     * @param c contrato
+     * @return {@code true} si la solicitud es abierta o el proveedor del contrato está entre los elegidos
+     */
+    public static boolean proveedorPermitido(SolicitudCompra s, Contrato c) {
+        return s.getModoProveedor() != com.proyecto.supply_core.compra.solicitud.enums.ModoProveedor.ESPECIFICA
+                || s.getProveedorIds().contains(c.getProveedor().getId());
     }
 
     /**

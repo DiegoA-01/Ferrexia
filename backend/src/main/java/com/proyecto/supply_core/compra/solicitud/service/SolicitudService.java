@@ -3,6 +3,7 @@ package com.proyecto.supply_core.compra.solicitud.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -27,12 +28,14 @@ import com.proyecto.supply_core.common.util.ConsecutivoGenerator;
 import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.common.util.Ordenamiento;
 import com.proyecto.supply_core.compra.solicitud.dto.LineaSolicitudRequest;
+import com.proyecto.supply_core.compra.solicitud.dto.ProveedorElegidoResponse;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudRequest;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudResponse;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudResumenResponse;
 import com.proyecto.supply_core.compra.solicitud.entity.SolicitudCompra;
 import com.proyecto.supply_core.compra.solicitud.entity.SolicitudCompraLinea;
 import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
+import com.proyecto.supply_core.compra.solicitud.enums.ModoProveedor;
 import com.proyecto.supply_core.compra.solicitud.repository.AprobacionSolicitudRepository;
 import com.proyecto.supply_core.compra.solicitud.repository.SolicitudCompraRepository;
 import com.proyecto.supply_core.empresa.entity.PoliticaAprobacion;
@@ -45,6 +48,9 @@ import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
 import com.proyecto.supply_core.presupuesto.dto.EvaluacionPresupuesto;
 import com.proyecto.supply_core.presupuesto.service.PresupuestoService;
+import com.proyecto.supply_core.proveedor.entity.Proveedor;
+import com.proyecto.supply_core.proveedor.enums.EstadoProveedor;
+import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
 import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.Roles;
 import com.proyecto.supply_core.security.context.SesionActual;
@@ -85,6 +91,7 @@ public class SolicitudService {
     private final AuditoriaService auditoriaService;
     private final NotificacionService notificacionService;
     private final PresupuestoService presupuestoService;
+    private final ProveedorRepository proveedorRepository;
 
     /**
      * @param solicitudRepository  solicitudes
@@ -99,6 +106,7 @@ public class SolicitudService {
      * @param auditoriaService     registro de acciones
      * @param notificacionService  avisos a aprobadores y compradores
      * @param presupuestoService   control de presupuesto por centro de costo (18-a)
+     * @param proveedorRepository  proveedores elegidos en la solicitud (spec 033)
      */
     public SolicitudService(SolicitudCompraRepository solicitudRepository,
             AprobacionSolicitudRepository aprobacionRepository, ProductoRepository productoRepository,
@@ -106,7 +114,7 @@ public class SolicitudService {
             UsuarioRepository usuarioRepository, CentroCostoRepository centroCostoRepository,
             PoliticaAprobacionService politicaService, ConsecutivoGenerator consecutivos,
             AuditoriaService auditoriaService, NotificacionService notificacionService,
-            PresupuestoService presupuestoService) {
+            PresupuestoService presupuestoService, ProveedorRepository proveedorRepository) {
         this.solicitudRepository = solicitudRepository;
         this.aprobacionRepository = aprobacionRepository;
         this.productoRepository = productoRepository;
@@ -119,6 +127,7 @@ public class SolicitudService {
         this.auditoriaService = auditoriaService;
         this.notificacionService = notificacionService;
         this.presupuestoService = presupuestoService;
+        this.proveedorRepository = proveedorRepository;
     }
 
     /**
@@ -208,14 +217,19 @@ public class SolicitudService {
                 : justificacionExcepcion.trim();
         EvaluacionPresupuesto presupuesto = presupuestoService.evaluar(s.getCentroCostoId(), s.getFechaRequerida(),
                 e.monto(), s.getId());
-        if (presupuesto.excede() && justificacion == null) {
-            throw new NegocioException("PRESUPUESTO_EXCEDIDO", mensajeExceso(s, e, presupuesto));
+        // Spec 033 (D21): la alerta bloquea; solo quien tiene el permiso SOLICITUD_EXCEPCION la pasa con justificación
+        boolean puedeExceptuar = SesionActual.usuario().tienePermiso(Permisos.SOLICITUD_EXCEPCION);
+        if (presupuesto.excede() && (justificacion == null || !puedeExceptuar)) {
+            throw new NegocioException("PRESUPUESTO_EXCEDIDO", mensajeExceso(s, e, presupuesto)
+                    + (puedeExceptuar ? ". Envíela con una justificación para que la apruebe el nivel más alto"
+                            : ". Ajuste las cantidades, cámbiela de mes o pida al dueño que amplíe el presupuesto"));
         }
         List<String> duplicadas = duplicadas(s);
-        if (!duplicadas.isEmpty() && justificacion == null) {
+        if (!duplicadas.isEmpty() && (justificacion == null || !puedeExceptuar)) {
             throw new NegocioException("SOLICITUD_DUPLICADA", "Ya hay solicitudes abiertas de este centro de costo con "
                     + "alguno de los mismos productos: " + String.join(", ", duplicadas)
-                    + ". Envíela con una justificación si de verdad es otra compra");
+                    + (puedeExceptuar ? ". Envíela con una justificación si de verdad es otra compra"
+                            : ". Quite esos productos o cancele la otra solicitud"));
         }
         s.setMontoEstimado(e.monto());
         s.setMontoIncompleto(e.incompleto());
@@ -335,9 +349,13 @@ public class SolicitudService {
      * @return DTO
      */
     SolicitudResponse respuesta(SolicitudCompra s) {
+        List<ProveedorElegidoResponse> proveedores = s.getProveedorIds().isEmpty() ? List.of()
+                : proveedorRepository.findAllById(s.getProveedorIds()).stream()
+                        .map(ProveedorElegidoResponse::of).toList();
         return SolicitudResponse.of(s,
                 s.getId() == null ? List.of()
-                        : aprobacionRepository.findBySolicitudCompraIdOrderByDecididoEnAscIdAsc(s.getId()));
+                        : aprobacionRepository.findBySolicitudCompraIdOrderByDecididoEnAscIdAsc(s.getId()),
+                proveedores);
     }
 
     /**
@@ -401,6 +419,7 @@ public class SolicitudService {
     private void copiar(SolicitudCompra s, SolicitudRequest req) {
         s.setMotivo(req.motivo().trim());
         s.setFechaRequerida(req.fechaRequerida());
+        aplicarProveedores(s, req);
         for (LineaSolicitudRequest l : req.lineas()) {
             Producto producto = productoRepository.findWithRelacionesById(l.productoId())
                     .filter(Producto::isActivo)
@@ -417,6 +436,44 @@ public class SolicitudService {
             linea.setCantidad(l.cantidad());
             s.agregarLinea(linea);
         }
+    }
+
+    /**
+     * Modo y proveedores elegidos (spec 033). Cada proveedor debe ser de la empresa (la consulta ya filtra por empresa)
+     * y estar HABILITADO.
+     *
+     * @param s   solicitud destino
+     * @param req datos validados
+     * @throws NoEncontradoException si un proveedor no existe en la empresa
+     * @throws NegocioException      si un proveedor no está habilitado
+     */
+    private void aplicarProveedores(SolicitudCompra s, SolicitudRequest req) {
+        ModoProveedor modo = req.modoProveedor() == null ? ModoProveedor.ABIERTA : req.modoProveedor();
+        s.setModoProveedor(modo);
+        Set<Long> ids = new LinkedHashSet<>();
+        if (modo == ModoProveedor.ESPECIFICA) {
+            for (Long id : req.proveedorIds()) {
+                Proveedor p = proveedorRepository.findById(id).orElseThrow(() -> new NoEncontradoException("Proveedor", id));
+                if (p.getEstado() != EstadoProveedor.HABILITADO) {
+                    throw new NegocioException("PROVEEDOR_NO_HABILITADO",
+                            p.getRazonSocial() + " está " + p.getEstado() + " y no se le puede pedir");
+                }
+                ids.add(id);
+            }
+        }
+        s.getProveedorIds().clear();
+        s.getProveedorIds().addAll(ids);
+    }
+
+    /**
+     * Proveedores habilitados que el solicitante puede elegir (spec 033).
+     *
+     * @return proveedores ordenados por razón social
+     */
+    @Transactional(readOnly = true)
+    public List<ProveedorElegidoResponse> proveedoresElegibles() {
+        return proveedorRepository.findByEstadoOrderByRazonSocialAsc(EstadoProveedor.HABILITADO).stream()
+                .map(ProveedorElegidoResponse::of).toList();
     }
 
     /**
@@ -468,7 +525,7 @@ public class SolicitudService {
         return "El presupuesto del centro de costo para " + PresupuestoService.periodo(s.getFechaRequerida().getYear(),
                 s.getFechaRequerida().getMonthValue()) + " es $ " + ev.presupuesto().toPlainString()
                 + ", ya hay $ " + ev.comprometido().toPlainString() + " comprometidos y esta solicitud suma "
-                + describirMonto(e) + ". Envíela con una justificación para que la apruebe el nivel más alto";
+                + describirMonto(e);
     }
 
     /**

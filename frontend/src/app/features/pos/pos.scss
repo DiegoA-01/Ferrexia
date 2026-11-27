@@ -10,6 +10,10 @@
 .mini { width: 84px; text-align: right; }
 .corta { width: 100px; }
 tr.alerta td { background: #fff8eb; }
+// spec 036: la cantidad pasa la existencia (no bloquea; al cobrar sigue la spec 030)
+tr.pasa-existencia td { background: var(--sc-rojo-fondo); }
+.entrada.invalida { border-color: var(--sc-rojo); box-shadow: 0 0 0 1px var(--sc-rojo); }
+.sub.rojo { color: var(--sc-rojo); font-weight: 600; }
 .pedido { margin: 0; }
 .credito { display: grid; gap: 4px; margin-top: 8px; }
 .lateral { display: grid; gap: 12px; position: sticky; top: 12px; }

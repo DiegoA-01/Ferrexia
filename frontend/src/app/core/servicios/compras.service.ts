@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  CentroCosto, CorreoExportacion, DecisionSolicitud, Pagina, Politica, Presupuesto, Solicitud, SolicitudNueva, SolicitudResumen, Usuario,
+  CentroCosto, CorreoExportacion, DecisionSolicitud, Pagina, PasoRecorrido, Politica, ProveedorElegido, Presupuesto, Solicitud, SolicitudNueva, SolicitudResumen, Usuario,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -32,6 +32,16 @@ export class ComprasService {
   /** @param id solicitud */
   obtener(id: number): Observable<Solicitud> {
     return this.http.get<Solicitud>(api(`/api/solicitudes/${id}`));
+  }
+
+  /** @param id solicitud @returns su recorrido: aprobaciones, RFQ, cotizaciones, orden, recepción y factura (spec 033) */
+  recorrido(id: number): Observable<PasoRecorrido[]> {
+    return this.http.get<PasoRecorrido[]>(api(`/api/solicitudes/${id}/recorrido`));
+  }
+
+  /** @returns proveedores habilitados que se pueden elegir en una solicitud (spec 033) */
+  proveedoresElegibles(): Observable<ProveedorElegido[]> {
+    return this.http.get<ProveedorElegido[]>(api('/api/solicitudes/proveedores'));
   }
 
   /**

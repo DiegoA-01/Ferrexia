@@ -42,6 +42,8 @@ export class RfqNueva implements OnInit {
   protected readonly ahora = `${iso(new Date())}T${`${new Date().getHours()}`.padStart(2, '0')}:${`${new Date().getMinutes()}`.padStart(2, '0')}`;
 
   protected readonly automatico = computed(() => this.invitados().size === 0);
+  /** Spec 033: proveedores que eligió el solicitante. */
+  protected readonly nombresSolicitud = computed(() => (this.elegida()?.proveedores ?? []).map(p => p.razonSocial).join(', '));
 
   ngOnInit(): void {
     this.reportes.proveedores('HABILITADO').subscribe({ next: p => this.proveedores.set(p.contenido ?? []), error: () => undefined });
@@ -67,6 +69,8 @@ export class RfqNueva implements OnInit {
           this.avisos.ok(`${s.consecutivo} está ${s.estado?.toLowerCase().replace('_', ' ')}: solo se cotiza una solicitud aprobada.`);
         }
         this.elegida.set(s);
+        // spec 033: si el solicitante eligió proveedores, llegan marcados (compras puede cambiarlos y queda auditado)
+        this.invitados.set(new Set(s.modoProveedor === 'ESPECIFICA' ? (s.proveedores ?? []).map(p => p.id!) : []));
       },
       error: e => this.avisos.error(e),
     });

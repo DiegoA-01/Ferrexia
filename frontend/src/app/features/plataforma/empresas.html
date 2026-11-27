@@ -12,12 +12,15 @@
     <section class="tarjeta">
       <h2>Nueva empresa</h2>
       <form [formGroup]="nueva" (ngSubmit)="crear()" class="formulario dos">
-        <div class="campo"><label for="rs">Razón social</label><input id="rs" class="entrada" formControlName="razonSocial"></div>
-        <div class="campo"><label for="nit">NIT</label><input id="nit" class="entrada" formControlName="nit"></div>
+        <div class="campo"><label for="rs">Razón social</label><input id="rs" class="entrada" formControlName="razonSocial">
+          @if (problema('razonSocial'); as p) { <span class="error">{{ p }}</span> }</div>
+        <div class="campo"><label for="nit">NIT</label><input id="nit" class="entrada" formControlName="nit">
+          @if (problema('nit'); as p) { <span class="error">{{ p }}</span> }</div>
         <div class="campo">
           <label class="opcion-codigo"><input type="checkbox" [checked]="codigoAMano()" (change)="alternarCodigoAMano()"> Escribir el código de ingreso a mano</label>
           @if (codigoAMano()) {
             <input id="cod" class="entrada" formControlName="codigoPublico" placeholder="Ferretería Centro" aria-label="Código de ingreso">
+            @if (problema('codigoPublico'); as p) { <span class="error">{{ p }}</span> }
             <span class="ayuda">Lo escriben sus usuarios al ingresar. Puede llevar espacios, mayúsculas y números; no lleva / \ ? # %.</span>
           } @else {
             <span class="ayuda">El código de ingreso se arma solo con la razón social (por ejemplo "ferreteria-centro") y te lo mostramos al crear la empresa.</span>
@@ -25,8 +28,10 @@
         </div>
         <div class="campo"><label for="est">Estado inicial</label>
           <select id="est" class="entrada" formControlName="estadoInicial"><option value="PRUEBA">En prueba</option><option value="ACTIVA">Activa</option></select></div>
-        <div class="campo"><label for="an">Nombre del administrador</label><input id="an" class="entrada" formControlName="adminNombre"></div>
-        <div class="campo"><label for="ac">Correo del administrador</label><input id="ac" type="email" class="entrada" formControlName="adminCorreo"></div>
+        <div class="campo"><label for="an">Nombre del administrador</label><input id="an" class="entrada" formControlName="adminNombre">
+          @if (problema('adminNombre'); as p) { <span class="error">{{ p }}</span> }</div>
+        <div class="campo"><label for="ac">Correo del administrador</label><input id="ac" type="email" class="entrada" formControlName="adminCorreo">
+          @if (problema('adminCorreo'); as p) { <span class="error">{{ p }}</span> }</div>
         <div class="campo"><label for="ap">Contraseña inicial</label>
           <div class="con-ojo">
             <input id="ap" [type]="verClave() ? 'text' : 'password'" class="entrada" formControlName="adminPassword" autocomplete="new-password">
@@ -34,7 +39,9 @@
                     [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="verClave()">
               <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span>
             </button>
-          </div></div>
+          </div>
+          @if (problema('adminPassword'); as p) { <span class="error">{{ p }}</span> }
+          @else { <span class="ayuda">Mínimo 8 caracteres, con al menos una letra y un número.</span> }</div>
         <fieldset class="panel-modulos ancho">
           <legend>Módulos que va a usar</legend>
           <p class="ayuda">Marca lo que esta empresa necesita. Lo que no marques queda apagado; lo puedes prender después
@@ -53,7 +60,13 @@
             }
           </div>
         </fieldset>
-        <div class="fila"><button type="submit" class="boton primario" [disabled]="trabajando() || !modulosAlta().length">Crear empresa</button>
+        @if (intentoCrear() && pendientes().length) {
+          <div class="aviso rojo faltantes" role="alert">
+            <div><strong>No se puede crear la empresa todavía. Corrige:</strong>
+            <ul>@for (p of pendientes(); track p) { <li>{{ p }}</li> }</ul></div>
+          </div>
+        }
+        <div class="fila"><button type="submit" class="boton primario" [disabled]="trabajando()">Crear empresa</button>
           <button type="button" class="boton" (click)="creando.set(false)">Cancelar</button></div>
       </form>
     </section>

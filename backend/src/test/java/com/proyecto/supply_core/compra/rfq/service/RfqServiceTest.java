@@ -160,6 +160,25 @@ class RfqServiceTest {
     }
 
     @Test
+    void desdeUnaSolicitudAProveedoresEspecificosInvitaSoloALosElegidosYAuditaSiComprasLosCambia() {
+        proveedor(41L, EstadoProveedor.HABILITADO, papeleria);
+        solicitud.setModoProveedor(com.proyecto.supply_core.compra.solicitud.enums.ModoProveedor.ESPECIFICA);
+        solicitud.getProveedorIds().add(41L);
+
+        var r = service.crear(crear(datos(null, null)));
+
+        assertEquals(List.of(41L), r.invitados().stream().map(i -> i.proveedorId()).toList());
+        verify(auditoria).exito(eq(AccionAuditoria.RFQ_CREAR), eq(EntidadAuditada.RFQ), eq(9L),
+                org.mockito.ArgumentMatchers.argThat((String d) -> !d.contains("cambia los proveedores")));
+
+        // compras puede invitar a otro, y queda dicho en la auditoría
+        when(rfqs.existsBySolicitud_IdAndEstadoNot(5L, EstadoRfq.CANCELADA)).thenReturn(false);
+        service.crear(crear(datos(Set.of(40L), null)));
+        verify(auditoria).exito(eq(AccionAuditoria.RFQ_CREAR), eq(EntidadAuditada.RFQ), eq(9L),
+                org.mockito.ArgumentMatchers.argThat((String d) -> d.contains("cambia los proveedores")));
+    }
+
+    @Test
     void invitadoExplicitoDebeEstarHabilitadoYCotizarLaCategoria() {
         CategoriaProducto aseo = new CategoriaProducto();
         aseo.setId(2L);

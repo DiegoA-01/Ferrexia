@@ -7,6 +7,23 @@ import { FechaPipe } from '../../core/formato/formato';
 import { PlataformaService } from '../../core/servicios/plataforma.service';
 import { Avisos } from '../../core/ui/avisos';
 
+/** Nombre de cada campo del alta para el aviso (spec 036). */
+const ETIQUETAS: Record<string, string> = {
+  razonSocial: 'Razón social', nit: 'NIT', codigoPublico: 'Código de ingreso', estadoInicial: 'Estado inicial',
+  adminNombre: 'Nombre del administrador', adminCorreo: 'Correo del administrador', adminPassword: 'Contraseña inicial',
+};
+
+/** Qué decir según el error de cada campo (spec 036). */
+const PROBLEMAS: Record<string, (e: Record<string, unknown>) => string> = {
+  razonSocial: () => 'es obligatoria',
+  nit: () => 'es obligatorio',
+  codigoPublico: e => e['minlength'] || e['maxlength'] ? 'entre 3 y 40 caracteres' : 'no puede llevar / \\ ? # %',
+  estadoInicial: () => 'elige uno',
+  adminNombre: () => 'es obligatorio',
+  adminCorreo: e => e['required'] ? 'es obligatorio' : 'no es un correo válido',
+  adminPassword: e => e['required'] ? 'es obligatoria' : 'mínimo 8 caracteres, con al menos una letra y un número',
+};
+
 /**
  * Vista 9 · Consola del dueño: empresas clientes, sus módulos y el estado de la suscripción. Desde la spec 024 no hay
  * planes: al crear la empresa se marcan sus módulos y luego se prenden o apagan uno por uno.
@@ -28,6 +45,8 @@ export class Empresas implements OnInit {
   /** Spec 024: catálogo de módulos para el panel del alta y los que se marcaron. */
   protected readonly catalogo = signal<ModuloPlataforma[]>([]);
   protected readonly modulosAlta = signal<string[]>([]);
+  /** Spec 036: ya se oprimió "Crear empresa" (desde ahí se muestra la lista de lo que falta). */
+  protected readonly intentoCrear = signal(false);
   protected readonly creando = signal(false);
   protected readonly trabajando = signal(false);
   protected readonly busqueda = signal('');
@@ -58,7 +77,9 @@ export class Empresas implements OnInit {
     estadoInicial: ['PRUEBA' as EstadoSuscripcion],
     adminNombre: ['', Validators.required],
     adminCorreo: ['', [Validators.required, Validators.email]],
-    adminPassword: ['', [Validators.required, Validators.minLength(8)]],
+    // la misma regla del backend (ReglasPassword): 8 a 72 caracteres, con al menos una letra y un número
+    adminPassword: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(72),
+      Validators.pattern(/^(?=.*[A-Za-z])(?=.*\d).+$/)]],
   });
 
   ngOnInit(): void {
@@ -172,13 +193,33 @@ export class Empresas implements OnInit {
     );
   }
 
-  protected crear(): void {
-    if (this.nueva.invalid) {
-      this.nueva.markAllAsTouched();
-      return;
-    }
+  /**
+   * @param campo control del formulario de alta
+   * @returns qué tiene mal ({@code null} si está bien o aún no se ha tocado)
+   */
+  protected problema(campo: keyof typeof this.nueva.controls): string | null {
+    const c = this.nueva.controls[campo];
+    return c.invalid && (c.touched || c.dirty) ? PROBLEMAS[campo](c.errors ?? {}) : null;
+  }
+
+  /** @returns lo que impide crear la empresa, en el orden del formulario (spec 036) */
+  protected pendientes(): string[] {
+    const lista = (Object.keys(this.nueva.controls) as (keyof typeof this.nueva.controls)[])
+      .filter(k => this.nueva.controls[k].invalid)
+      .map(k => `${ETIQUETAS[k]}: ${PROBLEMAS[k](this.nueva.controls[k].errors ?? {})}`);
     if (!this.modulosAlta().length) {
-      this.avisos.ok('Marca al menos un módulo para la empresa.');
+      lista.push('Módulos: marca al menos uno');
+    }
+    return lista;
+  }
+
+  protected crear(): void {
+    // spec 036: si algo falta o está mal, se dice qué es en vez de no hacer nada
+    this.intentoCrear.set(true);
+    const pendientes = this.pendientes();
+    if (pendientes.length) {
+      this.nueva.markAllAsTouched();
+      this.avisos.ok(`No se puede crear la empresa. Corrige: ${pendientes.join(' · ')}`);
       return;
     }
     this.trabajando.set(true);
@@ -191,6 +232,7 @@ export class Empresas implements OnInit {
         this.creando.set(false);
         this.nueva.reset();
         this.modulosAlta.set([]);
+        this.intentoCrear.set(false);
         this.codigoAMano.set(false);
         this.detalle.set(d);
         this.creada.set({ razonSocial: d.empresa?.razonSocial ?? '', codigo: d.empresa?.codigoPublico ?? '' });

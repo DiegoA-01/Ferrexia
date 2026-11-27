@@ -4,19 +4,25 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
+import com.proyecto.supply_core.compra.solicitud.enums.ModoProveedor;
 
 import org.hibernate.annotations.TenantId;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
@@ -59,6 +65,20 @@ public class SolicitudCompra {
     /** Justificación de la compra. */
     @Column(length = 500)
     private String motivo;
+
+    /** Spec 033: a quién se le pide (abierta a la categoría o a proveedores específicos). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "modo_proveedor", nullable = false)
+    private ModoProveedor modoProveedor = ModoProveedor.ABIERTA;
+
+    /**
+     * Spec 033: proveedores elegidos cuando la solicitud es {@link ModoProveedor#ESPECIFICA} (vacío si es abierta).
+     * Pertenecen a la misma empresa: se validan al guardar.
+     */
+    @ElementCollection
+    @CollectionTable(name = "solicitud_proveedor", joinColumns = @JoinColumn(name = "solicitud_id"))
+    @Column(name = "proveedor_id", nullable = false)
+    private Set<Long> proveedorIds = new LinkedHashSet<>();
 
     @Column(name = "fecha_requerida", nullable = false)
     private LocalDate fechaRequerida;

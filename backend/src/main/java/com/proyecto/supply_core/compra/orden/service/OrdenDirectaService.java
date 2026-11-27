@@ -115,6 +115,10 @@ public class OrdenDirectaService {
         Contrato c = contratoRepository.findDetalleById(req.contratoId())
                 .orElseThrow(() -> new NoEncontradoException("Contrato", req.contratoId()));
         ContratoService.exigirVigente(c);
+        if (!ContratoService.proveedorPermitido(s, c)) {
+            throw new NegocioException("PROVEEDOR_NO_ELEGIDO", "La solicitud " + s.getConsecutivo() + " se pidió a "
+                    + "otros proveedores; " + c.getProveedor().getRazonSocial() + " no está entre ellos");
+        }
         if (c.getProveedor().getEstado() != EstadoProveedor.HABILITADO) {
             throw new NegocioException("PROVEEDOR_NO_HABILITADO", "El proveedor " + c.getProveedor().getRazonSocial()
                     + " está " + c.getProveedor().getEstado());

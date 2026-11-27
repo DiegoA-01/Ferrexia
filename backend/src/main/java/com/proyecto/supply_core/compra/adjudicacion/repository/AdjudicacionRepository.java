@@ -74,4 +74,13 @@ public interface AdjudicacionRepository extends JpaRepository<Adjudicacion, Long
             """)
     Page<Adjudicacion> pendientesPara(@Param("roles") Collection<String> roles, @Param("usuarioId") Long usuarioId,
             Pageable pageable);
+
+    /**
+     * Adjudicaciones de una RFQ en orden (recorrido de la solicitud, spec 033).
+     *
+     * @param rfqId RFQ
+     * @return adjudicaciones con su cotización y proveedor
+     */
+    @EntityGraph(attributePaths = { "cotizacion", "cotizacion.proveedor" })
+    java.util.List<Adjudicacion> findByRfq_IdOrderByDecididoEnAscIdAsc(Long rfqId);
 }

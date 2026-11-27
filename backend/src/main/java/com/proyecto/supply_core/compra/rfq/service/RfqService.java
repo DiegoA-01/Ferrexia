@@ -40,6 +40,7 @@ import com.proyecto.supply_core.compra.rfq.repository.RfqRepository;
 import com.proyecto.supply_core.compra.solicitud.entity.SolicitudCompra;
 import com.proyecto.supply_core.compra.solicitud.entity.SolicitudCompraLinea;
 import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
+import com.proyecto.supply_core.compra.solicitud.enums.ModoProveedor;
 import com.proyecto.supply_core.compra.solicitud.repository.SolicitudCompraRepository;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
@@ -140,9 +141,16 @@ public class RfqService {
         }
         Rfq guardada = rfqRepository.save(rfq); // con id: ya se puede invitar
         aplicarDatos(guardada, req.datos());
+        // spec 033: si compras cambió los proveedores que eligió el solicitante, queda en la auditoría
+        Set<Long> invitados = guardada.getInvitados().stream().map(i -> i.getProveedor().getId())
+                .collect(Collectors.toSet());
+        boolean cambiaElegidos = solicitud.getModoProveedor() == ModoProveedor.ESPECIFICA
+                && !invitados.equals(solicitud.getProveedorIds());
         auditoriaService.exito(AccionAuditoria.RFQ_CREAR, EntidadAuditada.RFQ, guardada.getId(),
                 guardada.getConsecutivo() + "; solicitud=" + solicitud.getConsecutivo() + "; invitados="
-                        + guardada.getInvitados().size());
+                        + guardada.getInvitados().size()
+                        + (cambiaElegidos ? "; cambia los proveedores de la solicitud " + solicitud.getProveedorIds()
+                                + " por " + invitados : ""));
         return respuesta(guardada);
     }
 
@@ -333,8 +341,12 @@ public class RfqService {
                 ? null : datos.condiciones().trim());
         aplicarEspecificaciones(rfq, datos.especificaciones());
 
-        Set<Proveedor> destino = datos.proveedorIds() == null || datos.proveedorIds().isEmpty()
-                ? sugeridos(rfq) : validarInvitados(rfq, datos.proveedorIds());
+        Set<Long> pedidos = datos.proveedorIds();
+        SolicitudCompra solicitud = rfq.getSolicitud();
+        if ((pedidos == null || pedidos.isEmpty()) && solicitud.getModoProveedor() == ModoProveedor.ESPECIFICA) {
+            pedidos = solicitud.getProveedorIds(); // spec 033: los que eligió el solicitante
+        }
+        Set<Proveedor> destino = pedidos == null || pedidos.isEmpty() ? sugeridos(rfq) : validarInvitados(rfq, pedidos);
         Set<Long> idsDestino = destino.stream().map(Proveedor::getId).collect(Collectors.toSet());
         rfq.getInvitados().removeIf(i -> !idsDestino.contains(i.getProveedor().getId()));
         destino.forEach(rfq::invitar);

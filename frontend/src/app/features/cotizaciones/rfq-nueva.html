@@ -52,6 +52,9 @@
         <section class="tarjeta">
           <div class="tarjeta-cabecera"><h2>Proveedores invitados</h2>
             <span class="chip" [class.naranja]="automatico()">{{ automatico() ? 'Automático por categoría' : invitados().size + ' elegidos' }}</span></div>
+          @if (elegida()?.modoProveedor === 'ESPECIFICA') {
+            <p class="aviso azul texto-chico">El solicitante pidió a: <strong>{{ nombresSolicitud() }}</strong>. Si cambias los invitados, queda en la auditoría.</p>
+          }
           <p class="texto-2">Si no marcas ninguno, el sistema invita a todos los habilitados de las categorías de estos productos y te avisa si alguna categoría no tiene proveedores.</p>
           <div class="proveedores">
             @for (p of proveedores(); track p.id) {

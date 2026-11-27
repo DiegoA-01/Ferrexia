@@ -4632,7 +4632,23 @@ export interface components {
             /** Format: date */
             fechaRequerida: string;
             lineas: components["schemas"]["LineaSolicitudRequest"][];
+            /** @enum {string} */
+            modoProveedor?: "ABIERTA" | "ESPECIFICA";
+            proveedorIds?: number[];
             lineasSinRepetir?: boolean;
+            proveedoresDelModo?: boolean;
+        };
+        ProveedorElegidoResponse: {
+            /** Format: int64 */
+            id?: number;
+            razonSocial?: string;
+        };
+        PasoRecorridoResponse: {
+            /** Format: date-time */
+            fecha?: string;
+            tipo?: string;
+            titulo?: string;
+            detalle?: string;
         };
         AprobacionResponse: {
             /** Format: int64 */
@@ -4686,6 +4702,9 @@ export interface components {
             lineas?: components["schemas"]["LineaSolicitudResponse"][];
             aprobaciones?: components["schemas"]["AprobacionResponse"][];
             apruebaDueno?: boolean;
+            /** @enum {string} */
+            modoProveedor?: "ABIERTA" | "ESPECIFICA";
+            proveedores?: components["schemas"]["ProveedorElegidoResponse"][];
         };
         SedeRequest: {
             nombre: string;

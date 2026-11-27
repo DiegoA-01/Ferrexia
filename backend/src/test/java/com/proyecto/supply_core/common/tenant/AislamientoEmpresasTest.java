@@ -340,7 +340,7 @@ class AislamientoEmpresasTest {
             }
         });
         assertEquals(List.of(), diferencias);
-        assertEquals(115, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 (V47) + 2 (V51) + 1 (V52) + 2 (V53)
+        assertEquals(116, jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)); // 107 + 3 (V47) + 2 (V51) + 1 (V52) + 2 (V53) + 1 (V55)
         assertEquals(13, jdbc.queryForObject("SELECT COUNT(*) FROM rol WHERE es_plantilla AND empresa_id IS NULL", Integer.class));
     }
 
@@ -519,6 +519,25 @@ class AislamientoEmpresasTest {
     }
 
     // ------------------------------------------------------------------ repositorios
+
+    @Test
+    void losProveedoresQueSeEligenEnUnaSolicitudSonSoloDeSuEmpresa() throws Exception {
+        jdbc.update("UPDATE proveedor SET estado = 'HABILITADO' WHERE id IN (?, ?)", proveedorA, proveedorB);
+        try {
+            String duenoA = token(empresaA, usuarioA, "SOLICITANTE");
+            String cuerpo = mvc.perform(get("/api/solicitudes/proveedores").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertTrue(cuerpo.contains("\"id\":" + proveedorA));
+            assertFalse(cuerpo.contains("\"id\":" + proveedorB + ","));
+            // la validación de la solicitud busca el proveedor por id: el de la otra empresa no aparece (404)
+            assertTrue(EmpresaContexto.como(empresaA, () -> proveedores.findById(proveedorB)).isEmpty());
+            // el recorrido de una solicitud que no es de la empresa no se ve
+            mvc.perform(get("/api/solicitudes/999999/recorrido").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isNotFound());
+        } finally {
+            jdbc.update("UPDATE proveedor SET estado = 'PENDIENTE' WHERE id IN (?, ?)", proveedorA, proveedorB);
+        }
+    }
 
     @Test
     void cadaEmpresaSoloVeSusProductosYNoPuedeLeerPorIdLosDeLaOtra() {
@@ -1394,7 +1413,13 @@ class AislamientoEmpresasTest {
             mvc.perform(post("/api/solicitudes/" + s2 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.codigo").value("SOLICITUD_DUPLICADA"));
+            // spec 033 (D21): el solicitante no puede saltarla aunque la justifique; el dueño sí
             mvc.perform(post("/api/solicitudes/" + s2 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA)
+                            .contentType(json).content("{\"justificacionExcepcion\":\"Es para otra obra\"}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("SOLICITUD_DUPLICADA"));
+            mvc.perform(post("/api/solicitudes/" + s2 + "/enviar")
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "SOLICITANTE", "ADMIN_SISTEMA"))
                             .contentType(json).content("{\"justificacionExcepcion\":\"Es para otra obra\"}"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.estado").value("APROBADA"))
@@ -1675,6 +1700,9 @@ class AislamientoEmpresasTest {
         String deleganteA = token(empresaA, usuarioA2, "ADMIN_COMPRAS");
         String delegado = token(empresaA, delegadoA, "ALMACENISTA");
         String justificacion = "{\"justificacionExcepcion\":\"Prueba de delegación\"}";
+        // spec 033 (D21): repetir el producto con justificación solo lo puede quien tiene SOLICITUD_EXCEPCION
+        String exceptuaA = token(empresaA, usuarioA, "SOLICITANTE", "ADMIN_SISTEMA");
+        String exceptuaA2 = token(empresaA, usuarioA2, "SOLICITANTE", "ADMIN_SISTEMA");
         java.time.LocalDate hoy = java.time.LocalDate.now();
         Long politica = null;
         try {
@@ -1728,7 +1756,7 @@ class AislamientoEmpresasTest {
 
             // segregación: no decide lo que pidió quien le delegó
             Long s2 = crearSolicitud(solicitanteA2, productoA, unidad, 4, "2097-05-05");
-            mvc.perform(post("/api/solicitudes/" + s2 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA2)
+            mvc.perform(post("/api/solicitudes/" + s2 + "/enviar").header(HttpHeaders.AUTHORIZATION, exceptuaA2)
                             .contentType(json).content(justificacion))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.estado").value("PENDIENTE_APROBACION"));
@@ -1738,7 +1766,7 @@ class AislamientoEmpresasTest {
 
             // revocada la delegación, deja de poder decidir
             Long s3 = crearSolicitud(solicitanteA, productoA, unidad, 4, "2097-05-05");
-            mvc.perform(post("/api/solicitudes/" + s3 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA)
+            mvc.perform(post("/api/solicitudes/" + s3 + "/enviar").header(HttpHeaders.AUTHORIZATION, exceptuaA)
                             .contentType(json).content(justificacion))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.estado").value("PENDIENTE_APROBACION"));

@@ -62,9 +62,10 @@ decisiones y se aprueban antes de escribir el plan.
 | [030-venta-sin-stock](030-venta-sin-stock/spec.md) | 4 | Vender sin existencia con permiso, aviso y reporte | `feature/venta-sin-stock` | 004, 022 | Persona 1 | Hecha (V52); falta revisión en Docker |
 | [031-proveedor-sin-perfil](031-proveedor-sin-perfil/spec.md) | 4 | Proveedor sin cuenta que cotiza con un enlace de un solo uso y anti-bot | `feature/proveedor-sin-perfil` | — | Persona 2 | Hecha (V54); falta revisión en Docker |
 | [032-domicilios](032-domicilios/spec.md) | 4 | Venta a domicilio, domiciliarios, estados y dinero contraentrega | `feature/domicilios` | 004, 021 | Persona 1 | Hecha (V53); falta revisión en Docker |
-| [033-solicitudes-compra-mejoradas](033-solicitudes-compra-mejoradas/spec.md) | 4 | Proveedor específico o abierta, historial y edición, alertas que bloquean | `feature/solicitudes-compra-mejoradas` | — | Persona 2 | Propuesta |
+| [033-solicitudes-compra-mejoradas](033-solicitudes-compra-mejoradas/spec.md) | 4 | Proveedor específico o abierta, historial y edición, alertas que bloquean | `fix/ajustes-prueba-usuarios` (por pedido del usuario) | — | Persona 2 | Hecha (V55; aprobada en Docker 2026-11-26) |
 | [034-reportes-ventas-ampliados](034-reportes-ventas-ampliados/spec.md) | 4 | Ventas por categoría, empleado, producto, medio de pago, tipo de servicio y caja | `feature/reportes-ventas-ampliados` | 009, 019, 023, 032 | Persona 1 | Propuesta |
 | [035-sedes-super-admin](035-sedes-super-admin/spec.md) | 4 | Grupo de empresas con un super administrador | `feature/sedes-super-admin` | 020, 022 | Persona 2 | Propuesta (aclarar D12) |
+| [036-ajustes-prueba-usuarios](036-ajustes-prueba-usuarios/spec.md) | 4 | Ajustes de la prueba con usuarios: avisos al crear empresa, cantidad y existencia en el POS, detalle de venta en su fila, Inicio solo con categorías y pendientes | `fix/ajustes-prueba-usuarios` | 005, 012, 020, 024 | Persona 1 | Hecha (sin migración; aprobada en Docker 2026-11-26) |
 
 Al terminar la 006 el negocio ya puede **vender y cuadrar caja**. De la 007 en adelante se suman crédito, márgenes y
 control fino.
@@ -96,7 +97,7 @@ referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real
 | D18 | ¿Qué roles quedan? | Permisos por acción con plantillas: Dueño, Administrador, Cajero, Vendedor, Supervisor de ventas, Bodega, Compras y Contador/Auditor; cada usuario migra sin ganar ni perder acceso. | Tomada (2026-11-25, tal como está) | 022 |
 | D19 | ¿Qué alcance tiene domicilios? | Venta tipo domicilio con dirección y envío, domiciliario, estados y pago contraentrega en la caja; sin mapa en vivo ni app. | Tomada (2026-11-26: tal como está; contraentrega como venta al despachar; envío como producto servicio) | 032 |
 | D20 | ¿El cajero ve lo esperado antes de cerrar? (revisa el cierre ciego de la 003) | Cuenta primero y después ve lo esperado y la diferencia; quien tenga el permiso "ver esperado" lo ve siempre. | Tomada (2026-11-25, opción A: cierre ciego; mientras llega la 022 ven lo esperado SUPERVISOR_VENTAS y ADMIN_SISTEMA) | 021 |
-| D21 | ¿Las alertas de presupuesto excedido y solicitud duplicada se pueden saltar con justificación? (revisa la 18-a) | Solo quien tenga el permiso `SOLICITUD_EXCEPCION` (por defecto el Dueño); los demás quedan bloqueados. | Recomendada | 033 |
+| D21 | ¿Las alertas de presupuesto excedido y solicitud duplicada se pueden saltar con justificación? (revisa la 18-a) | Solo quien tenga el permiso `SOLICITUD_EXCEPCION` (por defecto el Dueño); los demás quedan bloqueados. | Tomada (2026-11-26: opción recomendada, se aplicó al empezar la 033; se puede cambiar a bloquear siempre) | 033 |
 
 Una decisión **Recomendada** pasa a **Tomada** cuando la aprueba el equipo; se anota aquí antes de aprobar la spec.
 
@@ -131,6 +132,7 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V52 | `feature/venta-sin-stock` | Vender sin existencia: `venta_sin_existencia` (faltante pendiente), permiso `VENTA_SIN_EXISTENCIA` y evento de aviso (spec 030) |
 | V53 | `feature/domicilios` | Domicilios: `domicilio`, `domicilio_evento`, `producto.es_servicio`, `venta.tipo_servicio`, medio `CONTRAENTREGA`, caja `COBRO_DOMICILIO` y permisos (spec 032) |
 | V54 | `feature/proveedor-sin-perfil` | Proveedor sin perfil: `enlace_cotizacion` y usuarios PROVEEDOR desactivados (spec 031) |
+| V55 | `fix/ajustes-prueba-usuarios` | Solicitud a proveedores: `solicitud_compra.modo_proveedor`, `solicitud_proveedor` y permiso `SOLICITUD_EXCEPCION` (spec 033) |
 | V55 en adelante | libre | Se reserva al empezar cada spec |
 
 **Numeración propuesta en los planes 018 a 035 (no es reserva):** V41 (020), V42 (021), V43 y V44 (022), V45 (023),

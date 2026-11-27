@@ -12,7 +12,7 @@
     <div class="empresa">
       <strong>{{ sesion.empresa()?.razonSocial ?? 'Tu empresa' }}</strong>
       @if (sesion.modulos(); as m) {
-        <span>Plan {{ m.plan }} · {{ m.estado === 'ACTIVA' ? 'activo' : (m.estado ?? '').toLowerCase() }}</span>
+        <span>Suscripción {{ m.estado === 'ACTIVA' ? 'activa' : (m.estado ?? '').toLowerCase() }}</span>
       }
     </div>
 

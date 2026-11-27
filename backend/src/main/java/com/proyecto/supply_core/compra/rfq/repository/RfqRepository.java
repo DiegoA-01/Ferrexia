@@ -90,4 +90,12 @@ public interface RfqRepository extends JpaRepository<Rfq, Long> {
               and r.estado <> com.proyecto.supply_core.compra.rfq.enums.EstadoRfq.BORRADOR
             """)
     Page<Rfq> invitadasDe(@Param("proveedorId") Long proveedorId, Pageable pageable);
+
+    /**
+     * RFQs de una solicitud, de la más vieja a la más nueva (recorrido de la solicitud, spec 033).
+     *
+     * @param solicitudId solicitud de origen
+     * @return RFQs, incluidas las canceladas
+     */
+    List<Rfq> findBySolicitud_IdOrderByCreadoEnAscIdAsc(Long solicitudId);
 }

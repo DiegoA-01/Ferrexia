@@ -27,7 +27,8 @@ export interface ItemCarrito {
   nombre: string;
   unidadMedidaId: number | null;
   unidad: string;
-  cantidad: number;
+  /** Spec 036: {@code null} mientras el cajero borra la cantidad para escribir otra. */
+  cantidad: number | null;
   descuentoPct: number;
   stock: number | null;
 }
@@ -153,6 +154,8 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
   protected readonly ultima = signal<Venta | null>(null);
 
   protected readonly vacio = computed(() => this.carrito().length === 0);
+  /** Spec 036: alguna línea tiene la cantidad vacía o en 0; no se cobra ni se cotiza hasta corregirla. */
+  protected readonly cantidadPendiente = computed(() => this.carrito().some(x => x.cantidad == null || x.cantidad <= 0));
   /** {@code true} si el cliente paga con más de un medio. */
   protected readonly dividido = computed(() => this.pagos().length > 1);
   /** Billetes para cobrar rápido: solo los que alcanzan para el total que dio el servidor (comparar, no calcular). */
@@ -364,7 +367,7 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     const items = this.carrito();
     const i = items.findIndex(x => x.productoId === p.productoId && x.unidadMedidaId === p.unidadMedidaId);
     if (i >= 0) {
-      this.carrito.set(items.map((x, j) => (j === i ? { ...x, cantidad: x.cantidad + 1 } : x)));
+      this.carrito.set(items.map((x, j) => (j === i ? { ...x, cantidad: (x.cantidad ?? 0) + 1 } : x)));
     } else {
       this.carrito.set([...items, {
         productoId: p.productoId!, codigo: p.codigo ?? '', nombre: p.nombre ?? '', unidadMedidaId: p.unidadMedidaId ?? null,
@@ -406,17 +409,22 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     });
   }
 
-  /** @param i posición; @param cantidad cantidad nueva (0 o menos quita la línea) */
+  /**
+   * @param i posición; @param cantidad cantidad nueva. Spec 036: vacía o en 0 la línea se queda (solo se quita con el
+   *          botón de quitar) y no se cobra hasta que tenga una cantidad válida.
+   */
   protected cambiarCantidad(i: number, cantidad: number | null): void {
     if (this.fijo()) {
       return;
     }
-    if (cantidad == null || cantidad <= 0) {
-      this.quitar(i);
-      return;
-    }
-    this.carrito.update(items => items.map((x, j) => (j === i ? { ...x, cantidad } : x)));
+    const valor = cantidad == null || Number.isNaN(cantidad) ? null : cantidad;
+    this.carrito.update(items => items.map((x, j) => (j === i ? { ...x, cantidad: valor } : x)));
     this.recalcular();
+  }
+
+  /** @param x línea del carrito @returns {@code true} si la cantidad pasa la existencia conocida (spec 036) */
+  protected pasaExistencia(x: ItemCarrito): boolean {
+    return x.stock != null && x.cantidad != null && x.cantidad > x.stock;
   }
 
   /** @param i posición; @param pct descuento pedido */
@@ -511,6 +519,10 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
 
   protected abrirCobro(): void {
     if (this.vacio() || this.cobrando() || this.bloqueado()) {
+      return;
+    }
+    if (this.cantidadPendiente()) {
+      this.avisos.ok('Hay un producto sin cantidad. Escribe la cantidad o quítalo del carrito.');
       return;
     }
     if (!this.cobra()) {
@@ -796,6 +808,12 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
       this.cotizacion.set(null);
       return;
     }
+    if (this.cantidadPendiente()) {
+      // se espera a que escriba la cantidad: el servidor no cotiza una línea sin cantidad
+      this.consulta++;
+      this.calculando.set(false);
+      return;
+    }
     this.calculando.set(true);
     const numero = ++this.consulta;
     this.temporizador = setTimeout(() => {
@@ -833,7 +851,7 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
    * @returns las líneas del carrito como las recibe el backend
    */
   private lineas(motivoSinExistencia: string | null = null): LineaVentaRequest[] {
-    return this.carrito().map(x => ({ productoId: x.productoId, unidadMedidaId: x.unidadMedidaId ?? undefined, cantidad: x.cantidad, descuentoPct: x.descuentoPct,
+    return this.carrito().map(x => ({ productoId: x.productoId, unidadMedidaId: x.unidadMedidaId ?? undefined, cantidad: x.cantidad ?? 0, descuentoPct: x.descuentoPct,
       ...(motivoSinExistencia ? { sinExistencia: true, motivoSinExistencia } : {}) }));
   }
 
