@@ -68,6 +68,7 @@ class TurnoServiceTest {
     @Mock private CategoriaMovimientoCajaService categoriaService;
     @Mock private CategoriaMovimientoCajaRepository categoriaRepository;
     @Mock private CajaUsuarioRepository cajaUsuarioRepository;
+    @Mock private com.proyecto.supply_core.venta.repository.VentaRepository ventaRepository;
 
     private TurnoService servicio;
 
@@ -76,7 +77,7 @@ class TurnoServiceTest {
     void crear() {
         servicio = new TurnoService(turnoRepository, cajaRepository, movimientoRepository, empresaRepository,
                 usuarioRepository, autorizacionService, notificacionService, auditoriaService, categoriaService,
-                categoriaRepository, cajaUsuarioRepository);
+                categoriaRepository, cajaUsuarioRepository, ventaRepository);
         sesion("CAJERO");
     }
 
@@ -357,6 +358,62 @@ class TurnoServiceTest {
 
         assertThat(e).isNotNull();
         assertThat(e.getCodigo()).isEqualTo("CONTADO_OBLIGATORIO");
+    }
+
+    /** Los movimientos de una venta traen su id, consecutivo y total; un retiro no trae nada de venta. */
+    @Test
+    void losMovimientosDeUnaVentaTraenConsecutivoYTotal() {
+        sesion("SUPERVISOR_VENTAS");
+        Caja caja = new Caja();
+        caja.setId(3L);
+        caja.setNombre("Caja 1");
+        TurnoCaja t = new TurnoCaja();
+        t.setId(5L);
+        t.setCaja(caja);
+        t.setCajeroUsuarioId(7L);
+        t.setEstado(EstadoTurno.ABIERTO);
+        when(turnoRepository.conCaja(5L)).thenReturn(Optional.of(t));
+        MovimientoCaja v1 = movimientoDeVenta(TipoMovimientoCaja.VENTA, MedioPago.EFECTIVO, "1565000", "VENTA", 9L);
+        MovimientoCaja v2 = movimientoDeVenta(TipoMovimientoCaja.VENTA, MedioPago.TARJETA_CREDITO, "1000000", "VENTA", 9L);
+        MovimientoCaja retiro = movimientoDeVenta(TipoMovimientoCaja.RETIRO, MedioPago.EFECTIVO, "-20000", null, null);
+        when(movimientoRepository.findByTurnoIdOrderByIdAsc(5L)).thenReturn(List.of(v1, v2, retiro));
+        com.proyecto.supply_core.venta.entity.Venta venta = new com.proyecto.supply_core.venta.entity.Venta();
+        venta.setId(9L);
+        venta.setConsecutivo("C2-000001");
+        venta.setTotal(new BigDecimal("2565000"));
+        when(ventaRepository.findAllById(List.of(9L))).thenReturn(List.of(venta));
+        try {
+            TurnoResponse r = servicio.obtener(5L);
+
+            assertThat(r.movimientos()).hasSize(3);
+            assertThat(r.movimientos().get(0).consecutivo()).isEqualTo("C2-000001");
+            assertThat(r.movimientos().get(0).referenciaId()).isEqualTo(9L);
+            assertThat(r.movimientos().get(1).totalVenta()).isEqualByComparingTo("2565000");
+            assertThat(r.movimientos().get(2).consecutivo()).isNull();
+            assertThat(r.movimientos().get(2).totalVenta()).isNull();
+        } finally {
+            EmpresaContexto.limpiar();
+        }
+    }
+
+    /**
+     * @param tipo     tipo
+     * @param medio    medio
+     * @param monto    monto con signo
+     * @param refTipo  tipo de referencia o {@code null}
+     * @param refId    id de la referencia o {@code null}
+     * @return movimiento del turno 5
+     */
+    private static MovimientoCaja movimientoDeVenta(TipoMovimientoCaja tipo, MedioPago medio, String monto,
+            String refTipo, Long refId) {
+        MovimientoCaja m = new MovimientoCaja();
+        m.setTurnoId(5L);
+        m.setTipo(tipo);
+        m.setMedioPago(medio);
+        m.setMonto(new BigDecimal(monto));
+        m.setReferenciaTipo(refTipo);
+        m.setReferenciaId(refId);
+        return m;
     }
 
     /** Sin conteo el cierre funciona como antes: vale el total escrito y no se guarda conteo. */

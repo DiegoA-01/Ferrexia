@@ -65,6 +65,23 @@ describe('Cajas y turnos', () => {
     backend.expectOne(r => r.url === '/api/turnos').flush(pagina([]));
   });
 
+  it('"Ver" abre el detalle del turno en una ventana flotante y la X la cierra', () => {
+    crear(['SUPERVISOR_VENTAS']);
+    const raiz = fixture.nativeElement as HTMLElement;
+    expect(raiz.querySelector('[role="dialog"]')).toBeNull();
+    expect(raiz.querySelector('.tabla button')!.textContent).toContain('Ver');
+    c()['ver'](pendiente);
+    backend.expectOne('/api/turnos/9').flush(pendiente);
+    fixture.detectChanges();
+    const dialogo = raiz.querySelector('[role="dialog"]')!;
+    expect(dialogo).not.toBeNull();
+    expect(dialogo.querySelector('h2')!.textContent).toContain('Turno 9 · Caja 1 · Pedro Cajero');
+    expect(dialogo.textContent).toContain('Aprobar diferencia');
+    dialogo.querySelector<HTMLButtonElement>('button[aria-label="Cerrar la ventana"]')!.click();
+    fixture.detectChanges();
+    expect(raiz.querySelector('[role="dialog"]')).toBeNull();
+  });
+
   it('el supervisor ve lo esperado de un turno abierto (D20) y la categoría de cada movimiento', () => {
     crear(['SUPERVISOR_VENTAS']);
     const abierto: Turno = { ...pendiente, estado: 'ABIERTO', cerradoEn: undefined, esperado: undefined, contado: undefined,

@@ -11,6 +11,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 
 import { Cifra } from '../../core/ui/cifra';
+import { VentanaVidrio } from '../../core/ui/ventana-vidrio';
 import { CategoriasCaja } from './categorias-caja';
 /** Nombre de cada medio de pago. */
 export const MEDIOS: Record<MedioPago, string> = {
@@ -36,7 +37,7 @@ interface EdicionCaja {
  */
 @Component({
   selector: 'sc-caja',
-  imports: [Cifra, FormsModule, RouterLink, PesosPipe, FechaPipe, CategoriasCaja],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, FechaPipe, CategoriasCaja, VentanaVidrio],
   templateUrl: './caja.html',
   styleUrl: './caja.scss',
 })

@@ -43,6 +43,13 @@ html {
 
 * { box-sizing: border-box; }
 
+/* Sin barras de desplazamiento visibles; el scroll sigue funcionando con rueda, touchpad, teclado y dedo. */
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* Dentro de la ventana de vidrio las tablas ocupan todo el ancho de la tarjeta (el contenido proyectado no recibe los estilos del componente). */
+.modal-vidrio table { width: 100%; }
+
 html, body { height: 100%; }
 
 body {

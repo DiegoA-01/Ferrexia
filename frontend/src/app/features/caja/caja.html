@@ -47,11 +47,8 @@
       </section>
 
       @if (detalle(); as d) {
-        <section class="tarjeta detalle">
-          <div class="fila entre">
-            <h2>Turno {{ d.id }} · {{ d.caja }} · {{ d.cajero }}</h2>
-            <button type="button" class="boton chico" (click)="detalle.set(null)">Cerrar</button>
-          </div>
+        <sc-ventana-vidrio [abierta]="true" [titulo]="'Turno ' + d.id + ' · ' + d.caja + ' · ' + d.cajero"
+          [bloquearCierre]="explicacion().trim().length > 0" (cerrar)="detalle.set(null)">
           <p class="texto-chico texto-2 sin-margen">Abrió {{ d.abiertoEn | fecha }} con base {{ d.baseApertura | pesos }}@if (d.cerradoEn) { · cerró {{ d.cerradoEn | fecha }} }</p>
           @if (d.estado === 'ABIERTO' && esperado(); as e) {
             <h3>Lo que debería haber ahora</h3>
@@ -111,7 +108,7 @@
               } @empty { <tr><td colspan="6" class="vacio">Sin movimientos.</td></tr> }
             </tbody>
           </table>
-        </section>
+        </sc-ventana-vidrio>
       }
     }
 

@@ -145,7 +145,7 @@ a.notif { color: inherit; text-decoration: none; &:not(.sin-enlace):hover { back
   position: sticky; top: 10px; z-index: 20;
   display: flex; gap: 6px; margin-bottom: 20px; padding: 8px;
   border: 1px solid var(--sc-borde); border-radius: 16px; background: #fff;
-  overflow-x: auto; scrollbar-width: thin;
+  overflow-x: auto;
 }
 .pestana {
   display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;

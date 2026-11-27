@@ -14,6 +14,7 @@ import { AbonoTurno } from './turno/abono-turno';
 import { CierreTurno } from './turno/cierre-turno';
 import { FacturasTurno } from './turno/facturas-turno';
 import { MovimientoCaja, TipoMovimiento } from './turno/movimiento-caja';
+import { MovimientosTurno } from './turno/movimientos-turno';
 
 /** Lo que puede hacer el cajero con su turno abierto (spec 018). */
 export type AccionTurno = 'facturas' | 'retiro' | 'gasto' | 'ingreso' | 'abono' | 'cerrar';
@@ -43,7 +44,7 @@ type Vista = 'CARGANDO' | 'SIN_TURNO' | 'ABIERTO' | 'RECIEN_CERRADO';
  */
 @Component({
   selector: 'sc-mi-turno',
-  imports: [Cifra, FormsModule, RouterLink, PesosPipe, FechaPipe, MovimientoCaja, AbonoTurno, CierreTurno, FacturasTurno],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, FechaPipe, MovimientoCaja, AbonoTurno, CierreTurno, FacturasTurno, MovimientosTurno],
   template: `
     <div class="pagina">
       <div class="encabezado"><div><h1>Mi turno</h1><p>Abra su caja, registre el efectivo que sale o entra y ciérrela contando a ciegas.</p></div></div>
@@ -109,14 +110,7 @@ type Vista = 'CARGANDO' | 'SIN_TURNO' | 'ABIERTO' | 'RECIEN_CERRADO';
               }
             }
 
-            @if (movimientos().length) {
-              <section class="tarjeta">
-                <h2>Movimientos del turno</h2>
-                <ul class="lista">@for (m of movimientos(); track m.id) {
-                  <li><span>{{ m.tipo }}@if (m.categoria) { · {{ m.categoria }} } · {{ m.motivo }}</span><span class="num">{{ m.monto | pesos }}</span></li>
-                }</ul>
-              </section>
-            }
+            @if (movimientos().length) { <sc-movimientos-turno [movimientos]="movimientos()" /> }
           }
         }
         @case ('SIN_TURNO') {

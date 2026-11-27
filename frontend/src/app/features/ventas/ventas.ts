@@ -18,6 +18,7 @@ import { MEDIOS_VENTA } from '../pos/pos';
 import { imprimirTiquete } from '../pos/tiquete';
 
 import { Cifra } from '../../core/ui/cifra';
+import { ESTILO_TOTALES, VentanaVidrio } from '../../core/ui/ventana-vidrio';
 /** Línea en el formulario de devolución. */
 interface LineaDevuelta {
   ventaLineaId: number;
@@ -44,24 +45,23 @@ const ROLES_LIMITE: Record<string, string> = { CAJERO: 'Cajero', SUPERVISOR_VENT
  */
 @Component({
   selector: 'sc-ventas',
-  imports: [Cifra, FormsModule, RouterLink, PesosPipe, NumeroPipe, FechaPipe, AutorizacionPin, CambioPago],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, NumeroPipe, FechaPipe, AutorizacionPin, CambioPago, VentanaVidrio],
   templateUrl: './ventas.html',
-  styles: `
+  styles: [ESTILO_TOTALES, `
     .filtros { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--sc-borde); align-items: flex-end;
       .campo { min-width: 150px; } }
     .sub { display: block; font-size: 12px; color: var(--sc-texto-2); }
-    .detalle { display: grid; gap: 12px; h2 { margin: 0; } }
-    tr.abierta td { background: var(--sc-primario-suave); }
-    tr.fila-detalle > td { padding: 0 8px 12px; background: var(--sc-primario-suave); }
-    tr.fila-detalle .detalle { margin: 0; box-shadow: none; }
-    .totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 0;
-      dt { font-size: 12px; color: var(--sc-texto-2); } dd { margin: 0; font-weight: 600; } }
+    .datos-venta { font-size: 12.5px; color: var(--sc-texto-2); line-height: 1.5; margin-top: -6px; }
+    .boton.anular { background: #c62828; border-color: #c62828; color: #fff; }
+    .boton.anular:hover:not(:disabled) { background: #8e1b1b; border-color: #8e1b1b; }
+    .boton.anular:focus-visible { outline: 3px solid rgba(198, 40, 40, .45); outline-offset: 2px; }
+    .boton.anular:disabled { background: #e3b4b4; border-color: #e3b4b4; color: #fff; cursor: not-allowed; opacity: .8; }
     .limites { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
     tr.anulada td { color: var(--sc-texto-3); text-decoration: line-through; }
     .correccion { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--sc-borde); border-radius: 12px; }
     .devolver td { vertical-align: middle; }
     .mini { width: 90px; text-align: right; }
-  `,
+  `],
 })
 export class Ventas implements OnInit {
   private readonly ventas = inject(VentaService);
@@ -90,8 +90,10 @@ export class Ventas implements OnInit {
 
   protected readonly esDueno = computed(() => this.sesion.tieneRol(['ADMIN_SISTEMA']) && !this.sesion.soloLectura());
   protected readonly veLimites = computed(() => this.sesion.tieneRol(['ADMIN_SISTEMA', 'SUPERVISOR_VENTAS', 'AUDITOR']));
-  /** Quien tiene caja corrige ventas: anula en su turno y recibe devoluciones. */
-  protected readonly cobra = computed(() => this.sesion.tieneRol(['CAJERO', 'SUPERVISOR_VENTAS']) && !this.sesion.soloLectura());
+  /** Quien puede cobrar (anular en su turno) o recibir devoluciones necesita saber su turno abierto; lo decide el permiso, no el rol. */
+  protected readonly cobra = computed(() => this.sesion.tienePermiso('VENTA_COBRAR') && !this.sesion.soloLectura());
+  /** Permiso de devolver (el backend pide DEVOLUCION_REGISTRAR). */
+  protected readonly devuelve = computed(() => this.sesion.tienePermiso('DEVOLUCION_REGISTRAR') && !this.sesion.soloLectura());
   /** Quien no tiene VENTA_VER_TODAS ve las ventas que cobró o vendió (el aviso lo explica). */
   protected readonly soloPropias = computed(() => !this.sesion.tienePermiso('VENTA_VER_TODAS'));
   /** Consecutivos sugeridos mientras se escribe en el campo Consecutivo. */
@@ -122,7 +124,7 @@ export class Ventas implements OnInit {
   });
   protected readonly puedeDevolver = computed(() => {
     const d = this.detalle();
-    return !!d && this.cobra() && !!this.miTurno() && d.estado === 'CONFIRMADA'
+    return !!d && this.devuelve() && !!this.miTurno() && d.estado === 'CONFIRMADA'
       && (d.lineas ?? []).some(l => (l.cantidad ?? 0) > (l.cantidadDevuelta ?? 0));
   });
   protected readonly totalDevolucionValido = computed(() =>
@@ -130,7 +132,7 @@ export class Ventas implements OnInit {
     && this.lineasDevueltas().every(l => l.cantidad >= 0 && l.cantidad <= l.maximo));
 
   ngOnInit(): void {
-    if (this.cobra()) {
+    if (this.sesion.tienePermiso('VENTA_COBRAR') || this.sesion.tienePermiso('DEVOLUCION_REGISTRAR')) {
       this.caja.actual().subscribe({ next: t => this.miTurno.set(t), error: (e: HttpErrorResponse) => e.status === 404 || this.avisos.error(e) });
     }
     this.buscar();
@@ -177,19 +179,18 @@ export class Ventas implements OnInit {
 
   /** @param v venta del historial */
   protected ver(v: VentaResumen): void {
-    // spec 036: el detalle se despliega en la misma fila; oprimir otra vez lo cierra
-    if (this.detalle()?.id === v.id) {
-      this.detalle.set(null);
-      return;
-    }
+    // el detalle se abre en una ventana flotante (el foco lo lleva la ventana)
     this.ventas.obtener(v.id!).subscribe({
-      next: d => {
-        this.abrir(d);
-        // lo justo para que el detalle quede a la vista, sin saltar si ya se ve
-        setTimeout(() => document.querySelector('.fila-detalle')?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }));
-      },
+      next: d => this.abrir(d),
       error: e => this.avisos.error(e),
     });
+  }
+
+  /** Cierra la ventana del detalle y cualquier corrección a medias. */
+  protected cerrar(): void {
+    this.detalle.set(null);
+    this.correccion.set(null);
+    this.pidiendoPin.set(false);
   }
 
   /** @param d venta a mostrar; cierra cualquier corrección a medias */
