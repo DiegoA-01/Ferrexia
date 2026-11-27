@@ -107,7 +107,7 @@ public class VentaController {
      * @param turnoId     turno
      * @param clienteId   cliente
      * @param estado      estado
-     * @param consecutivo consecutivo exacto (el cajero solo busca así)
+     * @param consecutivo consecutivo o su comienzo (quien no ve todas las ventas solo halla las de otro con el consecutivo completo)
      * @param desde       desde (incluido)
      * @param hasta       hasta (incluido)
      * @param pageable    página (por defecto las más recientes primero)

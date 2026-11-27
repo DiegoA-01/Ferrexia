@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { VentaResumen } from '../../core/api/modelos';
 import { SesionService } from '../../core/sesion/sesion.service';
@@ -15,8 +15,9 @@ const pagina = <T>(l: T[]) => ({ contenido: l, pagina: 0, tamano: 20, totalEleme
 const sesion = (roles: string[]) => ({ provide: SesionService,
   useValue: { tieneRol: (r: string[]) => r.some(x => roles.includes(x)), soloLectura: () => false, empresa: signal(null),
     // spec 029: Dueño y Supervisor anulan de otro turno y cambian pagos sin PIN
-    tienePermiso: (p: string) => ['VENTA_ANULAR_OTRO_TURNO', 'VENTA_CAMBIAR_PAGO'].includes(p)
-      && roles.some(x => x === 'ADMIN_SISTEMA' || x === 'SUPERVISOR_VENTAS') } });
+    tienePermiso: (p: string) => (['VENTA_ANULAR_OTRO_TURNO', 'VENTA_CAMBIAR_PAGO'].includes(p)
+      && roles.some(x => x === 'ADMIN_SISTEMA' || x === 'SUPERVISOR_VENTAS'))
+      || (p === 'VENTA_VER_TODAS' && roles.some(x => ['ADMIN_SISTEMA', 'SUPERVISOR_VENTAS', 'AUDITOR'].includes(x))) } });
 const limites = [{ rol: 'CAJERO', descuentoMaximoPct: 5 }, { rol: 'SUPERVISOR_VENTAS', descuentoMaximoPct: 15 }, { rol: 'VENDEDOR', descuentoMaximoPct: 5 }];
 
 describe('Ventas', () => {
@@ -157,6 +158,48 @@ describe('Ventas', () => {
       lineas: [{ ventaLineaId: 11, cantidad: 1, estadoProducto: 'DANADO' }] });
     r.flush({ id: 1, consecutivo: 'DV-000001', totalReembolso: 3700 });
     backend.expectOne('/api/ventas/5').flush({ ...resumen, lineas: [], pagos: [] });
+  });
+
+  it('el aviso de "cobró o vendió" sale según el permiso VENTA_VER_TODAS, no por rol', () => {
+    crear(['CAJERO', 'VENDEDOR'], null);
+    expect(texto()).toContain('ventas que usted cobró o vendió');
+    expect(texto()).toContain('consecutivo completo');
+    TestBed.resetTestingModule();
+    crear(['SUPERVISOR_VENTAS']);
+    expect(texto()).not.toContain('ventas que usted cobró');
+  });
+
+  it('el consecutivo sugiere hasta 10 al escribir (con pausa) y al elegir una busca; fechas y estado se combinan', () => {
+    vi.useFakeTimers();
+    try {
+      crear(['CAJERO'], { id: 4, estado: 'ABIERTO' });
+      c()['desde'].set('2026-11-01');
+      c()['estado'].set('CONFIRMADA');
+      c()['escribirConsecutivo']('C');
+      vi.advanceTimersByTime(500);
+      backend.expectNone(r => r.url === '/api/ventas');
+      c()['escribirConsecutivo']('C1');
+      c()['escribirConsecutivo']('C1-');
+      vi.advanceTimersByTime(500);
+      const s = backend.expectOne(r => r.url === '/api/ventas');
+      expect(s.request.params.get('consecutivo')).toBe('C1-');
+      expect(s.request.params.get('size')).toBe('10');
+      expect(s.request.params.get('desde')).toBe('2026-11-01');
+      expect(s.request.params.get('estado')).toBe('CONFIRMADA');
+      s.flush(pagina([resumen, { ...resumen, id: 6, consecutivo: 'C1-000006' }]));
+      fixture.detectChanges();
+      expect(c()['sugerencias']()).toEqual(['C1-000005', 'C1-000006']);
+      expect((fixture.nativeElement as HTMLElement).querySelectorAll('#vf-cons-sugeridos option').length).toBe(2);
+      // elegir una sugerencia lanza la búsqueda con todos los filtros
+      c()['escribirConsecutivo']('C1-000006');
+      const b = backend.expectOne(r => r.url === '/api/ventas');
+      expect(b.request.params.get('consecutivo')).toBe('C1-000006');
+      expect(b.request.params.get('size')).toBe('20');
+      expect(b.request.params.get('estado')).toBe('CONFIRMADA');
+      b.flush(pagina([]));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('los filtros viajan al servidor', () => {

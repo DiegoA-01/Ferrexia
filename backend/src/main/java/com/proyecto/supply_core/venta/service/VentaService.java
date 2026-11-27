@@ -514,15 +514,17 @@ public class VentaService {
     }
 
     /**
-     * Historial de ventas según quién mira: supervisor, dueño y auditor ven todas; el vendedor, las suyas; el cajero
-     * ve las ventas que él cobró (de cualquier día, con sus filtros) y, con un consecutivo exacto, encuentra también
-     * la de otro cajero (para reimprimirla, anularla o devolverla). El esperado de caja sigue oculto (cierre ciego, D20).
+     * Historial de ventas según quién mira: supervisor, dueño y auditor ven todas; quien no ve todas ve las ventas
+     * que cobró (cajero) o vendió (vendedor), de cualquier día y con sus filtros, y también todas las de su turno
+     * abierto si filtra por él. Con un consecutivo completo encuentra además la de otro cajero (para reimprimirla,
+     * anularla o devolverla); con solo el comienzo del consecutivo únicamente ve las suyas. El filtro de consecutivo
+     * es "empieza por" (sin distinguir mayúsculas). El esperado de caja sigue oculto (cierre ciego, D20).
      *
      * @param cajaId      caja
      * @param turnoId     turno
      * @param clienteId   cliente
      * @param estado      estado
-     * @param consecutivo consecutivo exacto
+     * @param consecutivo consecutivo completo o su comienzo
      * @param desde       desde (incluido)
      * @param hasta       hasta (excluido)
      * @param pageable    página y orden
@@ -533,21 +535,18 @@ public class VentaService {
             String consecutivo, LocalDateTime desde, LocalDateTime hasta, Pageable pageable) {
         Set<String> roles = SesionActual.usuario().roles();
         Long yo = SesionActual.usuario().id();
-        Long vendedor = null;
-        Long cajero = null;
-        String exacto = consecutivo == null || consecutivo.isBlank() ? null : consecutivo.trim().toUpperCase();
+        Long propio = null;
+        String texto = consecutivo == null || consecutivo.isBlank() ? null : consecutivo.trim().toUpperCase();
         if (!veTodas(roles)) {
-            if (SesionActual.usuario().tienePermiso(Permisos.VENTA_VER_PROPIAS)) {
-                vendedor = yo;
-            } else {
-                boolean suTurno = turnoId != null && turnoRepository.abiertoDe(yo)
-                        .map(t -> t.getId().equals(turnoId)).orElse(false);
-                if (exacto == null && !suTurno) {
-                    cajero = yo;
-                }
+            boolean suTurno = turnoId != null && turnoRepository.abiertoDe(yo)
+                    .map(t -> t.getId().equals(turnoId)).orElse(false);
+            if (!suTurno) {
+                propio = yo;
             }
         }
-        var pagina = ventaRepository.buscar(cajero, vendedor, cajaId, turnoId, clienteId, estado, exacto, desde, hasta,
+        String patron = texto == null ? null
+                : texto.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+        var pagina = ventaRepository.buscar(propio, texto, cajaId, turnoId, clienteId, estado, patron, desde, hasta,
                 pageable);
         List<Venta> ventas = pagina.getContent();
         Map<Long, String> cajas = cajaRepository.findAllById(ventas.stream().map(Venta::getCajaId).collect(Collectors.toSet()))

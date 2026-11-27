@@ -3,7 +3,7 @@
     <a class="boton" routerLink="/app/pedidos-venta">Pedidos de venta</a></div>
   @if (soloPropias()) {
     <p class="aviso azul" role="note"><span class="material-symbols-outlined">search</span>
-      Aquí ve las ventas que usted cobró. Para una venta de otro cajero, escriba su consecutivo.</p>
+      Aquí ve las ventas que usted cobró o vendió. Para una venta de otro, escriba su consecutivo completo.</p>
   }
 
   <section class="tarjeta sin-relleno">
@@ -14,7 +14,8 @@
         <select id="vf-estado" class="entrada" [ngModel]="estado()" (ngModelChange)="estado.set($event)">
           <option [ngValue]="null">Todas</option><option ngValue="CONFIRMADA">Confirmadas</option><option ngValue="ANULADA">Anuladas</option>
         </select></div>
-      <div class="campo"><label for="vf-cons">Consecutivo</label><input id="vf-cons" class="entrada" placeholder="C1-000123" [ngModel]="consecutivo()" (ngModelChange)="consecutivo.set($event)" (keyup.enter)="buscar()"></div>
+      <div class="campo"><label for="vf-cons">Consecutivo</label><input id="vf-cons" class="entrada" placeholder="C1-000123" autocomplete="off" list="vf-cons-sugeridos" [ngModel]="consecutivo()" (ngModelChange)="escribirConsecutivo($event)" (keyup.enter)="buscar()">
+        <datalist id="vf-cons-sugeridos">@for (s of sugerencias(); track s) { <option [value]="s"></option> }</datalist></div>
       <button type="button" class="boton" (click)="buscar()">Buscar</button>
     </div>
     <div class="tabla-contenedor">
