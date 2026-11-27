@@ -73,3 +73,33 @@ describe('Inicio: categorías del menú (specs 012 y 013)', () => {
     expect(ventas.querySelector('.candado')).not.toBeNull();
   });
 });
+
+describe('Inicio: solo categorías y lo que requiere atención (spec 036)', () => {
+  it('no tiene periodo, cifras ni gráficas', () => {
+    const html = crear(['ADMIN_COMPRAS']);
+    expect(html.textContent).not.toContain('Este mes');
+    expect(html.textContent).not.toContain('Trimestre');
+    expect(html.querySelector('.kpis, .grafico, sc-selector-sede')).toBeNull();
+    expect(html.textContent).not.toContain('Mejores proveedores');
+    expect(html.textContent).toContain('Requiere tu atención');
+  });
+
+  it('la tarjeta de la categoría dice lo que tiene pendiente', () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([{ path: '**', children: [] }]), provideHttpClient(), provideHttpClientTesting(),
+        { provide: SesionService, useValue: sesionCon(['ADMIN_COMPRAS']) }],
+    });
+    const fixture = TestBed.createComponent(Inicio);
+    fixture.detectChanges();
+    const c = fixture.componentInstance as unknown as Record<string, any>;
+    c['porAprobar'].set([{ id: 1, consecutivo: 'SOL-1' }, { id: 2, consecutivo: 'SOL-2' }]);
+    c['bajoMinimo'].set([{ id: 9, stockTotal: 0 }]);
+    fixture.detectChanges();
+    const html = fixture.nativeElement as HTMLElement;
+    const pendiente = (t: string) => tarjeta(html, t).querySelector('.categoria-pendiente')?.textContent?.trim();
+    expect(pendiente('Compras')).toBe('2 por aprobar');
+    expect(pendiente('Inventario')).toBe('1 bajo el mínimo');
+    expect(tarjeta(html, 'Reportes').querySelector('.categoria-pendiente')).toBeNull();
+    expect(html.textContent).toContain('1 producto bajo el mínimo');
+  });
+});

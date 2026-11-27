@@ -285,6 +285,40 @@ describe('Punto de venta', () => {
     pregunta.mockRestore();
   });
 
+  it('spec 036: borrar la cantidad no quita el producto y no deja cobrar hasta escribir otra', () => {
+    crear(['CAJERO']);
+    escanear();
+    cotizar();
+    c()['cambiarCantidad'](0, null);
+    vi.advanceTimersByTime(300);
+    backend.expectNone('/api/ventas/cotizar');
+    fixture.detectChanges();
+    expect(c()['carrito']().length).toBe(1);
+    expect(texto()).toContain('Escribe la cantidad');
+    c()['abrirCobro']();
+    expect(c()['cobrando']()).toBe(false);
+    c()['cambiarCantidad'](0, 0);
+    expect(c()['carrito']().length).toBe(1);
+    c()['cambiarCantidad'](0, 3);
+    const r = cotizar();
+    expect(r.request.body.lineas[0].cantidad).toBe(3);
+    // solo el botón de quitar saca la línea
+    c()['quitar'](0);
+    expect(c()['vacio']()).toBe(true);
+  });
+
+  it('spec 036: con más cantidad que existencia la fila sale en rojo y dice cuánto hay, sin bloquear', () => {
+    crear(['CAJERO']);
+    escanear();
+    cotizar();
+    c()['cambiarCantidad'](0, 25);
+    cotizar();
+    const fila = (fixture.nativeElement as HTMLElement).querySelector('tbody tr')!;
+    expect(fila.classList).toContain('pasa-existencia');
+    expect(fila.textContent).toContain('solo hay 20');
+    expect(c()['cantidadPendiente']()).toBe(false);
+  });
+
   it('una cotización que llega tarde no pisa la más reciente', () => {
     crear(['CAJERO']);
     escanear();

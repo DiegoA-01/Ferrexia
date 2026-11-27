@@ -61,6 +61,20 @@ describe('Ventas', () => {
     expect(c()['esDueno']()).toBe(false);
   });
 
+  it('spec 036: el detalle se despliega en la misma fila y se cierra con el mismo botón', () => {
+    crear(['SUPERVISOR_VENTAS']);
+    c()['ver'](resumen);
+    backend.expectOne('/api/ventas/5').flush({ ...resumen, lineas: [], pagos: [] });
+    fixture.detectChanges();
+    const filas = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.tabla > tbody > tr')];
+    expect(filas[0].classList).toContain('abierta');
+    expect(filas[1].classList).toContain('fila-detalle');
+    expect(filas[1].querySelector('.detalle')).not.toBeNull();
+    c()['ver'](resumen);
+    backend.expectNone('/api/ventas/5');
+    expect(c()['detalle']()).toBeNull();
+  });
+
   it('con permiso anula una factura de un turno cerrado sin PIN y ve el historial de pagos (spec 029)', () => {
     crear(['SUPERVISOR_VENTAS'], { id: 9, estado: 'ABIERTO' });
     c()['ver'](resumen);

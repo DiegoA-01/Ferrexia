@@ -72,6 +72,20 @@ describe('Consola: alta de empresa con código automático (spec 020)', () => {
     expect(c()['modulosAlta']()).toEqual([]);
   });
 
+  it('spec 036: con datos malos dice qué corregir, campo por campo y en una lista', () => {
+    c()['nueva'].patchValue({ razonSocial: 'Ferrecentro', nit: '9012', adminNombre: 'Laura', adminCorreo: 'laura@x.co', adminPassword: '123456' });
+    c()['crear']();
+    fixture.detectChanges();
+    backend.expectNone(q => q.method === 'POST');
+    const aviso = raiz().querySelector('[role=alert]')?.textContent ?? '';
+    expect(aviso).toContain('Contraseña inicial: mínimo 8 caracteres, con al menos una letra y un número');
+    expect(aviso).toContain('Módulos: marca al menos uno');
+    expect(aviso).not.toContain('Razón social');
+    expect(raiz().querySelector('#ap')?.closest('.campo')?.querySelector('.error')?.textContent).toContain('mínimo 8 caracteres');
+    // el botón no queda apagado: oprimirlo es lo que muestra el aviso
+    expect(raiz().querySelector<HTMLButtonElement>('button[type=submit]')!.disabled).toBe(false);
+  });
+
   it('el formulario ya no pide el código de ingreso', () => {
     expect(raiz().querySelector('#cod')).toBeNull();
     expect(raiz().textContent).toContain('se arma solo con la razón social');

@@ -51,6 +51,9 @@ const ROLES_LIMITE: Record<string, string> = { CAJERO: 'Cajero', SUPERVISOR_VENT
       .campo { min-width: 150px; } }
     .sub { display: block; font-size: 12px; color: var(--sc-texto-2); }
     .detalle { display: grid; gap: 12px; h2 { margin: 0; } }
+    tr.abierta td { background: var(--sc-primario-suave); }
+    tr.fila-detalle > td { padding: 0 8px 12px; background: var(--sc-primario-suave); }
+    tr.fila-detalle .detalle { margin: 0; box-shadow: none; }
     .totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 0;
       dt { font-size: 12px; color: var(--sc-texto-2); } dd { margin: 0; font-weight: 600; } }
     .limites { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
@@ -149,7 +152,19 @@ export class Ventas implements OnInit {
 
   /** @param v venta del historial */
   protected ver(v: VentaResumen): void {
-    this.ventas.obtener(v.id!).subscribe({ next: d => this.abrir(d), error: e => this.avisos.error(e) });
+    // spec 036: el detalle se despliega en la misma fila; oprimir otra vez lo cierra
+    if (this.detalle()?.id === v.id) {
+      this.detalle.set(null);
+      return;
+    }
+    this.ventas.obtener(v.id!).subscribe({
+      next: d => {
+        this.abrir(d);
+        // lo justo para que el detalle quede a la vista, sin saltar si ya se ve
+        setTimeout(() => document.querySelector('.fila-detalle')?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }));
+      },
+      error: e => this.avisos.error(e),
+    });
   }
 
   /** @param d venta a mostrar; cierra cualquier corrección a medias */
