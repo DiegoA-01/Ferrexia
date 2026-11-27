@@ -35,6 +35,7 @@ import com.proyecto.supply_core.plataforma.repository.SuscripcionRepository;
 import com.proyecto.supply_core.security.context.PlataformaActual;
 import com.proyecto.supply_core.security.repository.RefreshTokenRepository;
 import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
+import com.proyecto.supply_core.usuario.service.CorreoGlobal;
 
 /**
  * Lo que el dueño de la plataforma hace con las empresas clientes: darlas de alta con su administrador, cambiarles el
@@ -63,6 +64,7 @@ public class EmpresaPlataformaService {
     private final PlataformaAuditoriaService auditoria;
     private final RefreshTokenRepository refreshTokenRepository;
     private final UsuarioRepository usuarioRepository;
+    private final CorreoGlobal correoGlobal;
 
     /**
      * @param empresaRepository       empresas
@@ -75,12 +77,15 @@ public class EmpresaPlataformaService {
      * @param auditoria               auditoría global
      * @param refreshTokenRepository  sesiones renovables que se revocan al suspender
      * @param usuarioRepository       solo para mostrar quién administra cada empresa (nombre y correo)
+     * @param correoGlobal            revisa que el correo del administrador no lo use otra empresa (spec 037)
      */
     public EmpresaPlataformaService(EmpresaRepository empresaRepository, SuscripcionRepository suscripcionRepository,
             PlanRepository planRepository, ModuloRepository moduloRepository,
             EmpresaModuloRepository empresaModuloRepository, EmpresaAltaService altaService,
             AccesoEmpresaService accesoEmpresa, PlataformaAuditoriaService auditoria,
-            RefreshTokenRepository refreshTokenRepository, UsuarioRepository usuarioRepository) {
+            RefreshTokenRepository refreshTokenRepository, UsuarioRepository usuarioRepository,
+            CorreoGlobal correoGlobal) {
+        this.correoGlobal = correoGlobal;
         this.usuarioRepository = usuarioRepository;
         this.empresaRepository = empresaRepository;
         this.suscripcionRepository = suscripcionRepository;
@@ -137,6 +142,9 @@ public class EmpresaPlataformaService {
         String nit = req.nit().trim();
         if (empresaRepository.existsByNitIgnoreCase(nit)) {
             throw new NegocioException("NIT_DUPLICADO", "Ya existe una empresa con el NIT " + nit);
+        }
+        if (correoGlobal.enUso(req.adminCorreo(), null)) {
+            throw new NegocioException("CORREO_DUPLICADO", "Ese correo ya está registrado");
         }
         Empresa empresa = crearConCodigo(req, plan, estado);
         try {

@@ -46,7 +46,8 @@ class AuthControllerTest extends WebTestBase {
 
     @BeforeEach
     void empresaDemo() {
-        when(empresaRepository.idPorCodigoPublico("demo")).thenReturn(Optional.of(1L));
+        when(correoGlobal.empresaDe(any())).thenReturn(Optional.of(1L));
+        when(correoGlobal.empresaDeRecuperacion(any())).thenReturn(Optional.of(1L));
     }
 
     @Test
@@ -56,7 +57,7 @@ class AuthControllerTest extends WebTestBase {
 
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"empresa":"demo","correo":"ana@x.com","password":"Clave1234"}"""))
+                                {"correo":"ana@x.com","password":"Clave1234"}"""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("tok"))
                 .andExpect(jsonPath("$.refreshToken").value("ref"))
@@ -107,12 +108,13 @@ class AuthControllerTest extends WebTestBase {
     }
 
     @Test
-    void loginConEmpresaDesconocidaDevuelve401SinLlamarAlLoginNormal() throws Exception {
-        when(authService.loginEmpresaDesconocida(any())).thenThrow(new NoAutenticadoException("Credenciales inválidas"));
+    void loginConCorreoDesconocidoDevuelve401SinLlamarAlLoginNormal() throws Exception {
+        when(correoGlobal.empresaDe("no-existe@x.com")).thenReturn(Optional.empty());
+        when(authService.loginCorreoDesconocido(any())).thenThrow(new NoAutenticadoException("Credenciales inválidas"));
 
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"empresa":"no-existe","correo":"ana@x.com","password":"Clave1234"}"""))
+                                {"correo":"no-existe@x.com","password":"Clave1234"}"""))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.mensaje").value("Credenciales inválidas"));
         verify(authService, never()).login(any());
@@ -122,7 +124,7 @@ class AuthControllerTest extends WebTestBase {
     void loginInvalidoDevuelve400ConCadaCampo() throws Exception {
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"empresa":"demo","correo":"no-es-correo","password":""}"""))
+                                {"correo":"no-es-correo","password":""}"""))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACION"))
                 .andExpect(jsonPath("$.detalles", hasItems(
@@ -136,7 +138,7 @@ class AuthControllerTest extends WebTestBase {
 
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"empresa":"demo","correo":"ana@x.com","password":"Mala1234"}"""))
+                                {"correo":"ana@x.com","password":"Mala1234"}"""))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.codigo").value("NO_AUTENTICADO"))
                 .andExpect(jsonPath("$.mensaje").value("Credenciales inválidas"));
@@ -180,19 +182,19 @@ class AuthControllerTest extends WebTestBase {
     }
 
     @Test
-    void recuperarEsPublicoYRespondeLoMismoExistaONoLaEmpresa() throws Exception {
-        when(empresaRepository.idPorCodigoPublico("no-existe")).thenReturn(Optional.empty());
+    void recuperarEsPublicoYRespondeLoMismoExistaONoElCorreo() throws Exception {
+        when(correoGlobal.empresaDe("nadie@x.com")).thenReturn(Optional.empty());
 
         mvc.perform(post("/api/auth/recuperar").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"empresa":"demo","correo":"ana@x.com"}"""))
+                                {"correo":"ana@x.com"}"""))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.mensaje").value("Si la cuenta existe, te enviamos un correo con las instrucciones"));
         verify(recuperacionService).solicitar("ana@x.com");
 
         mvc.perform(post("/api/auth/recuperar").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"empresa":"no-existe","correo":"ana@x.com"}"""))
+                                {"correo":"nadie@x.com"}"""))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.mensaje").value("Si la cuenta existe, te enviamos un correo con las instrucciones"));
         verify(recuperacionService, org.mockito.Mockito.times(1)).solicitar(any());
@@ -202,7 +204,7 @@ class AuthControllerTest extends WebTestBase {
     void recuperarConCorreoMalEscritoDevuelve400() throws Exception {
         mvc.perform(post("/api/auth/recuperar").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"empresa":"demo","correo":"no-es-correo"}"""))
+                                {"correo":"no-es-correo"}"""))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(recuperacionService);
     }
@@ -211,25 +213,26 @@ class AuthControllerTest extends WebTestBase {
     void restablecerCambiaLaClaveConElToken() throws Exception {
         mvc.perform(post("/api/auth/restablecer").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"empresa":"demo","token":"abc","passwordNueva":"NuevaClave1"}"""))
+                                {"token":"abc","passwordNueva":"NuevaClave1"}"""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje").value("Contraseña actualizada: ya puedes iniciar sesión"));
         verify(recuperacionService).restablecer("abc", "NuevaClave1");
     }
 
     @Test
-    void restablecerConTokenOEmpresaInvalidosDevuelve401() throws Exception {
+    void restablecerConTokenInvalidoODesconocidoDevuelve401() throws Exception {
         doThrow(new NoAutenticadoException("El enlace de recuperación no es válido o ya venció"))
                 .when(recuperacionService).restablecer(any(), any());
-        when(empresaRepository.idPorCodigoPublico("no-existe")).thenReturn(Optional.empty());
+        when(correoGlobal.empresaDeRecuperacion(com.proyecto.supply_core.security.service.RefreshTokenService.hash("desconocido")))
+                .thenReturn(Optional.empty());
 
         mvc.perform(post("/api/auth/restablecer").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"empresa":"demo","token":"malo","passwordNueva":"NuevaClave1"}"""))
+                                {"token":"malo","passwordNueva":"NuevaClave1"}"""))
                 .andExpect(status().isUnauthorized());
         mvc.perform(post("/api/auth/restablecer").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"empresa":"no-existe","token":"abc","passwordNueva":"NuevaClave1"}"""))
+                                {"token":"desconocido","passwordNueva":"NuevaClave1"}"""))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -237,7 +240,7 @@ class AuthControllerTest extends WebTestBase {
     void restablecerConClaveDebilNoLlegaAlService() throws Exception {
         mvc.perform(post("/api/auth/restablecer").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"empresa":"demo","token":"abc","passwordNueva":"corta"}"""))
+                                {"token":"abc","passwordNueva":"corta"}"""))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(recuperacionService);
     }
@@ -251,7 +254,7 @@ class AuthControllerTest extends WebTestBase {
 
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"empresa":"demo","correo":"ana@x.com","password":"Clave1234"}"""))
+                                {"correo":"ana@x.com","password":"Clave1234"}"""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.desafioMfa").value("desafio-jwt"))
                 .andExpect(jsonPath("$.mfaConfigurado").value(false))

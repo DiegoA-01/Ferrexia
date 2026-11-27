@@ -16,8 +16,8 @@ import jakarta.validation.constraints.Size;
  *
  * @param razonSocial    nombre legal
  * @param nit            NIT sin puntos, con dígito de verificación opcional; único
- * @param codigoPublico  código con el que la empresa entra y recibe el registro de proveedores. Opcional desde la
- *                       spec 020: vacío = se genera a partir de la razón social. Si se escribe: texto libre con
+ * @param codigoPublico  código interno de la empresa (enlace de registro de proveedores). Ya no se usa para entrar (spec 037)
+ *                       y la consola no lo pide: vacío = se genera a partir de la razón social (spec 020). Si se escribe: texto libre con
  *                       espacios, mayúsculas y números; solo se excluyen {@code / \ ? # %} y los caracteres de
  *                       control, que rompen la dirección del registro; único sin distinguir mayúsculas
  * @param planCodigo     plan guardado como dato (opcional desde la spec 024: ya no decide los módulos; vacío = el plan
@@ -70,7 +70,7 @@ public record EmpresaCrearRequest(
      *
      * @param razonSocial   nombre legal
      * @param nit           NIT
-     * @param codigoPublico código de ingreso
+     * @param codigoPublico código interno (opcional)
      * @param planCodigo    plan guardado como dato
      * @param estadoInicial estado inicial
      * @param adminNombre   nombre del administrador

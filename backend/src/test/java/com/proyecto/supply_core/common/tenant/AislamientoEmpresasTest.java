@@ -211,7 +211,7 @@ class AislamientoEmpresasTest {
 
             Usuario u = new Usuario();
             u.setNombreCompleto("Admin " + correo);
-            u.setCorreo("admin@mismo.com"); // el mismo correo en las dos empresas
+            u.setCorreo(correo.startsWith("b") ? "admin@mismob.com" : "admin@mismo.com"); // spec 037: el correo es único en todo el sistema
             u.setHashPassword(passwordEncoder.encode(CLAVE));
             u.getRoles().add(roles.findByCodigo("ADMIN_SISTEMA").orElseThrow());
             u = usuarios.save(u);
@@ -452,7 +452,7 @@ class AislamientoEmpresasTest {
             assertFalse(alta.contains("482913") || alta.toLowerCase().contains("hash"), "la API no devuelve la clave");
             nuevo = lector.readTree(alta).get("id").asLong();
             String login = mvc.perform(post("/api/auth/login").contentType(json)
-                            .content("{\"empresa\":\"demo\",\"correo\":\"noche@a.com\",\"password\":\"482913\"}"))
+                            .content("{\"correo\":\"noche@a.com\",\"password\":\"482913\"}"))
                     .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
             String cajera = "Bearer " + lector.readTree(login).get("token").asText();
             // el permiso del rol propio sirve; lo que el rol no da, no
@@ -482,7 +482,7 @@ class AislamientoEmpresasTest {
             // permisos sueltos: se le quita ver cajas y se le suma la auditoría (entra con el PIN nuevo: el
             // restablecimiento cortó sus sesiones)
             String tokenNuevo = "Bearer " + lector.readTree(mvc.perform(post("/api/auth/login").contentType(json)
-                            .content("{\"empresa\":\"demo\",\"correo\":\"noche@a.com\",\"password\":\"771204\"}"))
+                            .content("{\"correo\":\"noche@a.com\",\"password\":\"771204\"}"))
                     .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("token").asText();
             mvc.perform(get("/api/usuarios/" + nuevo + "/permisos").header(HttpHeaders.AUTHORIZATION, duenoA))
                     .andExpect(jsonPath("$[?(@.codigo=='CAJA_VER')].delRol").value(true))
@@ -573,9 +573,11 @@ class AislamientoEmpresasTest {
     }
 
     @Test
-    void losUsuariosConElMismoCorreoSonDeSuEmpresa() {
+    void cadaUsuarioEsDeSuEmpresaYUnCorreoNoSeVeDesdeLaOtra() {
         Usuario deA = EmpresaContexto.como(empresaA, () -> usuarios.findByCorreoIgnoreCase("admin@mismo.com").orElseThrow());
-        Usuario deB = EmpresaContexto.como(empresaB, () -> usuarios.findByCorreoIgnoreCase("admin@mismo.com").orElseThrow());
+        Usuario deB = EmpresaContexto.como(empresaB, () -> usuarios.findByCorreoIgnoreCase("admin@mismob.com").orElseThrow());
+        assertTrue(EmpresaContexto.como(empresaB, () -> usuarios.findByCorreoIgnoreCase("admin@mismo.com")).isEmpty());
+        assertTrue(EmpresaContexto.como(empresaA, () -> usuarios.findByCorreoIgnoreCase("admin@mismob.com")).isEmpty());
 
         assertEquals(usuarioA, deA.getId());
         assertEquals(usuarioB, deB.getId());
@@ -693,26 +695,78 @@ class AislamientoEmpresasTest {
     }
 
     @Test
-    void elLoginSoloAceptaAlUsuarioDeLaEmpresaIndicada() throws Exception {
-        String cuerpoA = "{\"empresa\":\"demo\",\"correo\":\"admin@mismo.com\",\"password\":\"" + CLAVE + "\"}";
+    void elLoginEncuentraLaEmpresaPorElCorreoYNuncaEntraAOtra() throws Exception {
+        String cuerpoA = "{\"correo\":\"admin@mismo.com\",\"password\":\"" + CLAVE + "\"}";
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(cuerpoA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuario.id").value(usuarioA.intValue()));
 
-        String cuerpoB = "{\"empresa\":\"empresa-b\",\"correo\":\"admin@mismo.com\",\"password\":\"" + CLAVE + "\"}";
+        String cuerpoB = "{\"correo\":\"admin@mismob.com\",\"password\":\"" + CLAVE + "\"}";
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(cuerpoB))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuario.id").value(usuarioB.intValue()));
 
-        String empresaInexistente = "{\"empresa\":\"no-existe\",\"correo\":\"admin@mismo.com\",\"password\":\"" + CLAVE + "\"}";
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(empresaInexistente))
+        String claveMala = "{\"correo\":\"admin@mismo.com\",\"password\":\"ClaveQueNoEs2026\"}";
+        String correoInexistente = "{\"correo\":\"no-existe@mismo.com\",\"password\":\"" + CLAVE + "\"}";
+        // correo inexistente y clave mala: el mismo 401 y el mismo mensaje (no revela si el correo existe)
+        String cuerpoMalo = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(claveMala))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.mensaje").value("Credenciales inválidas"));
+                .andExpect(jsonPath("$.mensaje").value("Credenciales inválidas")).andReturn().getResponse().getContentAsString();
+        String cuerpoInexistente = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(correoInexistente))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.mensaje").value("Credenciales inválidas")).andReturn().getResponse().getContentAsString();
+        assertEquals(new com.fasterxml.jackson.databind.ObjectMapper().readTree(cuerpoMalo).get("mensaje"),
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(cuerpoInexistente).get("mensaje"));
+
+        // la clave de A con el correo de B no entra a ninguna: cada correo pertenece a una sola empresa
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"admin@mismob.com\",\"password\":\"ClaveQueNoEs2026\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void unCorreoNoSePuedeRepetirEntreEmpresasNiAlCrearNiAlEditarNiAlDarDeAltaUnaEmpresa() throws Exception {
+        String ct = MediaType.APPLICATION_JSON_VALUE;
+        String adminB = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+
+        // crear en B un usuario con el correo de un usuario de A: rechazado, sin decir de qué empresa es
+        mvc.perform(post("/api/usuarios").header(HttpHeaders.AUTHORIZATION, adminB).contentType(ct)
+                        .content("{\"nombreCompleto\":\"Intruso\",\"correo\":\"Admin@Mismo.com\",\"password\":\"" + CLAVE
+                                + "\",\"roles\":[\"COMPRADOR\"]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detalles[?(@ == 'correo: ya está registrado por otro usuario')]").isNotEmpty());
+        // editar a un usuario de B para ponerle el correo de A: también
+        mvc.perform(put("/api/usuarios/" + usuarioB).header(HttpHeaders.AUTHORIZATION, adminB).contentType(ct)
+                        .content("{\"nombreCompleto\":\"Admin B\",\"correo\":\"admin@mismo.com\",\"roles\":[\"ADMIN_SISTEMA\"]}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CORREO_DUPLICADO"))
+                .andExpect(jsonPath("$.mensaje").value("Ese correo ya está registrado"));
+        // y la base lo respalda aunque alguien se salte al servicio
+        assertThrows(org.springframework.dao.DuplicateKeyException.class, () -> jdbc.update(
+                "INSERT INTO usuario (empresa_id, nombre_completo, correo, correo_login, hash_password) VALUES (?, 'X', ?, ?, 'x')",
+                empresaB, "otro@mismo.com", "admin@mismo.com"));
+        // un correo de B sigue libre para B mismo (editar sin cambiar el correo no choca consigo)
+        mvc.perform(put("/api/usuarios/" + usuarioB).header(HttpHeaders.AUTHORIZATION, adminB).contentType(ct)
+                        .content("{\"nombreCompleto\":\"Admin B\",\"correo\":\"admin@mismob.com\",\"roles\":[\"ADMIN_SISTEMA\"]}"))
+                .andExpect(status().isOk());
+
+        // dar de alta una empresa con el correo de un administrador existente: rechazado antes de crear nada
+        Integer empresasAntes = jdbc.queryForObject("SELECT COUNT(*) FROM empresa", Integer.class);
+        String correoDueno = "dueno-correo-unico@plataforma.test";
+        try {
+            String plataforma = entrarALaPlataforma(correoDueno);
+            mvc.perform(post("/api/plataforma/empresas").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(ct)
+                            .content("{\"razonSocial\":\"Repetida\",\"nit\":\"901999000-1\",\"adminNombre\":\"X\","
+                                    + "\"adminCorreo\":\"ADMIN@mismo.com\",\"adminPassword\":\"ClaveDeC2026\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CORREO_DUPLICADO"));
+            assertEquals(empresasAntes, jdbc.queryForObject("SELECT COUNT(*) FROM empresa", Integer.class));
+        } finally {
+            borrarDuenoDePrueba(correoDueno);
+        }
     }
 
     @Test
     void elTokenDeRefrescoDevuelveSesionDeLaMismaEmpresa() throws Exception {
-        String cuerpo = "{\"empresa\":\"empresa-b\",\"correo\":\"admin@mismo.com\",\"password\":\"" + CLAVE + "\"}";
+        String cuerpo = "{\"correo\":\"admin@mismob.com\",\"password\":\"" + CLAVE + "\"}";
         String respuesta = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
                 .andReturn().getResponse().getContentAsString();
         String refresh = new com.fasterxml.jackson.databind.ObjectMapper().readTree(respuesta).get("refreshToken").asText();
@@ -4945,8 +4999,8 @@ class AislamientoEmpresasTest {
 
             mvc.perform(get("/api/plataforma/empresas").header(HttpHeaders.AUTHORIZATION, plataforma))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$[?(@.codigoPublico=='demo')]").isNotEmpty())
-                    .andExpect(jsonPath("$[?(@.codigoPublico=='empresa-b')]").isNotEmpty());
+                    .andExpect(jsonPath("$[?(@.nit=='900000999-9')]").isNotEmpty())
+                    .andExpect(jsonPath("$[0].codigoPublico").doesNotExist());
             // su token no entra a ninguna API de empresa: ni usuarios, ni productos, ni solicitudes
             for (String ruta : new String[] { "/api/usuarios", "/api/productos", "/api/solicitudes", "/api/empresa" }) {
                 mvc.perform(get(ruta).header(HttpHeaders.AUTHORIZATION, plataforma)).andExpect(status().isUnauthorized());
@@ -4997,7 +5051,7 @@ class AislamientoEmpresasTest {
 
             // el administrador entra con el código de su empresa y solo ve lo suyo
             String login = mvc.perform(post("/api/auth/login").contentType(contentType)
-                            .content("{\"empresa\":\"empresa-c-fuga\",\"correo\":\"admin@c.com\",\"password\":\"ClaveDeC2026\"}"))
+                            .content("{\"correo\":\"admin@c.com\",\"password\":\"ClaveDeC2026\"}"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.usuario.roles[0]").value("ADMIN_SISTEMA"))
                     .andReturn().getResponse().getContentAsString();
@@ -5076,7 +5130,7 @@ class AislamientoEmpresasTest {
             mvc.perform(get("/api/solicitudes").header(HttpHeaders.AUTHORIZATION, comprasC))
                     .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("SUSCRIPCION_SUSPENDIDA"));
             mvc.perform(post("/api/auth/login").contentType(contentType)
-                            .content("{\"empresa\":\"empresa-c-fuga\",\"correo\":\"admin@c.com\",\"password\":\"ClaveDeC2026\"}"))
+                            .content("{\"correo\":\"admin@c.com\",\"password\":\"ClaveDeC2026\"}"))
                     .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("SUSCRIPCION_SUSPENDIDA"));
             mvc.perform(post("/api/auth/refresh").contentType(contentType).content("{\"refreshToken\":\"" + refreshC + "\"}"))
                     .andExpect(status().is4xxClientError());
@@ -5084,7 +5138,7 @@ class AislamientoEmpresasTest {
                     .andExpect(status().isOk());
             // la clave mala no revela que está suspendida
             mvc.perform(post("/api/auth/login").contentType(contentType)
-                            .content("{\"empresa\":\"empresa-c-fuga\",\"correo\":\"admin@c.com\",\"password\":\"Mala123456\"}"))
+                            .content("{\"correo\":\"admin@c.com\",\"password\":\"Mala123456\"}"))
                     .andExpect(status().isUnauthorized());
 
             // reactivar la devuelve a la normalidad
@@ -5093,7 +5147,7 @@ class AislamientoEmpresasTest {
                     .andExpect(status().isOk()).andExpect(jsonPath("$.empresa.motivoEstado").doesNotExist());
             mvc.perform(get("/api/solicitudes").header(HttpHeaders.AUTHORIZATION, comprasC)).andExpect(status().isOk());
             mvc.perform(post("/api/auth/login").contentType(contentType)
-                            .content("{\"empresa\":\"empresa-c-fuga\",\"correo\":\"admin@c.com\",\"password\":\"ClaveDeC2026\"}"))
+                            .content("{\"correo\":\"admin@c.com\",\"password\":\"ClaveDeC2026\"}"))
                     .andExpect(status().isOk());
 
             // cancelar es final
@@ -5119,8 +5173,8 @@ class AislamientoEmpresasTest {
         }
     }
 
-    private com.fasterxml.jackson.databind.JsonNode entrarComo(String empresa, String correo, String clave) throws Exception {
-        String cuerpo = "{\"empresa\":\"" + empresa + "\",\"correo\":\"" + correo + "\",\"password\":\"" + clave + "\"}";
+    private com.fasterxml.jackson.databind.JsonNode entrarComo(String correo, String clave) throws Exception {
+        String cuerpo = "{\"correo\":\"" + correo + "\",\"password\":\"" + clave + "\"}";
         return new com.fasterxml.jackson.databind.ObjectMapper().readTree(mvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
@@ -5133,8 +5187,8 @@ class AislamientoEmpresasTest {
         String admin = token(empresaA, usuarioA, "ADMIN_SISTEMA");
         try {
             // dos dispositivos con sesión abierta
-            var s1 = entrarComo("demo", "corte@mismo.com", CLAVE);
-            var s2 = entrarComo("demo", "corte@mismo.com", CLAVE);
+            var s1 = entrarComo("corte@mismo.com", CLAVE);
+            var s2 = entrarComo("corte@mismo.com", CLAVE);
             String t1 = "Bearer " + s1.get("token").asText();
             String t2 = "Bearer " + s2.get("token").asText();
             mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t1)).andExpect(status().isOk());
@@ -5149,11 +5203,11 @@ class AislamientoEmpresasTest {
                             .content("{\"refreshToken\":\"" + s1.get("refreshToken").asText() + "\"}"))
                     .andExpect(status().isUnauthorized());
             mvc.perform(post("/api/auth/login").contentType(ct)
-                            .content("{\"empresa\":\"demo\",\"correo\":\"corte@mismo.com\",\"password\":\"" + CLAVE + "\"}"))
+                            .content("{\"correo\":\"corte@mismo.com\",\"password\":\"" + CLAVE + "\"}"))
                     .andExpect(status().isUnauthorized());
 
             // con la clave nueva entra y su token sirve
-            var s3 = entrarComo("demo", "corte@mismo.com", "NuevaClave2026");
+            var s3 = entrarComo("corte@mismo.com", "NuevaClave2026");
             String t3 = "Bearer " + s3.get("token").asText();
             mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t3)).andExpect(status().isOk());
 
@@ -5166,13 +5220,13 @@ class AislamientoEmpresasTest {
             mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t3)).andExpect(status().isUnauthorized());
 
             // cambiar su propia clave también cierra todas sus sesiones, la actual incluida
-            String t4 = "Bearer " + entrarComo("demo", "corte@mismo.com", "NuevaClave2026").get("token").asText();
+            String t4 = "Bearer " + entrarComo("corte@mismo.com", "NuevaClave2026").get("token").asText();
             mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t4)).andExpect(status().isOk());
             mvc.perform(put("/api/perfil/password").header(HttpHeaders.AUTHORIZATION, t4).contentType(ct)
                             .content("{\"passwordActual\":\"NuevaClave2026\",\"passwordNueva\":\"OtraClave2026\"}"))
                     .andExpect(status().isNoContent());
             mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t4)).andExpect(status().isUnauthorized());
-            entrarComo("demo", "corte@mismo.com", "OtraClave2026");
+            entrarComo("corte@mismo.com", "OtraClave2026");
 
             // la otra empresa no se entera: su admin sigue entrando con su token
             mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_SISTEMA")))
@@ -5201,18 +5255,18 @@ class AislamientoEmpresasTest {
         Long usuario = usuarioInternoDeA("recupera@mismo.com", "COMPRADOR");
         org.mockito.Mockito.clearInvocations(emailClient);
         try {
-            var sesion = entrarComo("demo", "recupera@mismo.com", CLAVE);
+            var sesion = entrarComo("recupera@mismo.com", CLAVE);
             String t1 = "Bearer " + sesion.get("token").asText();
 
             // responde lo mismo exista o no el correo o la empresa
             String respuesta = mvc.perform(post("/api/auth/recuperar").contentType(ct)
-                            .content("{\"empresa\":\"demo\",\"correo\":\"recupera@mismo.com\"}"))
+                            .content("{\"correo\":\"recupera@mismo.com\"}"))
                     .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();
             assertEquals(respuesta, mvc.perform(post("/api/auth/recuperar").contentType(ct)
-                            .content("{\"empresa\":\"demo\",\"correo\":\"nadie@mismo.com\"}"))
+                            .content("{\"correo\":\"nadie@mismo.com\"}"))
                     .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString());
             assertEquals(respuesta, mvc.perform(post("/api/auth/recuperar").contentType(ct)
-                            .content("{\"empresa\":\"no-existe\",\"correo\":\"recupera@mismo.com\"}"))
+                            .content("{\"correo\":\"RECUPERA@mismo.com\"}"))
                     .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString());
 
             // solo salió un correo, con el valor en claro; en la base queda únicamente su hash
@@ -5230,43 +5284,43 @@ class AislamientoEmpresasTest {
 
             // pedirlo otra vez enseguida no manda otro correo
             mvc.perform(post("/api/auth/recuperar").contentType(ct)
-                            .content("{\"empresa\":\"demo\",\"correo\":\"recupera@mismo.com\"}"))
+                            .content("{\"correo\":\"recupera@mismo.com\"}"))
                     .andExpect(status().isAccepted());
             org.mockito.Mockito.verify(emailClient, org.mockito.Mockito.times(1)).enviar(
                     org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyString());
 
-            // el token de una empresa no sirve en la otra ni con una clave débil
+            // un token inventado no sirve (no lleva la empresa: se encuentra por su hash), ni uno bueno con una clave débil
             mvc.perform(post("/api/auth/restablecer").contentType(ct)
-                            .content("{\"empresa\":\"empresa-b\",\"token\":\"" + token + "\",\"passwordNueva\":\"NuevaClave2026\"}"))
+                            .content("{\"token\":\"inventado-" + token + "\",\"passwordNueva\":\"NuevaClave2026\"}"))
                     .andExpect(status().isUnauthorized());
             mvc.perform(post("/api/auth/restablecer").contentType(ct)
-                            .content("{\"empresa\":\"demo\",\"token\":\"" + token + "\",\"passwordNueva\":\"corta\"}"))
+                            .content("{\"token\":\"" + token + "\",\"passwordNueva\":\"corta\"}"))
                     .andExpect(status().isBadRequest());
 
             // en su empresa sí: cambia la clave y corta la sesión que había
             mvc.perform(post("/api/auth/restablecer").contentType(ct)
-                            .content("{\"empresa\":\"demo\",\"token\":\"" + token + "\",\"passwordNueva\":\"NuevaClave2026\"}"))
+                            .content("{\"token\":\"" + token + "\",\"passwordNueva\":\"NuevaClave2026\"}"))
                     .andExpect(status().isOk());
             mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t1)).andExpect(status().isUnauthorized());
             mvc.perform(post("/api/auth/refresh").contentType(ct)
                             .content("{\"refreshToken\":\"" + sesion.get("refreshToken").asText() + "\"}"))
                     .andExpect(status().isUnauthorized());
             mvc.perform(post("/api/auth/login").contentType(ct)
-                            .content("{\"empresa\":\"demo\",\"correo\":\"recupera@mismo.com\",\"password\":\"" + CLAVE + "\"}"))
+                            .content("{\"correo\":\"recupera@mismo.com\",\"password\":\"" + CLAVE + "\"}"))
                     .andExpect(status().isUnauthorized());
-            entrarComo("demo", "recupera@mismo.com", "NuevaClave2026");
+            entrarComo("recupera@mismo.com", "NuevaClave2026");
 
             // sirve una sola vez
             mvc.perform(post("/api/auth/restablecer").contentType(ct)
-                            .content("{\"empresa\":\"demo\",\"token\":\"" + token + "\",\"passwordNueva\":\"OtraClave2026\"}"))
+                            .content("{\"token\":\"" + token + "\",\"passwordNueva\":\"OtraClave2026\"}"))
                     .andExpect(status().isUnauthorized());
 
             // vencido tampoco: se reabre el token y se le adelanta la fecha de vencimiento
             jdbc.update("UPDATE recuperacion_password SET usado_en = NULL, expira_en = ? WHERE usuario_id = ?",
                     java.sql.Timestamp.valueOf(java.time.LocalDateTime.now().minusMinutes(1)), usuario);
             mvc.perform(post("/api/auth/restablecer").contentType(ct)
-                            .content("{\"empresa\":\"demo\",\"token\":\"" + token + "\",\"passwordNueva\":\"OtraClave2026\"}"))
+                            .content("{\"token\":\"" + token + "\",\"passwordNueva\":\"OtraClave2026\"}"))
                     .andExpect(status().isUnauthorized());
             assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE usuario_id = ? AND accion = "
                     + "'PASSWORD_RECUPERAR_USAR'", Integer.class, usuario));
@@ -5282,7 +5336,7 @@ class AislamientoEmpresasTest {
         String admin = token(empresaA, usuarioA, "ADMIN_SISTEMA");
         try {
             // sin MFA entra directo y puede vincular su app
-            var sesion = entrarComo("demo", "mfa@mismo.com", CLAVE);
+            var sesion = entrarComo("mfa@mismo.com", CLAVE);
             String t0 = "Bearer " + sesion.get("token").asText();
             var json = new com.fasterxml.jackson.databind.ObjectMapper();
             String secreto = json.readTree(mvc.perform(post("/api/auth/mfa/configurar").header(HttpHeaders.AUTHORIZATION, t0))
@@ -5298,7 +5352,7 @@ class AislamientoEmpresasTest {
 
             // desde ahora el login da un desafío y no una sesión
             var desafio = json.readTree(mvc.perform(post("/api/auth/login").contentType(ct)
-                            .content("{\"empresa\":\"demo\",\"correo\":\"mfa@mismo.com\",\"password\":\"" + CLAVE + "\"}"))
+                            .content("{\"correo\":\"mfa@mismo.com\",\"password\":\"" + CLAVE + "\"}"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.mfaConfigurado").value(true))
                     .andExpect(jsonPath("$.token").doesNotExist())
@@ -5330,7 +5384,7 @@ class AislamientoEmpresasTest {
                     .andExpect(status().isNoContent());
             mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + sesionMfa))
                     .andExpect(status().isUnauthorized());
-            entrarComo("demo", "mfa@mismo.com", CLAVE);
+            entrarComo("mfa@mismo.com", CLAVE);
 
             // no se puede reiniciar el propio y la otra empresa no ve a este usuario
             mvc.perform(patch("/api/usuarios/" + usuarioA + "/mfa/reiniciar").header(HttpHeaders.AUTHORIZATION, admin))
@@ -5359,11 +5413,14 @@ class AislamientoEmpresasTest {
                                     + "\"estadoInicial\":\"ACTIVA\",\"adminNombre\":\"Martín Pérez\","
                                     + "\"adminCorreo\":\"Admin@D.com\",\"adminPassword\":\"ClaveDeD2026\"}"))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.empresa.codigoPublico").value("Ferretería Don Martín"))
+                    .andExpect(jsonPath("$.empresa.codigoPublico").doesNotExist())
                     .andExpect(jsonPath("$.administrador.nombre").value("Martín Pérez"))
                     .andExpect(jsonPath("$.administrador.correo").value("admin@d.com"))
                     .andReturn().getResponse().getContentAsString();
             empresaD = json.readTree(alta).get("empresa").get("id").asLong();
+            // el código no se muestra, pero se guarda como se escribió (lo usa el enlace de registro de proveedores)
+            assertEquals("Ferretería Don Martín", jdbc.queryForObject("SELECT codigo_publico FROM empresa WHERE id = ?",
+                    String.class, empresaD));
 
             // la misma empresa con otras mayúsculas ya existe; un código con barra no se acepta
             mvc.perform(post("/api/plataforma/empresas").header(HttpHeaders.AUTHORIZATION, plataforma)
@@ -5377,10 +5434,10 @@ class AislamientoEmpresasTest {
                                     + "\"adminNombre\":\"X\",\"adminCorreo\":\"y@x.com\",\"adminPassword\":\"ClaveDeD2026\"}"))
                     .andExpect(status().isBadRequest());
 
-            // el administrador entra escribiendo el código tal cual o con otras mayúsculas
-            for (String escrito : new String[] { "Ferretería Don Martín", "ferretería don martín" }) {
+            // el administrador entra solo con su correo y su clave, aunque escriba el correo con otras mayúsculas
+            for (String escrito : new String[] { "admin@d.com", "Admin@D.com" }) {
                 mvc.perform(post("/api/auth/login").contentType(ct)
-                                .content("{\"empresa\":\"" + escrito + "\",\"correo\":\"admin@d.com\",\"password\":\"ClaveDeD2026\"}"))
+                                .content("{\"correo\":\"" + escrito + "\",\"password\":\"ClaveDeD2026\"}"))
                         .andExpect(status().isOk());
             }
 
@@ -5721,12 +5778,12 @@ class AislamientoEmpresasTest {
                     .andExpect(jsonPath("$[?(@.id==" + grupo1 + ")].superAdmins[0].correo").value(correoS1));
 
             // ---- nadie entra por el login normal con ese usuario: ni con la clave del grupo ni recuperándola
-            mvc.perform(post("/api/auth/login").contentType(ct).content("{\"empresa\":\"demo\",\"correo\":\"" + correoS1
+            mvc.perform(post("/api/auth/login").contentType(ct).content("{\"correo\":\"" + correoS1
                             + "\",\"password\":\"" + CLAVE_GRUPO + "\"}"))
                     .andExpect(status().isUnauthorized());
             org.mockito.Mockito.clearInvocations(emailClient);
             mvc.perform(post("/api/auth/recuperar").contentType(ct)
-                            .content("{\"empresa\":\"demo\",\"correo\":\"" + correoS1 + "\"}"))
+                            .content("{\"correo\":\"" + correoS1 + "\"}"))
                     .andExpect(status().isAccepted());
             org.mockito.Mockito.verifyNoInteractions(emailClient);
             assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM recuperacion_password WHERE usuario_id IN "
@@ -5949,7 +6006,7 @@ class AislamientoEmpresasTest {
             // ---- login normal: 401 con cualquier clave, incluso una conocida puesta directo en la base
             jdbc.update("UPDATE usuario SET hash_password = ? WHERE id = ?", passwordEncoder.encode("ClaveConocida-2026"), vinculadoId);
             for (String clave : new String[] { "ClaveConocida-2026", "otra-clave-cualquiera" }) {
-                mvc.perform(post("/api/auth/login").contentType(ct).content("{\"empresa\":\"demo\",\"correo\":\"" + correoS
+                mvc.perform(post("/api/auth/login").contentType(ct).content("{\"correo\":\"" + correoS
                                 + "\",\"password\":\"" + clave + "\"}"))
                         .andExpect(status().isUnauthorized());
             }

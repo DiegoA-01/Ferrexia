@@ -66,7 +66,7 @@ public class GrupoEmpresaService {
             }
             Optional<Suscripcion> s = suscripcionRepository.findByEmpresaId(e.getId());
             if (s.map(x -> x.getEstado().permiteAcceso()).orElse(false)) {
-                resultado.add(new EmpresaEntrableResponse(e.getId(), e.getRazonSocial(), e.getCodigoPublico(),
+                resultado.add(new EmpresaEntrableResponse(e.getId(), e.getRazonSocial(),
                         s.get().getEstado().name()));
             }
         }

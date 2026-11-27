@@ -5,7 +5,6 @@ import { Page, expect, test } from '@playwright/test';
 
 /** Cuentas que deja `scripts/sembrar_demo.py` (archivo local, nunca se sube a git). */
 interface Credenciales {
-  empresa: string;
   /** Correo del cajero (por defecto el de la siembra). */
   cajero?: string;
   /** Correo del supervisor de ventas (por defecto el de la siembra). */
@@ -26,7 +25,7 @@ function credenciales(): Credenciales {
 }
 
 /**
- * Inicia sesión con el código de la empresa.
+ * Inicia sesión con correo y contraseña (spec 037).
  *
  * @param page   página
  * @param c      cuentas de la demo
@@ -34,7 +33,6 @@ function credenciales(): Credenciales {
  */
 async function entrar(page: Page, c: Credenciales, correo: string): Promise<void> {
   await page.goto('/ingreso');
-  await page.locator('#empresa').fill(c.empresa);
   await page.locator('#correo').fill(correo);
   await page.locator('#password').fill(c.cuentas[correo]);
   await page.getByRole('button', { name: 'Ingresar' }).click();

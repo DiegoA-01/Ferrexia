@@ -46,6 +46,7 @@ import com.proyecto.supply_core.security.context.PlataformaAutenticada;
 import com.proyecto.supply_core.security.repository.RefreshTokenRepository;
 import com.proyecto.supply_core.usuario.repository.AdministradorVista;
 import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
+import com.proyecto.supply_core.usuario.service.CorreoGlobal;
 
 class EmpresaPlataformaServiceTest {
 
@@ -59,8 +60,9 @@ class EmpresaPlataformaServiceTest {
     private final PlataformaAuditoriaService auditoria = mock(PlataformaAuditoriaService.class);
     private final RefreshTokenRepository refresh = mock(RefreshTokenRepository.class);
     private final UsuarioRepository usuarios = mock(UsuarioRepository.class);
+    private final CorreoGlobal correoGlobal = mock(CorreoGlobal.class);
     private final EmpresaPlataformaService service = new EmpresaPlataformaService(empresas, suscripciones, planes,
-            modulos, excepciones, alta, acceso, auditoria, refresh, usuarios);
+            modulos, excepciones, alta, acceso, auditoria, refresh, usuarios, correoGlobal);
 
     private Plan basico;
     private Plan pro;
@@ -112,7 +114,6 @@ class EmpresaPlataformaServiceTest {
         assertEquals("laura@eltornillo.co", d.administrador().correo());
         assertEquals("Ferretería El Tornillo", d.empresa().razonSocial());
         assertEquals("900456789-1", d.empresa().nit());
-        assertEquals("el-tornillo", d.empresa().codigoPublico());
     }
 
     @Test
@@ -138,7 +139,6 @@ class EmpresaPlataformaServiceTest {
         assertEquals(1, lista.size());
         assertEquals("BASICO", lista.get(0).plan());
         assertEquals(EstadoSuscripcion.ACTIVA, lista.get(0).estado());
-        assertEquals("el-tornillo", lista.get(0).codigoPublico());
     }
 
     /** Spec 024: sin planes, todo módulo está habilitado salvo los que la plataforma apagó (el plan BASICO no cuenta). */

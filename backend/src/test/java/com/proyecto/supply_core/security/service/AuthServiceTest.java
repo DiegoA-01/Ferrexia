@@ -118,7 +118,7 @@ class AuthServiceTest {
                 .when(accesoEmpresa).exigirPuedeEntrar(1L);
 
         var ex = assertThrows(AccesoDenegadoException.class,
-                () -> service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")));
+                () -> service.login(new LoginRequest("ana@demo.com", "Secreta123")));
 
         assertEquals("SUSCRIPCION_SUSPENDIDA", ex.getCodigo());
         verify(refreshTokens, never()).emitir(any());
@@ -130,12 +130,12 @@ class AuthServiceTest {
                 .when(accesoEmpresa).exigirPuedeEntrar(1L);
 
         assertThrows(NoAutenticadoException.class,
-                () -> service.login(new LoginRequest("demo", "ana@demo.com", "ClaveMala999")));
+                () -> service.login(new LoginRequest("ana@demo.com", "ClaveMala999")));
     }
 
     @Test
     void loginCorrectoDevuelveTokenYAuditaExito() {
-        LoginResponse r = service.login(new LoginRequest("demo", "ANA@demo.com", "Secreta123"));
+        LoginResponse r = service.login(new LoginRequest("ANA@demo.com", "Secreta123"));
 
         assertNotNull(r.token());
         assertEquals("refresh-1", r.refreshToken());
@@ -148,9 +148,9 @@ class AuthServiceTest {
     @Test
     void claveIncorrectaYCorreoInexistenteDanElMismoMensajeYSeAuditan() {
         NoAutenticadoException clave = assertThrows(NoAutenticadoException.class,
-                () -> service.login(new LoginRequest("demo", "ana@demo.com", "mala")));
+                () -> service.login(new LoginRequest("ana@demo.com", "mala")));
         NoAutenticadoException correo = assertThrows(NoAutenticadoException.class,
-                () -> service.login(new LoginRequest("demo", "nadie@demo.com", "Secreta123")));
+                () -> service.login(new LoginRequest("nadie@demo.com", "Secreta123")));
 
         assertEquals(AuthService.CREDENCIALES_INVALIDAS, clave.getMessage());
         assertEquals(clave.getMessage(), correo.getMessage());
@@ -164,7 +164,7 @@ class AuthServiceTest {
     void cuentaInactivaSeRechazaYSeAudita() {
         usuario.setActivo(false);
         NoAutenticadoException ex = assertThrows(NoAutenticadoException.class,
-                () -> service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")));
+                () -> service.login(new LoginRequest("ana@demo.com", "Secreta123")));
 
         assertEquals(AuthService.CUENTA_INACTIVA, ex.getMessage());
         verify(auditoria).fallo(eq(5L), eq(AccionAuditoria.LOGIN), eq(EntidadAuditada.USUARIO), eq(5L),
@@ -177,7 +177,7 @@ class AuthServiceTest {
     void tresClavesMalasBloqueanLaCuentaYBloqueadaRechazaAunqueLaClaveSeaCorrecta() {
         for (int i = 0; i < 3; i++) {
             assertThrows(NoAutenticadoException.class,
-                    () -> service.login(new LoginRequest("demo", "ana@demo.com", "mala")));
+                    () -> service.login(new LoginRequest("ana@demo.com", "mala")));
         }
 
         assertNotNull(usuario.getBloqueadoHasta());
@@ -186,17 +186,17 @@ class AuthServiceTest {
                 anyString());
 
         NoAutenticadoException ex = assertThrows(NoAutenticadoException.class,
-                () -> service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")));
+                () -> service.login(new LoginRequest("ana@demo.com", "Secreta123")));
         assertEquals(AuthService.CREDENCIALES_INVALIDAS, ex.getMessage());
         verify(refreshTokens, never()).emitir(5L);
     }
 
     @Test
     void loginCorrectoReiniciaElContadorDeFallos() {
-        assertThrows(NoAutenticadoException.class, () -> service.login(new LoginRequest("demo", "ana@demo.com", "mala")));
+        assertThrows(NoAutenticadoException.class, () -> service.login(new LoginRequest("ana@demo.com", "mala")));
         assertEquals(1, usuario.getIntentosFallidos());
 
-        service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123"));
+        service.login(new LoginRequest("ana@demo.com", "Secreta123"));
 
         assertEquals(0, usuario.getIntentosFallidos());
         assertNull(usuario.getBloqueadoHasta());
@@ -206,7 +206,7 @@ class AuthServiceTest {
     void elBloqueoVencidoYaNoImpideEntrar() {
         usuario.setBloqueadoHasta(LocalDateTime.now().minusMinutes(1));
 
-        assertNotNull(service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")).token());
+        assertNotNull(service.login(new LoginRequest("ana@demo.com", "Secreta123")).token());
         assertNull(usuario.getBloqueadoHasta());
     }
 
@@ -242,12 +242,12 @@ class AuthServiceTest {
                 EstadoProveedor.RECHAZADO, EstadoProveedor.SUSPENDIDO }) {
             p.setEstado(estado);
             var ex = assertThrows(NoAutenticadoException.class,
-                    () -> service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")));
+                    () -> service.login(new LoginRequest("ana@demo.com", "Secreta123")));
             assertEquals(AuthService.mensajeProveedor(estado), ex.getMessage());
         }
 
         p.setEstado(EstadoProveedor.HABILITADO);
-        assertEquals(40L, service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")).usuario().proveedorId());
+        assertEquals(40L, service.login(new LoginRequest("ana@demo.com", "Secreta123")).usuario().proveedorId());
     }
 
     @Test
@@ -255,7 +255,7 @@ class AuthServiceTest {
         when(mfa.requiere(usuario)).thenReturn(true);
         when(mfa.desafio(usuario)).thenReturn(LoginResponse.conDesafio("desafio", true, null, null));
 
-        LoginResponse r = service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123"));
+        LoginResponse r = service.login(new LoginRequest("ana@demo.com", "Secreta123"));
 
         assertEquals("desafio", r.desafioMfa());
         assertNull(r.token());
@@ -282,7 +282,7 @@ class AuthServiceTest {
     void elTokenDeSesionLlevaLaVersionDeSesionDelUsuario() {
         usuario.setVersionSesion(7);
 
-        LoginResponse r = service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123"));
+        LoginResponse r = service.login(new LoginRequest("ana@demo.com", "Secreta123"));
 
         JwtUtil jwt = new JwtUtil(new JwtProperties("clave-de-prueba-de-al-menos-32-caracteres!!", 60));
         assertEquals(7, jwt.versionSesion(r.token()));

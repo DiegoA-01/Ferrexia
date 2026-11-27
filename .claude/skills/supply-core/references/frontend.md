@@ -18,7 +18,7 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 
 ## Cuenta y seguridad (2026-11-18, fase 2 de `PLAN_FRONTEND.md`)
 - Ingreso de empresa en dos pasos: si el login trae `desafioMfa` no hay sesión todavía; se pide el código de 6 dígitos (y la clave para vincular la app si es la primera vez) y se canjea en `/api/auth/mfa` (ruta pública en el interceptor; `/mfa/configurar` y `/mfa/activar` sí llevan token). Sin librería de QR: se muestra la clave y un enlace `otpauth://` para el celular.
-- `/recuperar`: recuperación de clave en dos pasos (código de empresa y correo; luego el código que llega por correo y la contraseña nueva). El backend manda un código, no un enlace. Mismo aviso exista o no la cuenta.
+- `/recuperar`: recuperación de clave en dos pasos (solo el correo; luego el código que llega por correo y la contraseña nueva). El backend manda un código, no un enlace. Mismo aviso exista o no la cuenta.
 - Perfil: configurar y activar el segundo factor. Usuarios: chip MFA y botón para reiniciarlo (ADMIN_SISTEMA). `UsuarioResponse` ahora trae `mfaActivo`.
 - `/app/configuracion/notificaciones` (ADMIN_SISTEMA): interruptores de correo y campana por evento.
 - Falta: editar el código de ingreso de una empresa (no existe la ruta en el backend; ver `PLAN_FRONTEND.md`).

@@ -192,18 +192,19 @@ public class AuthService {
     }
 
     /**
-     * Login con un código de empresa que no existe: gasta el mismo tiempo que una clave mala y responde igual,
-     * para que no se pueda averiguar qué empresas existen.
+     * Login con un correo que no pertenece a ninguna empresa (o que es el interno de un super administrador de grupo):
+     * gasta el mismo tiempo que una clave mala y responde igual, para que no se pueda averiguar qué correos existen.
      *
      * @param request credenciales recibidas
      * @return nunca devuelve: siempre lanza
      * @throws NoAutenticadoException siempre
      */
-    public LoginResponse loginEmpresaDesconocida(LoginRequest request) {
+    public LoginResponse loginCorreoDesconocido(LoginRequest request) {
         passwordEncoder.matches(request.password(), hashFicticio);
-        log.info("Login fallido: empresa desconocida ({})", request.empresa());
+        String correo = request.correo().trim().toLowerCase(Locale.ROOT);
+        log.info("Login fallido para {} (correo no registrado)", correo);
         auditoriaService.fallo(null, AccionAuditoria.LOGIN, EntidadAuditada.USUARIO, null,
-                "empresa=" + request.empresa() + "; motivo=empresa no registrada");
+                "correo=" + correo + "; motivo=correo no registrado");
         throw new NoAutenticadoException(CREDENCIALES_INVALIDAS);
     }
 

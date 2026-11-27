@@ -30,14 +30,16 @@ class UsuarioRequestValidationTest {
 
     private static final Set<String> ROLES_BD = Set.of("COMPRADOR", "PROVEEDOR", "ADMIN_SISTEMA");
 
-    private final UsuarioRepository usuarios = mock(UsuarioRepository.class);
+    private final com.proyecto.supply_core.usuario.service.CorreoGlobal correoGlobal =
+            mock(com.proyecto.supply_core.usuario.service.CorreoGlobal.class);
     private final RolRepository roles = mock(RolRepository.class);
     private final CentroCostoRepository centros = mock(CentroCostoRepository.class);
     private Validator validator;
 
     @BeforeEach
     void setUp() {
-        when(usuarios.existsByCorreoIgnoreCase("ocupado@demo.com")).thenReturn(true);
+        when(correoGlobal.enUso(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.isNull()))
+                .thenAnswer(inv -> "ocupado@demo.com".equals(inv.<String>getArgument(0).trim().toLowerCase()));
         when(roles.findByCodigoIn(anyCollection())).thenAnswer(inv -> {
             Collection<String> pedidos = inv.getArgument(0);
             return pedidos.stream().filter(ROLES_BD::contains).map(UsuarioRequestValidationTest::rol).toList();
@@ -51,7 +53,7 @@ class UsuarioRequestValidationTest {
                     @SuppressWarnings("unchecked")
                     public <T extends ConstraintValidator<?, ?>> T getInstance(Class<T> key) {
                         if (key == CorreoUnicoValidator.class) {
-                            return (T) new CorreoUnicoValidator(usuarios);
+                            return (T) new CorreoUnicoValidator(correoGlobal);
                         }
                         if (key == RolesExistentesValidator.class) {
                             return (T) new RolesExistentesValidator(roles);

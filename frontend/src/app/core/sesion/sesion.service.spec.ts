@@ -31,7 +31,7 @@ describe('SesionService + authInterceptor', () => {
   afterEach(() => backend.verify());
 
   it('guarda el JWT en memoria y el refresh en sessionStorage, y lo envía en cada llamada', () => {
-    sesion.ingresar('el-tornillo', 'ana@x.co', 'secreta').subscribe();
+    sesion.ingresar('ana@x.co', 'secreta').subscribe();
     const login = backend.expectOne('/api/auth/login');
     expect(login.request.headers.has('Authorization')).toBe(false);
     login.flush(respuesta('jwt-1', 'r-1'));
@@ -45,7 +45,7 @@ describe('SesionService + authInterceptor', () => {
   });
 
   it('si el JWT venció lo renueva una sola vez y repite la petición', () => {
-    sesion.ingresar('el-tornillo', 'ana@x.co', 'secreta').subscribe();
+    sesion.ingresar('ana@x.co', 'secreta').subscribe();
     backend.expectOne('/api/auth/login').flush(respuesta('jwt-1', 'r-1'));
 
     let resultado: unknown;
@@ -64,7 +64,7 @@ describe('SesionService + authInterceptor', () => {
   });
 
   it('las rutas de la plataforma no llevan el token de la empresa', () => {
-    sesion.ingresar('el-tornillo', 'ana@x.co', 'secreta').subscribe();
+    sesion.ingresar('ana@x.co', 'secreta').subscribe();
     backend.expectOne('/api/auth/login').flush(respuesta('jwt-1', 'r-1'));
 
     http.get('/api/plataforma/empresas').subscribe({ error: () => undefined });

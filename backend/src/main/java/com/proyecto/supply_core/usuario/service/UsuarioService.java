@@ -59,6 +59,7 @@ public class UsuarioService {
     private final AuditoriaService auditoriaService;
     private final SesionUsuarioService sesiones;
     private final MfaUsuarioService mfa;
+    private final CorreoGlobal correoGlobal;
 
     /**
      * @param usuarioRepository acceso a usuarios
@@ -67,10 +68,12 @@ public class UsuarioService {
      * @param auditoriaService  registro de las acciones sensibles sobre usuarios
      * @param sesiones          corta las sesiones al cambiar la clave o desactivar la cuenta
      * @param mfa               segundo factor (reinicio por un administrador)
+     * @param correoGlobal      correo único en todas las empresas (spec 037)
      */
     public UsuarioService(UsuarioRepository usuarioRepository, RolRepository rolRepository,
             PasswordEncoder passwordEncoder, AuditoriaService auditoriaService, SesionUsuarioService sesiones,
-            MfaUsuarioService mfa) {
+            MfaUsuarioService mfa, CorreoGlobal correoGlobal) {
+        this.correoGlobal = correoGlobal;
         this.sesiones = sesiones;
         this.mfa = mfa;
         this.usuarioRepository = usuarioRepository;
@@ -152,8 +155,8 @@ public class UsuarioService {
         Usuario u = buscarEntidad(id);
         exigirNoEsDeGrupo(id);
         String correo = normalizarCorreo(req.correo());
-        if (usuarioRepository.existsByCorreoIgnoreCaseAndIdNot(correo, id)) {
-            throw new NegocioException("CORREO_DUPLICADO", "Ya existe un usuario con el correo " + correo);
+        if (correoGlobal.enUso(correo, id)) {
+            throw new NegocioException("CORREO_DUPLICADO", "Ese correo ya está registrado");
         }
         Set<Rol> roles = resolverRoles(req.roles());
         validarCentroDelSolicitante(roles, req.centroCostoId());

@@ -28,8 +28,7 @@ import { Avisos } from '../../core/ui/avisos';
         <div class="empresas">
           @for (e of empresas(); track e.id) {
             <div class="empresa">
-              <div><strong>{{ e.razonSocial }}</strong>
-                <div class="texto-chico texto-2">Código {{ e.codigoPublico }}</div></div>
+              <div><strong>{{ e.razonSocial }}</strong></div>
               <sc-estado [valor]="e.estado" />
               <button type="button" class="boton primario chico" [disabled]="entrando() !== null || e.estado === 'SUSPENDIDA'"
                       [title]="e.estado === 'SUSPENDIDA' ? 'La suscripción está suspendida' : ''" (click)="entrar(e)">

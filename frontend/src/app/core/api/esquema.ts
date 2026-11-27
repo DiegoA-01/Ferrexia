@@ -4907,8 +4907,8 @@ export interface components {
             /** @enum {string} */
             modoProveedor?: "ABIERTA" | "ESPECIFICA";
             proveedorIds?: number[];
-            lineasSinRepetir?: boolean;
             proveedoresDelModo?: boolean;
+            lineasSinRepetir?: boolean;
         };
         AprobacionResponse: {
             /** Format: int64 */
@@ -5320,7 +5320,6 @@ export interface components {
             id?: number;
             razonSocial?: string;
             nit?: string;
-            codigoPublico?: string;
             plan?: string;
             planNombre?: string;
             /** @enum {string} */
@@ -6422,7 +6421,6 @@ export interface components {
             /** Format: int64 */
             id?: number;
             razonSocial?: string;
-            codigoPublico?: string;
         };
         GrupoResponse: {
             /** Format: int64 */
@@ -6574,8 +6572,8 @@ export interface components {
             /** @enum {string} */
             motivoRechazo?: "DANADO" | "NO_CUMPLE_ESPECIFICACION" | "VENCIDO" | "CANTIDAD_ERRADA" | "OTRO";
             observacionCalidad?: string;
-            rechazoNoSuperaRecibido?: boolean;
             motivoPresenteSiRechaza?: boolean;
+            rechazoNoSuperaRecibido?: boolean;
         };
         RegistrarRecepcionRequest: {
             /** Format: int64 */
@@ -7160,8 +7158,8 @@ export interface components {
             /** Format: date */
             vigenteHasta: string;
             precios: components["schemas"]["PrecioRequest"][];
-            vigenciaEnOrden?: boolean;
             productosSinRepetir?: boolean;
+            vigenciaEnOrden?: boolean;
         };
         PrecioRequest: {
             /** Format: int64 */
@@ -7253,7 +7251,6 @@ export interface components {
             supervisor?: string;
         };
         ReiniciarPasswordRequest: {
-            empresa: string;
             token: string;
             passwordNueva: string;
         };
@@ -7264,7 +7261,6 @@ export interface components {
             refreshToken: string;
         };
         RecuperarPasswordRequest: {
-            empresa: string;
             /** Format: email */
             correo: string;
         };
@@ -7280,7 +7276,6 @@ export interface components {
             codigo: string;
         };
         LoginRequest: {
-            empresa: string;
             /** Format: email */
             correo: string;
             password: string;
@@ -8357,7 +8352,6 @@ export interface components {
             /** Format: int64 */
             id?: number;
             razonSocial?: string;
-            codigoPublico?: string;
             estado?: string;
         };
         PageResponseFacturaResponse: {

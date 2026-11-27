@@ -175,7 +175,7 @@ public class RefreshTokenService {
      * @param valor texto del token
      * @return hash de 64 caracteres
      */
-    static String hash(String valor) {
+    public static String hash(String valor) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(valor.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(digest);

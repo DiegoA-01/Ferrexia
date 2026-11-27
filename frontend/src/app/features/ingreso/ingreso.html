@@ -53,14 +53,9 @@
       </form>
     } @else {
     <h2>Ingresa a tu empresa</h2>
-    <p class="texto-2">Usa el código que te dio el administrador de tu empresa.</p>
+    <p class="texto-2">Usa el correo y la contraseña que te dio el administrador de tu empresa.</p>
 
     <form [formGroup]="form" (ngSubmit)="ingresar()" class="formulario" novalidate>
-      <div class="campo">
-        <label for="empresa">Código de empresa</label>
-        <input id="empresa" class="entrada" formControlName="empresa" autocomplete="organization" placeholder="el-tornillo">
-        @if (invalido('empresa')) { <span class="error">Escribe el código de tu empresa.</span> }
-      </div>
       <div class="campo">
         <label for="correo">Correo</label>
         <input id="correo" class="entrada" type="email" formControlName="correo" autocomplete="username" placeholder="tu.nombre@empresa.co">

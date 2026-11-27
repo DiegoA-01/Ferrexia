@@ -132,7 +132,7 @@ class GrupoControllerTest extends WebTestBase {
 
     @Test
     void conElTokenDelGrupoSeVenLasEmpresasSeEntraYSeLeeElTablero() throws Exception {
-        when(empresaService.empresas()).thenReturn(List.of(new EmpresaEntrableResponse(10L, "A", "a", "ACTIVA")));
+        when(empresaService.empresas()).thenReturn(List.of(new EmpresaEntrableResponse(10L, "A", "ACTIVA")));
         when(empresaService.entrar(10L)).thenReturn(new LoginResponse("jwt", "Bearer", 900, null, "refresh"));
         when(empresaService.entrar(99L)).thenThrow(new NoEncontradoException("La empresa indicada no existe"));
         TableroEmpresaResponse total = new TableroEmpresaResponse(null, null, new BigDecimal("10.00"),
