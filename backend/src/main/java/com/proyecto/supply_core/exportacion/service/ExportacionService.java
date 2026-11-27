@@ -59,6 +59,7 @@ import com.proyecto.supply_core.reporte.dto.VentasTurnoReporte;
 import com.proyecto.supply_core.reporte.enums.AgrupacionVenta;
 import com.proyecto.supply_core.reporte.service.CajaReporteService;
 import com.proyecto.supply_core.reporte.service.VentaReporteService;
+import com.proyecto.supply_core.security.context.Permisos;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.usuario.service.UsuarioService;
@@ -170,27 +171,45 @@ public class ExportacionService {
      * @param desde   primer día (vacío = primer día del mes)
      * @param hasta   último día (vacío = hoy)
      * @param agrupar agrupación (vacío = por día)
+     * @param sedeId  solo las cajas de esa sede (vacío = todas)
      * @param destino descarga o correo
-     * @return archivo generado
+     * @return archivo generado (sin las columnas de costo y margen si no tiene el permiso REPORTE_MARGEN)
      * @throws FormatoNoSoportadoException si el formato no es xlsx ni pdf
      */
-    public ArchivoExportado ventas(String formato, LocalDate desde, LocalDate hasta, AgrupacionVenta agrupar,
+    public ArchivoExportado ventas(String formato, LocalDate desde, LocalDate hasta, AgrupacionVenta agrupar, Long sedeId,
             DestinoExportacion destino) {
         FormatoExportacion f = exigir(formato, EXCEL_Y_PDF, "El reporte de ventas");
-        VentaReporte r = ventaReporte.reporte(desde, hasta, agrupar);
+        VentaReporte r = ventaReporte.reporte(desde, hasta, agrupar, sedeId);
         boolean porMedio = r.agrupar() == AgrupacionVenta.MEDIO_PAGO;
-        List<String> columnas = porMedio
+        boolean conMargen = usuario().tienePermiso(Permisos.REPORTE_MARGEN);
+        List<String> columnas = new ArrayList<>(porMedio
                 ? List.of("Medio de pago", "Ventas", "Cobrado", "Devuelto", "Neto")
-                : List.of(titulo(r.agrupar()), "Ventas", "Unidades", "Bruto", "Devoluciones", "Neto", "Base sin IVA",
-                        "Costo", "Margen", "Margen %");
-        List<List<Object>> filas = new ArrayList<>(r.filas().stream().<List<Object>>map(x -> porMedio
-                ? Arrays.asList(x.nombre(), x.ventas(), x.bruto(), x.devoluciones(), x.neto())
-                : Arrays.asList(x.nombre(), x.ventas(), Cantidad.de(x.unidades()), x.bruto(), x.devoluciones(), x.neto(),
-                        x.baseNeta(), x.costo(), x.margen(), x.margenPct())).toList());
+                : List.of(titulo(r.agrupar()), "Ventas", "Unidades", "Bruto", "Devoluciones", "Neto", "Base sin IVA"));
+        if (!porMedio && conMargen) {
+            columnas.addAll(List.of("Costo", "Margen", "Margen %"));
+        }
+        List<List<Object>> filas = new ArrayList<>(r.filas().stream().<List<Object>>map(x -> {
+            if (porMedio) {
+                return Arrays.asList(x.nombre(), x.ventas(), x.bruto(), x.devoluciones(), x.neto());
+            }
+            List<Object> fila = new ArrayList<>(Arrays.asList(x.nombre(), x.ventas(), Cantidad.de(x.unidades()), x.bruto(),
+                    x.devoluciones(), x.neto(), x.baseNeta()));
+            if (conMargen) {
+                fila.addAll(Arrays.asList(x.costo(), x.margen(), x.margenPct()));
+            }
+            return fila;
+        }).toList());
         VentaReporte.Totales tt = r.totales();
-        filas.add(porMedio ? Arrays.asList("Total cobrado (con redondeo)", tt.ventas(), null, null, tt.neto())
-                : Arrays.asList("Total (redondeo " + tt.redondeo().toPlainString() + ")", tt.ventas(), null, tt.bruto(),
-                        tt.devoluciones(), tt.neto(), tt.baseNeta(), tt.costo(), tt.margen(), tt.margenPct()));
+        if (porMedio) {
+            filas.add(Arrays.asList("Total cobrado (con redondeo)", tt.ventas(), null, null, tt.neto()));
+        } else {
+            List<Object> total = new ArrayList<>(Arrays.asList("Total (redondeo " + tt.redondeo().toPlainString() + ")",
+                    tt.ventas(), null, tt.bruto(), tt.devoluciones(), tt.neto(), tt.baseNeta()));
+            if (conMargen) {
+                total.addAll(Arrays.asList(tt.costo(), tt.margen(), tt.margenPct()));
+            }
+            filas.add(total);
+        }
         String periodo = "Ventas netas del " + r.desde() + " al " + r.hasta() + (r.soloPropio() ? " (solo las suyas)" : "")
                 + ". Ticket promedio: " + (tt.ticketPromedio() == null ? "sin ventas" : tt.ticketPromedio().toPlainString());
         byte[] bytes = f == FormatoExportacion.PDF
@@ -200,7 +219,7 @@ public class ExportacionService {
                         columnas, filas);
         ArchivoExportado archivo = new ArchivoExportado(nombre("reporte-ventas", f), f, bytes, filas.size());
         return entregar(archivo, destino, null, "REPORTE_VENTAS; desde=" + r.desde() + "; hasta=" + r.hasta()
-                + "; agrupar=" + r.agrupar());
+                + "; agrupar=" + r.agrupar() + (sedeId == null ? "" : "; sede=" + sedeId));
     }
 
     /**
@@ -318,6 +337,7 @@ public class ExportacionService {
             case VENDEDOR -> "Vendedor";
             case CAJERO -> "Cajero";
             case CAJA -> "Caja";
+            case TIPO_SERVICIO -> "Tipo de servicio";
             case MEDIO_PAGO -> "Medio de pago";
         };
     }

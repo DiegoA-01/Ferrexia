@@ -89,14 +89,15 @@ public class VentaReporteController {
      * @param desde   primer día (vacío = primer día del mes)
      * @param hasta   último día (vacío = hoy)
      * @param agrupar agrupación (vacío = por día)
-     * @return reporte
+     * @param sedeId  solo las cajas de esa sede (opcional; una sede de otra empresa da 404)
+     * @return reporte (sin costo ni margen si no tiene el permiso REPORTE_MARGEN)
      */
     @GetMapping("/ventas")
     @RequierePermiso(Permisos.REPORTE_VENTAS)
     public VentaReporte ventas(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
-            @RequestParam(required = false) AgrupacionVenta agrupar) {
-        return ventaReporte.reporte(desde, hasta, agrupar);
+            @RequestParam(required = false) AgrupacionVenta agrupar, @RequestParam(required = false) Long sedeId) {
+        return ventaReporte.reporte(desde, hasta, agrupar, sedeId);
     }
 
     /**

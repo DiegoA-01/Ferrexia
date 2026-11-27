@@ -12,9 +12,9 @@ import { api, parametros } from '../http/api';
 export class ReportesVentasService {
   private readonly http = inject(HttpClient);
 
-  /** @param desde fecha ISO; @param hasta fecha ISO; @param agrupar agrupación */
-  ventas(desde: string | null, hasta: string | null, agrupar: AgrupacionVenta): Observable<VentaReporte> {
-    return this.http.get<VentaReporte>(api('/api/reportes/ventas'), { params: parametros({ desde, hasta, agrupar }) });
+  /** @param desde fecha ISO; @param hasta fecha ISO; @param agrupar agrupación; @param sedeId sede (null = toda la empresa) */
+  ventas(desde: string | null, hasta: string | null, agrupar: AgrupacionVenta, sedeId: number | null = null): Observable<VentaReporte> {
+    return this.http.get<VentaReporte>(api('/api/reportes/ventas'), { params: parametros({ desde, hasta, agrupar, sedeId }) });
   }
 
   /** @param desde fecha ISO; @param hasta fecha ISO */
@@ -53,10 +53,11 @@ export class ReportesVentasService {
     return this.http.post<Cuadre>(api(`/api/reportes/cuadre/${fecha}`), {});
   }
 
-  /** @param formato xlsx o pdf; @param desde fecha ISO; @param hasta fecha ISO; @param agrupar agrupación */
-  exportarVentas(formato: 'xlsx' | 'pdf', desde: string | null, hasta: string | null, agrupar: AgrupacionVenta): Observable<Blob> {
+  /** @param formato xlsx o pdf; @param desde fecha ISO; @param hasta fecha ISO; @param agrupar agrupación; @param sedeId sede (null = toda la empresa) */
+  exportarVentas(formato: 'xlsx' | 'pdf', desde: string | null, hasta: string | null, agrupar: AgrupacionVenta,
+    sedeId: number | null = null): Observable<Blob> {
     return this.http.get(api('/api/exportaciones/reportes/ventas'),
-      { params: parametros({ formato, desde, hasta, agrupar }), responseType: 'blob' });
+      { params: parametros({ formato, desde, hasta, agrupar, sedeId }), responseType: 'blob' });
   }
 
   /** @param formato xlsx o pdf; @param desde fecha ISO; @param hasta fecha ISO */

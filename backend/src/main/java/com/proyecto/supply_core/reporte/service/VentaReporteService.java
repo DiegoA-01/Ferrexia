@@ -16,6 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.exception.ParametroInvalidoException;
 import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.reporte.dto.VentaReporte;
@@ -45,7 +46,7 @@ public class VentaReporteService {
             v.id AS venta_id, v.caja_id, c.nombre AS caja, v.cajero_usuario_id, uc.nombre_completo AS cajero,
             v.vendedor_usuario_id, uv.nombre_completo AS vendedor, v.cliente_id, cl.nombre AS cliente, l.producto_id,
             CONCAT(p.codigo, ' - ', p.nombre) AS producto, p.categoria_producto_id, cat.nombre AS categoria,
-            l.costo_unitario
+            l.costo_unitario, v.tipo_servicio
             """;
     private static final String UNIONES = """
             JOIN caja c ON c.id = v.caja_id
@@ -84,11 +85,52 @@ public class VentaReporteService {
      */
     @Transactional(readOnly = true)
     public VentaReporte reporte(LocalDate desde, LocalDate hasta, AgrupacionVenta agrupar) {
+        return reporte(desde, hasta, agrupar, null);
+    }
+
+    /**
+     * Reporte de ventas netas con filtro opcional por sede (spec 034). Sin el permiso {@code REPORTE_MARGEN}, el costo y
+     * el margen salen en {@code null}.
+     *
+     * @param desde   primer día (vacío = primer día del mes en curso)
+     * @param hasta   último día (vacío = hoy)
+     * @param agrupar agrupación (vacío = por día)
+     * @param sedeId  solo las ventas de las cajas de esa sede (vacío = todas)
+     * @return reporte de ventas netas
+     * @throws ParametroInvalidoException si el periodo está al revés o pasa {@value #DIAS_MAXIMO} días
+     * @throws NoEncontradoException      si la sede no existe en la empresa
+     */
+    @Transactional(readOnly = true)
+    public VentaReporte reporte(LocalDate desde, LocalDate hasta, AgrupacionVenta agrupar, Long sedeId) {
         LocalDate[] p = periodo(desde, hasta);
-        Long propio = limiteDe(SesionActual.usuario());
+        UsuarioAutenticado u = SesionActual.usuario();
+        Long propio = limiteDe(u);
         AgrupacionVenta a = agrupar == null ? AgrupacionVenta.DIA : agrupar;
-        Datos d = leer(p[0], p[1], propio, a == AgrupacionVenta.MEDIO_PAGO);
-        return AgregadorVentas.armar(p[0], p[1], a, d.lineas(), d.cobros(), d.redondeo(), propio != null);
+        if (sedeId != null) {
+            Integer existe = jdbc.queryForObject("SELECT COUNT(*) FROM sede WHERE id = ? AND empresa_id = ?", Integer.class,
+                    sedeId, EmpresaContexto.requerida());
+            if (existe == null || existe == 0) {
+                throw new NoEncontradoException("Sede", sedeId);
+            }
+        }
+        Datos d = leer(p[0], p[1], propio, a == AgrupacionVenta.MEDIO_PAGO, sedeId);
+        VentaReporte r = AgregadorVentas.armar(p[0], p[1], a, d.lineas(), d.cobros(), d.redondeo(), propio != null);
+        return u.tienePermiso(Permisos.REPORTE_MARGEN) ? r : sinMargen(r);
+    }
+
+    /**
+     * Quita el costo y el margen del reporte (filas y totales).
+     *
+     * @param r reporte completo
+     * @return el mismo reporte con costo, margen, margen % y base sin costo en {@code null}
+     */
+    static VentaReporte sinMargen(VentaReporte r) {
+        List<VentaReporte.Fila> filas = r.filas().stream().map(f -> new VentaReporte.Fila(f.clave(), f.nombre(), f.ventas(),
+                f.unidades(), f.bruto(), f.devoluciones(), f.neto(), f.baseNeta(), null, null, null, null)).toList();
+        VentaReporte.Totales t = r.totales();
+        return new VentaReporte(r.desde(), r.hasta(), r.agrupar(), filas, new VentaReporte.Totales(t.ventas(), t.bruto(),
+                t.devoluciones(), t.redondeo(), t.neto(), t.baseNeta(), null, null, null, null, t.ticketPromedio()),
+                r.soloPropio());
     }
 
     /**
@@ -101,7 +143,7 @@ public class VentaReporteService {
      */
     @Transactional(readOnly = true)
     public VentaReporte deEmpresa(LocalDate desde, LocalDate hasta, AgrupacionVenta agrupar) {
-        Datos d = leer(desde, hasta, null, agrupar == AgrupacionVenta.MEDIO_PAGO);
+        Datos d = leer(desde, hasta, null, agrupar == AgrupacionVenta.MEDIO_PAGO, null);
         return AgregadorVentas.armar(desde, hasta, agrupar, d.lineas(), d.cobros(), d.redondeo(), false);
     }
 
@@ -138,9 +180,10 @@ public class VentaReporteService {
      * @param hasta      último día
      * @param propio     usuario al que se limita ({@code null} = todos)
      * @param conCobros  si hay que leer cobros y reembolsos
+     * @param sedeId     sede de la caja ({@code null} = todas)
      * @return datos del periodo
      */
-    private Datos leer(LocalDate desde, LocalDate hasta, Long propio, boolean conCobros) {
+    private Datos leer(LocalDate desde, LocalDate hasta, Long propio, boolean conCobros, Long sedeId) {
         Long empresa = EmpresaContexto.requerida();
         Timestamp ini = Timestamp.valueOf(desde.atStartOfDay());
         Timestamp fin = Timestamp.valueOf(hasta.plusDays(1).atStartOfDay());
@@ -149,6 +192,11 @@ public class VentaReporteService {
         if (propio != null) {
             args.add(propio);
             args.add(propio);
+        }
+        if (sedeId != null) {
+            filtro += " AND v.caja_id IN (SELECT cj.id FROM caja cj WHERE cj.sede_id = ? AND cj.empresa_id = ?)";
+            args.add(sedeId);
+            args.add(empresa);
         }
         Object[] a = args.toArray();
 
@@ -221,7 +269,7 @@ public class VentaReporteService {
                 vendedor, rs.getString("vendedor"), rs.getLong("cliente_id"),
                 rs.getString("cliente"), rs.getLong("producto_id"), rs.getString("producto"),
                 rs.getLong("categoria_producto_id"), rs.getString("categoria"), unidades, total,
-                base.setScale(2, RoundingMode.HALF_UP), costo, devolucion);
+                base.setScale(2, RoundingMode.HALF_UP), costo, devolucion, rs.getString("tipo_servicio"));
     }
 
     /**

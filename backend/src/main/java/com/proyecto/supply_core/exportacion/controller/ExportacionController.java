@@ -60,6 +60,7 @@ public class ExportacionController {
      * @param desde   primer día (vacío = primer día del mes)
      * @param hasta   último día (vacío = hoy)
      * @param agrupar agrupación (vacío = por día)
+     * @param sedeId  solo las cajas de esa sede (opcional)
      * @return archivo adjunto
      */
     @GetMapping("/reportes/ventas")
@@ -68,8 +69,8 @@ public class ExportacionController {
     public ResponseEntity<byte[]> reporteVentas(@RequestParam(required = false) String formato,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
-            @RequestParam(required = false) AgrupacionVenta agrupar) {
-        return descarga(exportacionService.ventas(formato, desde, hasta, agrupar, DestinoExportacion.DESCARGA));
+            @RequestParam(required = false) AgrupacionVenta agrupar, @RequestParam(required = false) Long sedeId) {
+        return descarga(exportacionService.ventas(formato, desde, hasta, agrupar, sedeId, DestinoExportacion.DESCARGA));
     }
 
     /**

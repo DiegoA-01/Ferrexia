@@ -159,6 +159,7 @@ Después se sumaron `CAJA_RETIRO_SIN_PIN`, `CAJA_GASTO_SIN_PIN` y `CAJA_INGRESO_
 | `REPORTE_COMPRAS` | Ver reportes de gasto y proveedores | Administrativo, Admin. compras, Aprobador, Contador/Auditor, Compras | ReporteController |
 | `REPORTE_INVENTARIO` | Ver el reporte de inventario | Administrativo, Admin. compras, Bodega, Aprobador, Contador/Auditor, Compras | ReporteController |
 | `REPORTE_ROTACION` | Ver la rotación de inventario | Administrativo, Admin. compras, Dueño, Bodega, Aprobador, Contador/Auditor, Compras | RotacionController |
+| `REPORTE_MARGEN` | Ver el costo y el margen en el reporte de ventas | Dueño, Administrador, Contador/Auditor | VentaReporteService, ExportacionService |
 | `REPORTE_VENTAS` | Ver reportes de ventas | Dueño, Contador/Auditor, Cajero, Supervisor, Vendedor | ExportacionController, VentaReporteController |
 | `REPORTE_VENTAS_DUENO` | Ver tablero de ventas y cuadres diarios | Dueño, Contador/Auditor | VentaReporteController |
 | `TABLERO_VER` | Ver el tablero de compras | Admin. compras, Dueño, Contador/Auditor | TableroController |

@@ -9,6 +9,7 @@ import { CajaService } from '../../core/servicios/caja.service';
 import { ReportesVentasService } from '../../core/servicios/reportes-ventas.service';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos, descargar } from '../../core/ui/avisos';
+import { SelectorSede } from '../../core/ui/selector-sede';
 import { MEDIOS } from '../caja/caja';
 
 /** Pestañas de la pantalla. */
@@ -22,7 +23,7 @@ export const ESTADOS_SIN_EXISTENCIA: Record<string, string> = {
 /** Nombre de cada agrupación del reporte de ventas. */
 export const AGRUPACIONES: Record<AgrupacionVenta, string> = {
   DIA: 'Día', SEMANA: 'Semana', MES: 'Mes', PRODUCTO: 'Producto', CATEGORIA: 'Categoría', CLIENTE: 'Cliente',
-  VENDEDOR: 'Vendedor', CAJERO: 'Cajero', CAJA: 'Caja', MEDIO_PAGO: 'Medio de pago',
+  VENDEDOR: 'Vendedor', CAJERO: 'Cajero', CAJA: 'Caja', TIPO_SERVICIO: 'Tipo de servicio', MEDIO_PAGO: 'Medio de pago',
 };
 
 /** Roles que ven todo (caja y cuadre); el cajero y el vendedor solo ven sus ventas. */
@@ -34,7 +35,7 @@ const SUPERVISION = ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'];
  */
 @Component({
   selector: 'sc-reportes-ventas',
-  imports: [FormsModule, PesosPipe, NumeroPipe, FechaPipe],
+  imports: [FormsModule, PesosPipe, NumeroPipe, FechaPipe, SelectorSede],
   templateUrl: './reportes-ventas.html',
   styleUrl: './reportes-ventas.scss',
 })
@@ -56,6 +57,8 @@ export class ReportesVentas implements OnInit {
   protected readonly desde = signal<string>(primerDiaDelMes());
   protected readonly hasta = signal<string>(hoy());
   protected readonly agrupar = signal<AgrupacionVenta>('DIA');
+  /** Sede elegida en el reporte de ventas (spec 034); {@code null} = toda la empresa. */
+  protected readonly sedeId = signal<number | null>(null);
   protected readonly ventas = signal<VentaReporte | null>(null);
   protected readonly caja = signal<CajaReporte | null>(null);
   protected readonly cuadres = signal<Pagina<Cuadre> | null>(null);
@@ -69,6 +72,8 @@ export class ReportesVentas implements OnInit {
   protected readonly veCaja = computed(() => this.sesion.tieneRol(SUPERVISION));
   protected readonly veCuadre = computed(() => this.sesion.tieneRol(['ADMIN_SISTEMA', 'AUDITOR']));
   protected readonly puedeRevisar = computed(() => this.sesion.tieneRol(['ADMIN_SISTEMA']) && !this.sesion.soloLectura());
+  /** Costo y margen solo se muestran con el permiso REPORTE_MARGEN (spec 034); el backend ya los quita sin él. */
+  protected readonly verMargen = computed(() => this.sesion.tienePermiso('REPORTE_MARGEN'));
   protected readonly porMedio = computed(() => this.ventas()?.agrupar === 'MEDIO_PAGO');
 
   ngOnInit(): void {
@@ -109,7 +114,7 @@ export class ReportesVentas implements OnInit {
 
   protected cargarVentas(): void {
     this.cargando.set(true);
-    this.servicio.ventas(this.desde(), this.hasta(), this.agrupar()).subscribe({
+    this.servicio.ventas(this.desde(), this.hasta(), this.agrupar(), this.sedeId()).subscribe({
       next: r => {
         this.cargando.set(false);
         this.ventas.set(r);
@@ -159,7 +164,7 @@ export class ReportesVentas implements OnInit {
       ? this.servicio.exportarCaja(formato, this.desde(), this.hasta())
       : this.pestana() === 'turnos'
         ? this.servicio.exportarVentasPorTurno(this.desde(), this.hasta(), this.cajaId())
-        : this.servicio.exportarVentas(formato, this.desde(), this.hasta(), this.agrupar());
+        : this.servicio.exportarVentas(formato, this.desde(), this.hasta(), this.agrupar(), this.sedeId());
     peticion.subscribe({
       next: b => descargar(b, `reporte-${this.pestana()}-${this.desde()}-a-${this.hasta()}.${formato}`),
       error: e => this.avisos.error(e),

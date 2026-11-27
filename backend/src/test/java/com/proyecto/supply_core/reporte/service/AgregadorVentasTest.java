@@ -44,7 +44,8 @@ class AgregadorVentasTest {
             String unidades, String total, String base, String costo, boolean devolucion) {
         return new AgregadorVentas.Linea(venta, fecha, 1L, "Caja 1", cajero, "Cajero " + cajero, vendedor,
                 vendedor == null ? null : "Vendedor " + vendedor, 9L, "Cliente", producto, "P-" + producto, producto % 2,
-                "Categoría " + (producto % 2), n(unidades), n(total), n(base), costo == null ? null : n(costo), devolucion);
+                "Categoría " + (producto % 2), n(unidades), n(total), n(base), costo == null ? null : n(costo), devolucion,
+                venta % 2 == 0 ? "DOMICILIO" : "MOSTRADOR");
     }
 
     @Test
@@ -93,6 +94,43 @@ class AgregadorVentasTest {
                 List.of(), n("0"), false).filas();
         assertEquals(2, vendedores.size());
         assertEquals(true, vendedores.stream().anyMatch(f -> AgregadorVentas.VENTA_DIRECTA.equals(f.nombre())));
+    }
+
+    /** Spec 034: por tipo de servicio hay un renglón por mostrador y domicilio y la suma cuadra con el total por día. */
+    @Test
+    void porTipoDeServicioAgrupaMostradorYDomicilioYCuadraConElTotalPorDia() {
+        List<AgregadorVentas.Linea> lineas = List.of(
+                linea(1, LUNES, 7, 1, null, "1", "11900", "10000", "6000", false),
+                linea(2, LUNES, 7, 1, null, "2", "23800", "20000", "12000", false),
+                linea(2, LUNES.plusDays(1), 7, 1, null, "1", "11900", "10000", "6000", true),
+                linea(3, LUNES.plusDays(1), 8, 1, null, "1", "5950", "5000", null, false));
+        VentaReporte porServicio = AgregadorVentas.armar(LUNES, LUNES.plusDays(1), AgrupacionVenta.TIPO_SERVICIO, lineas,
+                List.of(), n("0"), false);
+        assertEquals(List.of("Domicilio", "Mostrador"), porServicio.filas().stream().map(VentaReporte.Fila::nombre)
+                .sorted().toList());
+        VentaReporte porDia = AgregadorVentas.armar(LUNES, LUNES.plusDays(1), AgrupacionVenta.DIA, lineas, List.of(), n("0"),
+                false);
+        assertEquals(0, porServicio.filas().stream().map(VentaReporte.Fila::neto).reduce(BigDecimal.ZERO, BigDecimal::add)
+                .compareTo(porDia.filas().stream().map(VentaReporte.Fila::neto).reduce(BigDecimal.ZERO, BigDecimal::add)));
+        assertEquals(0, porServicio.totales().neto().compareTo(porDia.totales().neto()));
+    }
+
+    @Test
+    void sinMargenQuitaCostoMargenYBaseSinCostoDeFilasYTotales() {
+        List<AgregadorVentas.Linea> lineas = List.of(linea(1, LUNES, 7, 1, null, "1", "11900", "10000", "6000", false));
+        VentaReporte r = VentaReporteService.sinMargen(AgregadorVentas.armar(LUNES, LUNES, AgrupacionVenta.PRODUCTO, lineas,
+                List.of(), n("0"), false));
+        VentaReporte.Fila f = r.filas().get(0);
+        assertNull(f.costo());
+        assertNull(f.margen());
+        assertNull(f.margenPct());
+        assertNull(f.baseSinCosto());
+        assertEquals(n("11900.00"), f.neto());
+        assertNull(r.totales().costo());
+        assertNull(r.totales().margen());
+        assertNull(r.totales().margenPct());
+        assertNull(r.totales().baseSinCosto());
+        assertEquals(n("11900.00"), r.totales().neto());
     }
 
     @Test
