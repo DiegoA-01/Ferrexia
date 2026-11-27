@@ -4907,8 +4907,8 @@ export interface components {
             /** @enum {string} */
             modoProveedor?: "ABIERTA" | "ESPECIFICA";
             proveedorIds?: number[];
-            proveedoresDelModo?: boolean;
             lineasSinRepetir?: boolean;
+            proveedoresDelModo?: boolean;
         };
         AprobacionResponse: {
             /** Format: int64 */
@@ -5952,6 +5952,11 @@ export interface components {
             /** Format: date-time */
             creadoEn?: string;
             categoria?: string;
+            referenciaTipo?: string;
+            /** Format: int64 */
+            referenciaId?: number;
+            consecutivo?: string;
+            totalVenta?: number;
         };
         TurnoResponse: {
             /** Format: int64 */
@@ -7158,8 +7163,8 @@ export interface components {
             /** Format: date */
             vigenteHasta: string;
             precios: components["schemas"]["PrecioRequest"][];
-            productosSinRepetir?: boolean;
             vigenciaEnOrden?: boolean;
+            productosSinRepetir?: boolean;
         };
         PrecioRequest: {
             /** Format: int64 */

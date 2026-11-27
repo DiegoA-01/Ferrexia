@@ -55,6 +55,8 @@ import com.proyecto.supply_core.security.context.Roles;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.usuario.entity.Usuario;
 import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
+import com.proyecto.supply_core.venta.entity.Venta;
+import com.proyecto.supply_core.venta.repository.VentaRepository;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
@@ -76,6 +78,10 @@ public class TurnoService {
     private static final Set<TipoMovimientoCaja> VISIBLES_AL_CAJERO = Set.of(TipoMovimientoCaja.BASE,
             TipoMovimientoCaja.RETIRO, TipoMovimientoCaja.GASTO, TipoMovimientoCaja.INGRESO);
 
+    /** Referencia de los movimientos que pertenecen a una venta (la misma que escribe VentaService). */
+    private static final String REFERENCIA_VENTA = "VENTA";
+
+    private final VentaRepository ventaRepository;
     private final TurnoCajaRepository turnoRepository;
     private final CajaRepository cajaRepository;
     private final MovimientoCajaRepository movimientoRepository;
@@ -101,14 +107,16 @@ public class TurnoService {
      * @param categoriaService     validación de la categoría de un ingreso o egreso (spec 021)
      * @param categoriaRepository  nombres de las categorías en el libro de caja
      * @param cajaUsuarioRepository cajas asignadas a cada persona (spec 025)
+     * @param ventaRepository      ventas a las que apuntan los movimientos (consecutivo y total)
      */
     public TurnoService(TurnoCajaRepository turnoRepository, CajaRepository cajaRepository,
             MovimientoCajaRepository movimientoRepository, EmpresaRepository empresaRepository,
             UsuarioRepository usuarioRepository, AutorizacionService autorizacionService,
             NotificacionService notificacionService, AuditoriaService auditoriaService,
             CategoriaMovimientoCajaService categoriaService, CategoriaMovimientoCajaRepository categoriaRepository,
-            CajaUsuarioRepository cajaUsuarioRepository) {
+            CajaUsuarioRepository cajaUsuarioRepository, VentaRepository ventaRepository) {
         this.cajaUsuarioRepository = cajaUsuarioRepository;
+        this.ventaRepository = ventaRepository;
         this.turnoRepository = turnoRepository;
         this.cajaRepository = cajaRepository;
         this.movimientoRepository = movimientoRepository;
@@ -325,7 +333,7 @@ public class TurnoService {
         var pagina = turnoRepository.buscar(estado, pendientes, cajaId, pageable);
         Map<Long, String> nombres = nombres(pagina.getContent().stream()
                 .flatMap(t -> java.util.stream.Stream.of(t.getCajeroUsuarioId(), t.getAprobadoPorUsuarioId())).toList());
-        return PageResponse.of(pagina, t -> armar(t, false, List.of(), nombres, Map.of()));
+        return PageResponse.of(pagina, t -> armar(t, false, List.of(), nombres, Map.of(), Map.of()));
     }
 
     /**
@@ -425,7 +433,31 @@ public class TurnoService {
                 : movimientos;
         boolean debeRetirar = t.getEstado() == EstadoTurno.ABIERTO && CalculoCaja.debeRetirar(
                 CalculoCaja.esperado(movimientos).get(MedioPago.EFECTIVO), t.getCaja().getTopeEfectivo());
-        return armar(t, debeRetirar, visibles, nombres, categorias);
+        return armar(t, debeRetirar, visibles, nombres, categorias, ventasDe(visibles));
+    }
+
+    /**
+     * @param movimientos movimientos que se muestran
+     * @return las ventas a las que apuntan (referencia {@code VENTA}), por id; el consecutivo y el total salen de aquí
+     */
+    private Map<Long, Venta> ventasDe(List<MovimientoCaja> movimientos) {
+        List<Long> ids = movimientos.stream().filter(m -> REFERENCIA_VENTA.equals(m.getReferenciaTipo()))
+                .map(MovimientoCaja::getReferenciaId).filter(java.util.Objects::nonNull).distinct().toList();
+        Map<Long, Venta> ventas = new HashMap<>();
+        if (!ids.isEmpty()) {
+            ventaRepository.findAllById(ids).forEach(v -> ventas.put(v.getId(), v));
+        }
+        return ventas;
+    }
+
+    /**
+     * @param m      movimiento
+     * @param ventas ventas por id
+     * @return la venta del movimiento, o {@code null} si no pertenece a una
+     */
+    private static Venta ventaDe(MovimientoCaja m, Map<Long, Venta> ventas) {
+        return REFERENCIA_VENTA.equals(m.getReferenciaTipo()) && m.getReferenciaId() != null
+                ? ventas.get(m.getReferenciaId()) : null;
     }
 
     /**
@@ -434,10 +466,11 @@ public class TurnoService {
      * @param movimientos movimientos que se muestran
      * @param nombres     nombres de usuario por id
      * @param categorias  nombres de categoría por id
+     * @param ventas      ventas a las que apuntan los movimientos, por id
      * @return respuesta
      */
     private TurnoResponse armar(TurnoCaja t, boolean debeRetirar, List<MovimientoCaja> movimientos,
-            Map<Long, String> nombres, Map<Long, String> categorias) {
+            Map<Long, String> nombres, Map<Long, String> categorias, Map<Long, Venta> ventas) {
         boolean cerrado = t.getEstado() != EstadoTurno.ABIERTO;
         Map<MedioPago, BigDecimal> esperado = null;
         Map<MedioPago, BigDecimal> contado = null;
@@ -448,7 +481,10 @@ public class TurnoService {
         List<MovimientoCajaResponse> lista = movimientos.stream().map(m -> new MovimientoCajaResponse(m.getId(),
                 m.getTipo(), m.getMedioPago(), m.getMonto(), m.getMotivo(), m.getSoporte(), nombres.get(m.getUsuarioId()),
                 m.getAutorizadoPorUsuarioId() == null ? null : nombres.get(m.getAutorizadoPorUsuarioId()),
-                m.getCreadoEn(), m.getCategoriaId() == null ? null : categorias.get(m.getCategoriaId()))).toList();
+                m.getCreadoEn(), m.getCategoriaId() == null ? null : categorias.get(m.getCategoriaId()),
+                m.getReferenciaTipo(), m.getReferenciaId(),
+                ventaDe(m, ventas) == null ? null : ventaDe(m, ventas).getConsecutivo(),
+                ventaDe(m, ventas) == null ? null : ventaDe(m, ventas).getTotal())).toList();
         return new TurnoResponse(t.getId(), t.getCaja().getId(), t.getCaja().getNombre(),
                 t.getCaja().getBodega() == null ? null : t.getCaja().getBodega().getNombre(), t.getCajeroUsuarioId(),
                 nombres.get(t.getCajeroUsuarioId()), t.getEstado(), t.getAbiertoEn(), t.getBaseApertura(), debeRetirar,

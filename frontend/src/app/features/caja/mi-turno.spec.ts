@@ -137,6 +137,64 @@ describe('Mi turno', () => {
       expect(texto()).toMatch(/GASTO\s*·\s*Papelería\s*·\s*Resma/);
     });
 
+    describe('movimientos agrupados por venta', () => {
+      const venta = (id: number, ventaId: number, consecutivo: string, medio: string, monto: number, total: number) => ({
+        id, tipo: 'VENTA', medioPago: medio, monto, creadoEn: '2026-11-20T10:00:00', referenciaTipo: 'VENTA', referenciaId: ventaId,
+        consecutivo, totalVenta: total });
+      const dosPagos = [venta(2, 9, 'C2-000001', 'EFECTIVO', 1565000, 2565000), venta(3, 9, 'C2-000001', 'TARJETA_CREDITO', 1000000, 2565000)];
+      const filas = () => [...raiz().querySelectorAll('li.venta')];
+
+      it('una venta pagada con dos medios es una sola fila con su total y el resumen de medios', () => {
+        crear({ ...abierto, movimientos: dosPagos as never });
+        expect(filas().length).toBe(1);
+        expect(filas()[0].textContent).toContain('C2-000001');
+        expect(filas()[0].textContent).toMatch(/2\.565\.000/);
+        expect(filas()[0].textContent).toContain('Efectivo + Tarjeta crédito');
+      });
+
+      it('"Ver detalle" muestra los dos pagos y, en efectivo, lo recibido y el cambio', () => {
+        crear({ ...abierto, movimientos: dosPagos as never });
+        raiz().querySelector<HTMLButtonElement>('li.venta button')!.click();
+        backend.expectOne('/api/ventas/9').flush({ id: 9, cambio: 35000, pagos: [
+          { medio: 'EFECTIVO', monto: 1565000, recibido: 1600000 }, { medio: 'TARJETA_CREDITO', monto: 1000000 }] });
+        fixture.detectChanges();
+        const desglose = raiz().querySelector('.desglose')!.textContent!;
+        expect(desglose).toContain('Efectivo');
+        expect(desglose).toContain('Tarjeta crédito');
+        expect(desglose).toMatch(/1\.565\.000/);
+        expect(desglose).toMatch(/1\.000\.000/);
+        expect(desglose).toMatch(/recibió.*1\.600\.000.*cambio.*35\.000/);
+      });
+
+      it('dos ventas distintas son dos filas', () => {
+        crear({ ...abierto, movimientos: [...dosPagos, venta(4, 10, 'C2-000002', 'EFECTIVO', 50000, 50000)] as never });
+        expect(filas().length).toBe(2);
+        expect(filas()[0].textContent).toContain('C2-000002');
+        expect(filas()[1].textContent).toContain('C2-000001');
+      });
+
+      it('un retiro o gasto queda en "Otros movimientos" y no dentro de una venta', () => {
+        crear({ ...abierto, movimientos: [...dosPagos,
+          { id: 5, tipo: 'RETIRO', medioPago: 'EFECTIVO', monto: -20000, motivo: 'A la bóveda' },
+          { id: 6, tipo: 'GASTO', medioPago: 'EFECTIVO', monto: -5000, motivo: 'Resma', categoria: 'Papelería' }] as never });
+        expect(filas().length).toBe(1);
+        expect(filas()[0].textContent).not.toContain('RETIRO');
+        expect(filas()[0].textContent).not.toContain('Resma');
+        const otros = raiz().querySelector('li.otro')!.closest('section')!.textContent!;
+        expect(otros).toContain('Otros movimientos');
+        expect(otros).toContain('RETIRO');
+        expect(otros).toContain('GASTO');
+      });
+
+      it('una anulación de la venta se ve en su detalle y marca la venta como anulada', () => {
+        crear({ ...abierto, movimientos: [dosPagos[0],
+          { id: 7, tipo: 'ANULACION', medioPago: 'EFECTIVO', monto: -1565000, referenciaTipo: 'VENTA', referenciaId: 9 }] as never });
+        expect(filas().length).toBe(1);
+        expect(filas()[0].textContent).toContain('Anulada');
+        expect(raiz().querySelector('li.otro')).toBeNull();
+      });
+    });
+
     it('cambiar a "cerrar" reemplaza el formulario por el cierre', () => {
       crear(abierto);
       elegir('gasto');
