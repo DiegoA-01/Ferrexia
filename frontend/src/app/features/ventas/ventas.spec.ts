@@ -39,9 +39,7 @@ describe('Ventas', () => {
         actual.flush({}, { status: 404, statusText: 'Not Found' });
       }
     }
-    if (!(roles.length === 1 && roles[0] === 'CAJERO')) {
-      backend.expectOne(r => r.url === '/api/ventas').flush(pagina([resumen]));
-    }
+    backend.expectOne(r => r.url === '/api/ventas').flush(pagina([resumen]));
     if (roles.some(r => ['ADMIN_SISTEMA', 'SUPERVISOR_VENTAS', 'AUDITOR'].includes(r))) {
       backend.expectOne('/api/ventas/limites-descuento').flush(limites);
     }
@@ -105,11 +103,19 @@ describe('Ventas', () => {
     r.flush(limites);
   });
 
-  it('el cajero no ve la lista: busca por consecutivo y anula en su turno con el PIN', () => {
+  it('el cajero ve sus ventas al abrir, filtra por fecha y estado, busca por consecutivo y anula con el PIN', () => {
     crear(['CAJERO'], { id: 4, estado: 'ABIERTO' });
-    expect(texto()).toContain('Escriba el consecutivo');
+    expect(texto()).toContain('ventas que usted cobró');
+    expect(texto()).toContain('C1-000005');
+    c()['desde'].set('2026-11-01');
+    c()['hasta'].set('2026-11-26');
+    c()['estado'].set('ANULADA');
     c()['buscar']();
-    backend.expectNone(r => r.url === '/api/ventas');
+    const f = backend.expectOne(r => r.url === '/api/ventas');
+    expect(f.request.params.get('desde')).toBe('2026-11-01');
+    expect(f.request.params.get('hasta')).toBe('2026-11-26');
+    expect(f.request.params.get('estado')).toBe('ANULADA');
+    f.flush(pagina([]));
     c()['consecutivo'].set('C1-000005');
     c()['buscar']();
     backend.expectOne(r => r.url === '/api/ventas' && r.params.get('consecutivo') === 'C1-000005').flush(pagina([resumen]));
@@ -124,6 +130,7 @@ describe('Ventas', () => {
     const r = backend.expectOne('/api/ventas/5/anular');
     expect(r.request.body).toEqual({ motivo: 'El cliente desistió', autorizacion: 'permiso-7' });
     r.flush({ ...venta, estado: 'ANULADA', motivoAnulacion: 'El cliente desistió' });
+    backend.expectOne(x => x.url === '/api/ventas').flush(pagina([]));
     fixture.detectChanges();
     expect(texto()).toContain('Anulada');
     expect(c()['puedeAnular']()).toBe(false);
@@ -156,8 +163,12 @@ describe('Ventas', () => {
     crear(['AUDITOR']);
     c()['consecutivo'].set(' c1-000005 ');
     c()['estado'].set('CONFIRMADA');
+    c()['desde'].set('2026-11-01');
+    c()['hasta'].set('2026-11-26');
     c()['buscar']();
     const r = backend.expectOne(req => req.url === '/api/ventas');
+    expect(r.request.params.get('desde')).toBe('2026-11-01');
+    expect(r.request.params.get('hasta')).toBe('2026-11-26');
     expect(r.request.params.get('consecutivo')).toBe('c1-000005');
     expect(r.request.params.get('estado')).toBe('CONFIRMADA');
     r.flush(pagina([]));

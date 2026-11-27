@@ -76,7 +76,10 @@ export class OrdenDetalle implements OnInit {
   protected readonly versionFecha = signal('');
   protected readonly versionCantidades = signal<Record<number, number>>({});
   protected readonly puedeRecruzar = computed(() => this.sesion.tieneRol(['ADMINISTRATIVO']) && !this.sesion.soloLectura());
-  protected readonly puedeAprobar = computed(() => this.sesion.tieneRol(['ADMIN_COMPRAS']) && !this.sesion.soloLectura());
+  /** Aprobar la factura en revisión: lo decide el permiso FACTURA_APROBAR, no el rol. */
+  protected readonly puedeAprobarFactura = computed(() => this.sesion.tienePermiso('FACTURA_APROBAR') && !this.sesion.soloLectura());
+  /** Anular la factura en revisión: lo decide el permiso FACTURA_ANULAR, no el rol. */
+  protected readonly puedeAnularFactura = computed(() => this.sesion.tienePermiso('FACTURA_ANULAR') && !this.sesion.soloLectura());
   protected readonly puedePagar = computed(() => this.sesion.tieneRol(['ADMINISTRATIVO']) && !this.sesion.soloLectura());
   protected readonly tolerancia = computed(() => this.sesion.empresa()?.toleranciaFacturaPct);
   /** Tesorería registra la factura cuando ya entró mercancía y no hay una vigente. */
