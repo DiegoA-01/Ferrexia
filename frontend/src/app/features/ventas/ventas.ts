@@ -18,6 +18,7 @@ import { MEDIOS_VENTA } from '../pos/pos';
 import { imprimirTiquete } from '../pos/tiquete';
 
 import { Cifra } from '../../core/ui/cifra';
+import { ESTILO_TOTALES, VentanaVidrio } from '../../core/ui/ventana-vidrio';
 /** Línea en el formulario de devolución. */
 interface LineaDevuelta {
   ventaLineaId: number;
@@ -44,49 +45,23 @@ const ROLES_LIMITE: Record<string, string> = { CAJERO: 'Cajero', SUPERVISOR_VENT
  */
 @Component({
   selector: 'sc-ventas',
-  imports: [Cifra, FormsModule, RouterLink, PesosPipe, NumeroPipe, FechaPipe, AutorizacionPin, CambioPago],
+  imports: [Cifra, FormsModule, RouterLink, PesosPipe, NumeroPipe, FechaPipe, AutorizacionPin, CambioPago, VentanaVidrio],
   templateUrl: './ventas.html',
-  host: { '(document:keydown.escape)': 'alEscape()' },
-  styles: `
+  styles: [ESTILO_TOTALES, `
     .filtros { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--sc-borde); align-items: flex-end;
       .campo { min-width: 150px; } }
     .sub { display: block; font-size: 12px; color: var(--sc-texto-2); }
-    .detalle { display: grid; gap: 12px; h2 { margin: 0; } }
-    .velo-venta { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto;
-      background: rgba(15, 23, 42, .5); }
-    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-      .velo-venta { background: rgba(15, 23, 42, .35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-    }
-    .modal-venta { width: min(820px, 100%); max-height: 100%; overflow-y: auto; margin: auto; outline: none; padding: 24px 26px; gap: 14px;
-      border-radius: 24px; color: var(--sc-texto); border: 1px solid rgba(255, 255, 255, .55);
-      background: rgba(255, 255, 255, .97);
-      box-shadow: 0 24px 60px rgba(15, 23, 42, .28), 0 4px 14px rgba(15, 23, 42, .12), inset 0 1px 0 rgba(255, 255, 255, .9);
-      animation: abre-venta .16s ease-out; }
-    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-      .modal-venta { background: linear-gradient(180deg, rgba(255, 255, 255, .88), rgba(255, 255, 255, .74));
-        -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); }
-    }
-    @keyframes abre-venta { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
-    @media (prefers-reduced-motion: reduce) { .modal-venta { animation: none; } }
-    @media (max-width: 600px) { .velo-venta { padding: 12px; } .modal-venta { padding: 18px 16px; border-radius: 20px; } }
-    .enc-venta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
-      h2 { display: flex; align-items: center; gap: 10px; font-size: 22px; } }
-    .acciones-venta { flex-wrap: wrap; gap: 8px; }
     .datos-venta { font-size: 12.5px; color: var(--sc-texto-2); line-height: 1.5; margin-top: -6px; }
-    .modal-venta .boton.anular { background: #c62828; border-color: #c62828; color: #fff; }
-    .modal-venta .boton.anular:hover:not(:disabled) { background: #8e1b1b; border-color: #8e1b1b; }
-    .modal-venta .boton.anular:focus-visible { outline: 3px solid rgba(198, 40, 40, .45); outline-offset: 2px; }
-    .modal-venta .boton.anular:disabled { background: #e3b4b4; border-color: #e3b4b4; color: #fff; cursor: not-allowed; opacity: .8; }
-    .totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 0;
-      > div { padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, .6); border: 1px solid rgba(255, 255, 255, .8);
-        box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
-      dt { font-size: 12px; color: var(--sc-texto-2); } dd { margin: 2px 0 0; font-weight: 700; font-size: 15px; } }
+    .boton.anular { background: #c62828; border-color: #c62828; color: #fff; }
+    .boton.anular:hover:not(:disabled) { background: #8e1b1b; border-color: #8e1b1b; }
+    .boton.anular:focus-visible { outline: 3px solid rgba(198, 40, 40, .45); outline-offset: 2px; }
+    .boton.anular:disabled { background: #e3b4b4; border-color: #e3b4b4; color: #fff; cursor: not-allowed; opacity: .8; }
     .limites { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
     tr.anulada td { color: var(--sc-texto-3); text-decoration: line-through; }
     .correccion { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--sc-borde); border-radius: 12px; }
     .devolver td { vertical-align: middle; }
     .mini { width: 90px; text-align: right; }
-  `,
+  `],
 })
 export class Ventas implements OnInit {
   private readonly ventas = inject(VentaService);
@@ -204,12 +179,9 @@ export class Ventas implements OnInit {
 
   /** @param v venta del historial */
   protected ver(v: VentaResumen): void {
-    // el detalle se abre en una ventana flotante con el foco dentro
+    // el detalle se abre en una ventana flotante (el foco lo lleva la ventana)
     this.ventas.obtener(v.id!).subscribe({
-      next: d => {
-        this.abrir(d);
-        setTimeout(() => document.querySelector<HTMLElement>('.modal-venta')?.focus());
-      },
+      next: d => this.abrir(d),
       error: e => this.avisos.error(e),
     });
   }
@@ -219,20 +191,6 @@ export class Ventas implements OnInit {
     this.detalle.set(null);
     this.correccion.set(null);
     this.pidiendoPin.set(false);
-  }
-
-  /** Escape cierra la ventana salvo que se esté enviando una corrección. */
-  protected alEscape(): void {
-    if (this.detalle() && !this.enviando()) {
-      this.cerrar();
-    }
-  }
-
-  /** @param e clic en el fondo: cierra solo si cayó fuera de la ventana y no hay un panel a medio llenar */
-  protected clicFondo(e: Event): void {
-    if (e.target === e.currentTarget && !this.correccion() && !this.enviando()) {
-      this.cerrar();
-    }
   }
 
   /** @param d venta a mostrar; cierra cualquier corrección a medias */

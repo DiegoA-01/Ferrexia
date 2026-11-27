@@ -104,14 +104,14 @@ describe('Ventas', () => {
     fixture.detectChanges();
     c()['empezar']('anular');
     fixture.detectChanges();
-    (raiz.querySelector('.velo-venta') as HTMLElement).click();
+    (raiz.querySelector('.velo-vidrio') as HTMLElement).click();
     fixture.detectChanges();
     expect(raiz.querySelector('[role="dialog"]')).not.toBeNull();
     c()['correccion'].set(null);
     fixture.detectChanges();
-    (raiz.querySelector('.modal-venta') as HTMLElement).click();
+    (raiz.querySelector('.modal-vidrio') as HTMLElement).click();
     expect(raiz.querySelector('[role="dialog"]')).not.toBeNull();
-    (raiz.querySelector('.velo-venta') as HTMLElement).click();
+    (raiz.querySelector('.velo-vidrio') as HTMLElement).click();
     fixture.detectChanges();
     expect(raiz.querySelector('[role="dialog"]')).toBeNull();
   });

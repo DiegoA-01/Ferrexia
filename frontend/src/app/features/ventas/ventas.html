@@ -46,16 +46,17 @@
   </section>
 
   @if (detalle(); as d) {
-    <div class="velo-venta" (click)="clicFondo($event)">
-        <section class="tarjeta detalle modal-venta" role="dialog" aria-modal="true" aria-labelledby="t-detalle" tabindex="-1">
-                <div class="enc-venta"><h2 id="t-detalle">Venta {{ d.consecutivo }} @if (d.estado === 'ANULADA') { <span class="chip gris">Anulada</span> }</h2>
-                  <div class="fila acciones-venta"><button type="button" class="boton chico" (click)="reimprimir(d.id!)">Reimprimir (COPIA)</button>
-                    @if (puedeAnular()) { <button type="button" class="boton chico anular" (click)="empezar('anular')">Anular</button> }
-                    @if (puedeAnularOtro()) { <button type="button" class="boton chico anular" (click)="empezar('anularOtro')">Anular (turno cerrado)</button> }
-                    @if (puedeCambiarPago()) { <button type="button" class="boton chico" (click)="empezar('pago')">Cambiar pago</button> }
-                    @if (puedeDevolver()) { <button type="button" class="boton chico" (click)="empezar('devolver')">Devolver</button> }
-                    <button type="button" class="boton chico" (click)="cerrar()">Cerrar</button>
-                    <button type="button" class="boton chico" aria-label="Cerrar la ventana" (click)="cerrar()"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div></div>
+    <sc-ventana-vidrio [abierta]="true" [titulo]="'Venta ' + d.consecutivo" idTitulo="t-detalle"
+      [bloquearCierre]="!!correccion() || enviando()" [bloquearEscape]="enviando()" (cerrar)="cerrar()">
+                @if (d.estado === 'ANULADA') { <span etiqueta class="chip gris">Anulada</span> }
+                <ng-container acciones>
+                  <button type="button" class="boton chico" (click)="reimprimir(d.id!)">Reimprimir (COPIA)</button>
+                  @if (puedeAnular()) { <button type="button" class="boton chico anular" (click)="empezar('anular')">Anular</button> }
+                  @if (puedeAnularOtro()) { <button type="button" class="boton chico anular" (click)="empezar('anularOtro')">Anular (turno cerrado)</button> }
+                  @if (puedeCambiarPago()) { <button type="button" class="boton chico" (click)="empezar('pago')">Cambiar pago</button> }
+                  @if (puedeDevolver()) { <button type="button" class="boton chico" (click)="empezar('devolver')">Devolver</button> }
+                  <button type="button" class="boton chico" (click)="cerrar()">Cerrar</button>
+                </ng-container>
                 <p class="sin-margen datos-venta">{{ d.caja }} · {{ d.confirmadaEn | fecha: 'hora' }} · cajero {{ d.cajero }}@if (d.vendedor) { · vendedor {{ d.vendedor }} } · {{ d.cliente }} ({{ d.clienteDocumento }}) · lista {{ d.lista }}</p>
                 @if (d.autorizadaPor) { <p class="chip ambar sin-margen">Autorizó: {{ d.autorizadaPor }}</p> }
                 @if (d.estado === 'ANULADA') { <p class="aviso gris sin-margen">Anulada {{ d.anuladaEn | fecha: 'hora' }}: {{ d.motivoAnulacion }}</p> }
@@ -142,8 +143,7 @@
                 @for (c of d.cambiosPago ?? []; track $index) {
                   <p class="chip ambar sin-margen">Pago corregido {{ c.fecha | fecha: 'hora' }} por {{ c.usuario }}@if (c.autorizadoPor) { (autorizó {{ c.autorizadoPor }}) }: de {{ textoMontos(c.antes) }} a {{ textoMontos(c.despues) }}. {{ c.motivo }}</p>
                 }
-              </section>
-    </div>
+    </sc-ventana-vidrio>
   }
 
   @if (veLimites() && limites().length) {
