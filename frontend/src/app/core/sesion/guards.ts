@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
+import { GrupoSesionService } from './grupo-sesion.service';
 import { PlataformaSesionService } from './plataforma-sesion.service';
 import { Acceso } from './acceso';
 import { SesionService } from './sesion.service';
@@ -29,6 +30,10 @@ export const permisoGuard: CanActivateFn = route => {
 /** Consola del dueño ({@code /plataforma}): sesión de plataforma con MFA. */
 export const plataformaGuard: CanActivateFn = () =>
   inject(PlataformaSesionService).autenticado() ? true : inject(Router).parseUrl('/plataforma/ingreso');
+
+/** Zona del super administrador de un grupo ({@code /grupo}): sesión de grupo con MFA (spec 035). */
+export const grupoGuard: CanActivateFn = () =>
+  inject(GrupoSesionService).autenticado() ? true : inject(Router).parseUrl('/grupo/ingreso');
 
 /** Pantalla de ingreso: si ya hay sesión, lleva a donde corresponde. */
 export const invitadoGuard: CanActivateFn = () => {

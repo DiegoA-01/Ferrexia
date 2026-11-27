@@ -95,6 +95,10 @@ public class UsuarioPermisoService {
             throw new NegocioException("AUTO_PERMISOS", "Nadie cambia sus propios permisos: pídaselo a otro administrador");
         }
         Usuario u = usuario(usuarioId);
+        if (usuarioRepository.contarVinculosDeGrupo(usuarioId) > 0) {
+            throw new NegocioException("USUARIO_DE_GRUPO",
+                    "Este usuario lo administra el grupo de empresas desde la plataforma");
+        }
         Set<String> delRol = delRol(u);
         Map<String, Boolean> pedidos = new TreeMap<>();
         req.ajustes().forEach(a -> pedidos.put(a.permiso().trim().toUpperCase(Locale.ROOT), a.concedido()));

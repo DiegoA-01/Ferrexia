@@ -56,6 +56,17 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<EstadoSesion> estadoSesion(@Param("id") Long id);
 
     /**
+     * Cuenta si el usuario es el Dueño vinculado de un super administrador de grupo (spec 035). Esos usuarios solo se
+     * entran desde el ingreso del grupo: no inician sesión con clave ni recuperan una. SQL nativo porque
+     * {@code usuario_grupo_empresa} es global; el usuario ya es de la empresa del contexto.
+     *
+     * @param id id del usuario
+     * @return 1 si está vinculado a un super administrador, 0 si no
+     */
+    @Query(value = "SELECT COUNT(*) FROM usuario_grupo_empresa WHERE usuario_id = :id", nativeQuery = true)
+    long contarVinculosDeGrupo(@Param("id") Long id);
+
+    /**
      * Usuarios del portal de un proveedor.
      *
      * @param proveedorId id del proveedor

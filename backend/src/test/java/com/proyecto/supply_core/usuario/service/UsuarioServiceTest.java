@@ -216,6 +216,25 @@ class UsuarioServiceTest {
         verify(mfa).reiniciar(2L);
     }
 
+    /** El Dueño vinculado a un super administrador no se toca desde la empresa (USUARIO_DE_GRUPO). */
+    @Test
+    void elUsuarioVinculadoAUnSuperAdministradorNoSeModifica() {
+        Usuario otro = usuario(2L, "otro@x.com", rol("ADMIN_SISTEMA"));
+        when(usuarios.findWithRolesById(2L)).thenReturn(Optional.of(otro));
+        when(usuarios.contarVinculosDeGrupo(2L)).thenReturn(1L);
+        String hash = otro.getHashPassword();
+
+        var e = assertThrows(com.proyecto.supply_core.common.exception.NegocioException.class,
+                () -> service.restablecerPassword(2L, new RestablecerPasswordRequest("ClaveNueva12")));
+        assertEquals("USUARIO_DE_GRUPO", e.getCodigo());
+        assertThrows(com.proyecto.supply_core.common.exception.NegocioException.class, () -> service.activar(2L));
+        assertThrows(com.proyecto.supply_core.common.exception.NegocioException.class, () -> service.desactivar(2L));
+        assertThrows(com.proyecto.supply_core.common.exception.NegocioException.class, () -> service.reiniciarMfa(2L));
+        assertEquals(hash, otro.getHashPassword());
+        verify(mfa, org.mockito.Mockito.never()).reiniciar(2L);
+        verify(sesiones, org.mockito.Mockito.never()).revocarSesiones(otro);
+    }
+
     private static Rol rol(String codigo) {
         Rol r = new Rol();
         r.setCodigo(codigo);

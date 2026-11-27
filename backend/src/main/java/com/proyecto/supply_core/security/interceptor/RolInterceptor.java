@@ -25,7 +25,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * permisos sueltos de cada persona, spec 022).
  * <p>Antes de mirar el rol revisa la suscripción de la empresa en toda petición autenticada (menos
  * {@code /api/auth/**}, para que una empresa suspendida pueda cerrar su sesión): suspendida o cancelada no entra y
- * morosa solo consulta. La consola de la plataforma ({@code /api/plataforma/**}) no pasa por aquí: su token no es de
+ * morosa solo consulta. La consola de la plataforma ({@code /api/plataforma/**}) y la zona del grupo ({@code /api/grupo/**}) no pasan por aquí: su token no es de
  * una empresa.</p>
  * <p>Orden: suscripción, módulo y permiso. Sin el permiso responde 403 {@code PERMISO_REQUERIDO}.</p>
  * <p>Para cada anotación, la del método tiene prioridad sobre la de la clase. Si hay varias, deben cumplirse todas.</p>
@@ -35,6 +35,7 @@ public class RolInterceptor implements HandlerInterceptor {
 
     private static final String PREFIJO_AUTH = "/api/auth/";
     private static final String PREFIJO_PLATAFORMA = "/api/plataforma/";
+    private static final String PREFIJO_GRUPO = "/api/grupo/";
 
     private final AccesoEmpresaService accesoEmpresa;
     private final PermisosService permisos;
@@ -63,7 +64,7 @@ public class RolInterceptor implements HandlerInterceptor {
             return true; // recursos estáticos, etc.
         }
         String ruta = request.getRequestURI().substring(request.getContextPath().length());
-        if (ruta.startsWith(PREFIJO_PLATAFORMA)) {
+        if (ruta.startsWith(PREFIJO_PLATAFORMA) || ruta.startsWith(PREFIJO_GRUPO)) {
             return true;
         }
         UsuarioAutenticado usuario = SesionActual.opcional().orElse(null);

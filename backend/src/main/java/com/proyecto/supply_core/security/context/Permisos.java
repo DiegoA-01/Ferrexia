@@ -240,6 +240,10 @@ public final class Permisos {
     public static final String SOLICITUD_EXCEPCION = "SOLICITUD_EXCEPCION";
     /** Ver el costo y el margen en el reporte de ventas y su exportación (spec 034). */
     public static final String REPORTE_MARGEN = "REPORTE_MARGEN";
+    /** Enviar y anular traslados de mercancía a otra empresa del mismo grupo (spec 035). */
+    public static final String TRASLADO_GRUPO_ENVIAR = "TRASLADO_GRUPO_ENVIAR";
+    /** Recibir los traslados que otra empresa del grupo envió a esta (spec 035). */
+    public static final String TRASLADO_GRUPO_RECIBIR = "TRASLADO_GRUPO_RECIBIR";
     /** Revocar delegaciones de aprobación de otras personas. */
     public static final String DELEGACION_REVOCAR_AJENA = "DELEGACION_REVOCAR_AJENA";
     /** Ver los pedidos internos de todas las sedes. */

@@ -93,6 +93,12 @@ public class RecuperacionPasswordService {
                     "correo=" + limpio + "; motivo=" + (usuario == null ? "correo no registrado" : "cuenta inactiva"));
             return;
         }
+        if (usuarioRepository.contarVinculosDeGrupo(usuario.getId()) > 0) {
+            // el Dueño vinculado a un super administrador de grupo solo se entra desde el ingreso del grupo (spec 035)
+            auditoriaService.fallo(null, AccionAuditoria.PASSWORD_RECUPERAR_PEDIR, EntidadAuditada.USUARIO, usuario.getId(),
+                    "correo=" + limpio + "; motivo=usuario de super administrador de grupo");
+            return;
+        }
         if (usuario.getTipoCredencial() == com.proyecto.supply_core.usuario.enums.TipoCredencial.PIN) {
             // el PIN del personal lo restablece su jefe (spec 022, D10): no se manda correo
             auditoriaService.fallo(null, AccionAuditoria.PASSWORD_RECUPERAR_PEDIR, EntidadAuditada.USUARIO, usuario.getId(),

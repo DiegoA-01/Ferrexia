@@ -90,7 +90,9 @@ public enum EventoNotificacion {
     /** Un turno cerró con una diferencia de caja que pasa la tolerancia y espera la aprobación de un supervisor. */
     TURNO_DIFERENCIA("Diferencia de caja por aprobar"),
     /** El cuadre diario encontró ventas, inventario o caja que no cuadran (destino: ADMIN_SISTEMA, spec 009). */
-    CUADRE_DESCUADRE("El cuadre diario encontró un descuadre");
+    CUADRE_DESCUADRE("El cuadre diario encontró un descuadre"),
+    /** Otra empresa del grupo envió mercancía que espera recepción (destino: quien recibe traslados, spec 035). */
+    TRASLADO_GRUPO_ENVIADO("Traslado de mercancía por recibir");
 
     /** Asunto del correo. */
     private final String asunto;

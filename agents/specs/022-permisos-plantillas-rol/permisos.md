@@ -105,6 +105,8 @@ Después se sumaron `CAJA_RETIRO_SIN_PIN`, `CAJA_GASTO_SIN_PIN` y `CAJA_INGRESO_
 | `DESPACHO_VER` | Ver despachos | Admin. compras, Bodega, Contador/Auditor, Compras | DespachoController |
 | `INVENTARIO_MOVER` | Registrar movimientos de inventario | Bodega | InventarioController |
 | `PRODUCTO_GESTIONAR` | Crear y editar productos | Admin. compras | ProductoCargaController, ProductoController, ProductoSedeController |
+| `TRASLADO_GRUPO_ENVIAR` | Enviar y anular traslados de mercancía a otra empresa del grupo (spec 035) | Dueño, Administrador, Bodega | TrasladoGrupoController |
+| `TRASLADO_GRUPO_RECIBIR` | Recibir traslados de mercancía enviados por otra empresa del grupo (spec 035) | Dueño, Administrador, Bodega | TrasladoGrupoController |
 
 ## Ventas
 

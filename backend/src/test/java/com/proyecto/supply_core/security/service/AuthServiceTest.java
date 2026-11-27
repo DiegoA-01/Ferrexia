@@ -74,6 +74,45 @@ class AuthServiceTest {
     }
 
     @Test
+    void entrarDesdeUnGrupoEmiteLaSesionNormalDelDuenoVinculadoYAudita() {
+        Rol dueno = new Rol();
+        dueno.setCodigo("ADMIN_SISTEMA");
+        usuario.getRoles().add(dueno);
+        when(repo.findWithRolesById(5L)).thenReturn(Optional.of(usuario));
+
+        LoginResponse r = service.iniciarSesionDeGrupo(5L, 7L);
+
+        assertNotNull(r.token());
+        assertEquals("refresh-1", r.refreshToken());
+        assertEquals(5L, r.usuario().id());
+        assertNotNull(usuario.getUltimoAcceso());
+        verify(accesoEmpresa).exigirPuedeEntrar(1L);
+        verify(auditoria).exitoDe(eq(5L), eq(AccionAuditoria.GRUPO_ENTRAR), eq(EntidadAuditada.USUARIO), eq(5L),
+                contains("superAdministradorGrupo=7"));
+    }
+
+    @Test
+    void entrarDesdeUnGrupoExigeUsuarioActivoConRolDuenoYSuscripcionVigente() {
+        when(repo.findWithRolesById(5L)).thenReturn(Optional.of(usuario)); // solo COMPRADOR
+        assertThrows(com.proyecto.supply_core.common.exception.NoEncontradoException.class,
+                () -> service.iniciarSesionDeGrupo(5L, 7L));
+
+        Rol dueno = new Rol();
+        dueno.setCodigo("ADMIN_SISTEMA");
+        usuario.getRoles().add(dueno);
+        usuario.setActivo(false);
+        assertThrows(com.proyecto.supply_core.common.exception.NoEncontradoException.class,
+                () -> service.iniciarSesionDeGrupo(5L, 7L));
+        assertThrows(com.proyecto.supply_core.common.exception.NoEncontradoException.class,
+                () -> service.iniciarSesionDeGrupo(99L, 7L));
+
+        usuario.setActivo(true);
+        doThrow(new AccesoDenegadoException("SUSCRIPCION_SUSPENDIDA", "suspendida"))
+                .when(accesoEmpresa).exigirPuedeEntrar(1L);
+        assertThrows(AccesoDenegadoException.class, () -> service.iniciarSesionDeGrupo(5L, 7L));
+        verify(refreshTokens, never()).emitir(any());
+    }
+    @Test
     void unaEmpresaSuspendidaNoEntraAunqueLaClaveSeaCorrecta() {
         doThrow(new AccesoDenegadoException("SUSCRIPCION_SUSPENDIDA", "suspendida"))
                 .when(accesoEmpresa).exigirPuedeEntrar(1L);

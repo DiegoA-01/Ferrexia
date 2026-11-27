@@ -12,7 +12,7 @@ const proveedor = (id: number, razonSocial: string) => ({ id, razonSocial, nit: 
 const pagina = (contenido: unknown[]) => ({ contenido, pagina: 0, tamano: 100, totalElementos: contenido.length, totalPaginas: 1 });
 
 /** Sesión mínima: solo lo que lee el marco. */
-const sesionCon = (roles: string[]) => ({
+const sesionCon = (roles: string[], desdeGrupo = false, volver: () => void = () => undefined) => ({
   empresa: signal({ razonSocial: 'Ferretería Demo' }),
   modulos: signal({ plan: 'EMPRESARIAL', estado: 'ACTIVA', modulos: ['COMPRAS', 'INVENTARIO', 'PROVEEDORES'] }),
   usuario: signal({ nombre: 'Dueño Ferretería', correo: 'a@x.co', roles }),
@@ -21,6 +21,8 @@ const sesionCon = (roles: string[]) => ({
   tieneModulo: () => true,
   salir: () => undefined,
   salirDeTodo: () => undefined,
+  desdeGrupo: signal(desdeGrupo),
+  volverAlGrupo: volver,
 });
 
 describe('Marco de la empresa: campana y menú', () => {
@@ -29,10 +31,10 @@ describe('Marco de la empresa: campana y menú', () => {
   const c = () => fixture.componentInstance as unknown as Record<string, any>;
   const html = () => fixture.nativeElement as HTMLElement;
 
-  const crear = (roles: string[]) => {
+  const crear = (roles: string[], desdeGrupo = false, volver: () => void = () => undefined) => {
     TestBed.configureTestingModule({
       providers: [provideRouter([{ path: '**', children: [] }]), provideHttpClient(), provideHttpClientTesting(),
-        { provide: SesionService, useValue: sesionCon(roles) }],
+        { provide: SesionService, useValue: sesionCon(roles, desdeGrupo, volver) }],
     });
     backend = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Shell);
@@ -304,5 +306,27 @@ describe('Marco de la empresa: campana y menú', () => {
     expect(c()['rutaDe']({ evento: 'COTIZACION_RECIBIDA' })).toBe('/app/cotizaciones');
     expect(c()['rutaDe']({ evento: 'PROVEEDOR_PENDIENTE' })).toBe('/app/proveedores');
     expect(c()['rutaDe']({ evento: 'PAGO_REGISTRADO' })).toBeUndefined();
+  });
+
+  describe('cambiar de empresa (spec 035)', () => {
+    const boton = () => html().querySelector<HTMLButtonElement>('.cambiar-empresa');
+
+    it('si la sesión vino del grupo ofrece "Cambiar de empresa" y lo llama', () => {
+      let llamado = 0;
+      crear(['ADMIN_SISTEMA'], true, () => llamado++);
+      backend.match(r => r.url === '/api/proveedores').forEach(r => r.flush(pagina([])));
+      fixture.detectChanges();
+      expect(boton()?.textContent).toContain('Cambiar de empresa');
+      boton()!.click();
+      expect(llamado).toBe(1);
+    });
+
+    it('una sesión de empresa normal no lo muestra', () => {
+      crear(['ADMIN_SISTEMA']);
+      backend.match(r => r.url === '/api/proveedores').forEach(r => r.flush(pagina([])));
+      fixture.detectChanges();
+      expect(boton()).toBeNull();
+      expect(html().textContent).not.toContain('Cambiar de empresa');
+    });
   });
 });

@@ -9,6 +9,7 @@ import { Acceso } from './acceso';
 
 const CLAVE_REFRESH = 'sc.refresh';
 const CLAVE_EMPRESA = 'sc.empresa';
+const CLAVE_DESDE_GRUPO = 'sc.desdeGrupo';
 
 /**
  * Sesión de un usuario de empresa (internos y proveedores).
@@ -32,6 +33,9 @@ export class SesionService {
   readonly modulos = signal<ModulosEmpresa | null>(null);
   /** Permisos efectivos de la sesión (spec 022); {@code null} mientras no se han cargado. */
   readonly permisos = signal<ReadonlySet<string> | null>(null);
+
+  /** La sesión de empresa se abrió desde la zona del grupo (spec 035): se ofrece "Cambiar de empresa". */
+  readonly desdeGrupo = signal(this.leer(sessionStorage, CLAVE_DESDE_GRUPO) === '1');
 
   readonly autenticado = computed(() => this.usuario() !== null);
   readonly esProveedor = computed(() => this.usuario()?.roles?.includes('PROVEEDOR') ?? false);
@@ -69,6 +73,33 @@ export class SesionService {
    */
   confirmarMfa(desafio: string, codigo: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(api('/api/auth/mfa'), { desafio, codigo: codigo.trim() }).pipe(tap(r => this.guardar(r)));
+  }
+
+  /**
+   * Arranca la sesión de una empresa con la respuesta de {@code POST /api/grupo/entrar/{id}} (spec 035): es el mismo
+   * {@code LoginResponse} del ingreso normal, así que se guarda igual y se cargan empresa, módulos y permisos. Deja
+   * marcado que la sesión vino del grupo, para ofrecer "Cambiar de empresa".
+   *
+   * @param r sesión de la empresa que entregó el backend
+   * @returns carga del contexto de la empresa (debe suscribirse quien llama)
+   */
+  iniciarDesdeGrupo(r: LoginResponse): Observable<unknown> {
+    this.guardar(r);
+    this.desdeGrupo.set(true);
+    this.escribir(sessionStorage, CLAVE_DESDE_GRUPO, '1');
+    return this.cargarContexto();
+  }
+
+  /**
+   * Cierra la sesión de la empresa (sin tocar la del grupo) y vuelve a la lista de empresas del grupo.
+   */
+  volverAlGrupo(): void {
+    const refreshToken = this.leer(sessionStorage, CLAVE_REFRESH);
+    if (refreshToken && this.token) {
+      this.http.post(api('/api/auth/logout'), { refreshToken }).subscribe({ error: () => undefined });
+    }
+    this.limpiar();
+    void this.router.navigateByUrl('/grupo');
   }
 
   /** Pide el secreto para vincular la app autenticadora del usuario de la sesión (MFA voluntario). */
@@ -232,7 +263,9 @@ export class SesionService {
     this.empresa.set(null);
     this.modulos.set(null);
     this.permisos.set(null);
+    this.desdeGrupo.set(false);
     try {
+      sessionStorage.removeItem(CLAVE_DESDE_GRUPO);
       sessionStorage.removeItem(CLAVE_REFRESH);
     } catch {
       // almacenamiento bloqueado: no hay nada que borrar

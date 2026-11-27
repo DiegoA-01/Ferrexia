@@ -12,11 +12,14 @@ import org.springframework.transaction.annotation.Transactional;
 import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
 import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
+import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.common.exception.NoAutenticadoException;
+import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.proveedor.entity.Proveedor;
 import com.proyecto.supply_core.proveedor.enums.EstadoProveedor;
 import com.proyecto.supply_core.plataforma.service.AccesoEmpresaService;
 import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
+import com.proyecto.supply_core.security.context.Roles;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.security.dto.LoginRequest;
 import com.proyecto.supply_core.security.dto.LoginResponse;
@@ -101,9 +104,12 @@ public class AuthService {
                             + usuario.getBloqueadoHasta());
             throw new NoAutenticadoException(CREDENCIALES_INVALIDAS);
         }
-        if (usuario == null || !claveCorrecta) {
+        // el Dueño vinculado a un super administrador de grupo solo entra por /api/grupo/entrar (spec 035): mismo 401
+        boolean deGrupo = claveCorrecta && usuario != null && usuarioRepository.contarVinculosDeGrupo(usuario.getId()) > 0;
+        if (usuario == null || !claveCorrecta || deGrupo) {
             Long id = usuario == null ? null : usuario.getId();
-            String motivo = usuario == null ? "correo no registrado" : "contraseña incorrecta";
+            String motivo = usuario == null ? "correo no registrado"
+                    : deGrupo ? "usuario de super administrador de grupo" : "contraseña incorrecta";
             log.info("Login fallido para {} ({})", correo, motivo);
             auditoriaService.fallo(id, AccionAuditoria.LOGIN, EntidadAuditada.USUARIO, id,
                     "correo=" + correo + "; motivo=" + motivo);
@@ -157,6 +163,31 @@ public class AuthService {
         usuario.setBloqueadoHasta(null);
         auditoriaService.exitoDe(usuario.getId(), AccionAuditoria.LOGIN, EntidadAuditada.USUARIO,
                 usuario.getId(), "correo=" + usuario.getCorreo() + "; con segundo factor");
+        return emitirSesion(usuario, refreshTokenService.emitir(usuario.getId()));
+    }
+
+    /**
+     * Abre una sesión normal de la empresa del contexto para el usuario Dueño vinculado a un super administrador de grupo
+     * (spec 035). No pide contraseña: la identidad ya la demostró el super administrador en su ingreso de grupo, y quien
+     * llama (el servicio del grupo) ya verificó que la empresa sea de su grupo. Aquí se vuelve a exigir que el usuario
+     * esté activo, tenga el rol ADMIN_SISTEMA y que la suscripción de la empresa permita entrar. Debe correr dentro de la
+     * empresa. Queda auditado {@code GRUPO_ENTRAR} en la empresa.
+     *
+     * @param usuarioId      usuario Dueño vinculado dentro de la empresa
+     * @param usuarioGrupoId super administrador que entra (solo para el detalle de auditoría)
+     * @return token y datos de sesión, igual que un login normal
+     * @throws NoEncontradoException  si el usuario no existe, está desactivado o no es Dueño (mismo 404 de siempre)
+     * @throws AccesoDenegadoException si la suscripción de la empresa no permite entrar
+     */
+    @Transactional
+    public LoginResponse iniciarSesionDeGrupo(Long usuarioId, Long usuarioGrupoId) {
+        Usuario usuario = usuarioRepository.findWithRolesById(usuarioId).filter(Usuario::isActivo)
+                .filter(u -> u.codigosRoles().contains(Roles.ADMIN_SISTEMA))
+                .orElseThrow(() -> new NoEncontradoException("La empresa indicada no existe"));
+        accesoEmpresa.exigirPuedeEntrar(usuario.getEmpresaId());
+        usuario.setUltimoAcceso(LocalDateTime.now());
+        auditoriaService.exitoDe(usuario.getId(), AccionAuditoria.GRUPO_ENTRAR, EntidadAuditada.USUARIO,
+                usuario.getId(), "superAdministradorGrupo=" + usuarioGrupoId + "; correo=" + usuario.getCorreo());
         return emitirSesion(usuario, refreshTokenService.emitir(usuario.getId()));
     }
 

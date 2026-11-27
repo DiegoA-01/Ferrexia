@@ -34,6 +34,10 @@ public class Empresa {
     @Column(nullable = false, unique = true, length = 30)
     private String nit;
 
+    /** Grupo al que pertenece la empresa (spec 035); {@code null} si no tiene. Lo asigna la consola de la plataforma. */
+    @Column(name = "grupo_id")
+    private Long grupoId;
+
     /** Identifica a la empresa en las rutas públicas (p. ej. el autorregistro de proveedores). */
     @Column(name = "codigo_publico", nullable = false, unique = true, length = 40)
     private String codigoPublico;

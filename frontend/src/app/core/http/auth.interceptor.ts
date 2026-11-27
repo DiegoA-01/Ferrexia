@@ -2,6 +2,7 @@ import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn } from '@angular
 import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';
 
+import { GrupoSesionService } from '../sesion/grupo-sesion.service';
 import { PlataformaSesionService } from '../sesion/plataforma-sesion.service';
 import { SesionService } from '../sesion/sesion.service';
 
@@ -10,7 +11,7 @@ const REINTENTO = new HttpContextToken<boolean>(() => false);
 
 /** Rutas que no llevan token: ingreso, renovación y cotizar con un enlace (spec 031). */
 const PUBLICAS = ['/api/auth/login', '/api/auth/refresh', '/api/auth/recuperar', '/api/auth/restablecer', '/api/plataforma/auth/',
-  '/api/publico/'];
+  '/api/grupo/auth/', '/api/publico/'];
 
 /**
  * Agrega {@code Authorization: Bearer} a las llamadas al backend: el token del dueño en {@code /api/plataforma} y el
@@ -30,6 +31,19 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       catchError((e: HttpErrorResponse) => {
         if (e.status === 401) {
           plataforma.salir();
+        }
+        return throwError(() => e);
+      }),
+    );
+  }
+
+  if (ruta.startsWith('/api/grupo/')) {
+    const grupo = inject(GrupoSesionService);
+    const token = grupo.tokenActual();
+    return next(token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req).pipe(
+      catchError((e: HttpErrorResponse) => {
+        if (e.status === 401) {
+          grupo.salir();
         }
         return throwError(() => e);
       }),
