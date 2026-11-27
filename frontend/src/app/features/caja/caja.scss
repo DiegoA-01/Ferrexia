@@ -12,9 +12,9 @@ h3 { margin: 16px 0 8px; font-size: 15px; }
 .rojo { color: var(--sc-rojo); }
 .ambar { color: #b26a00; }
 .entre { justify-content: space-between; align-items: center; }
-.cuadre { max-width: 560px; tr.total td { font-weight: 600; border-top: 2px solid var(--sc-borde); } }
+.cuadre { width: 100%;tr.total td { font-weight: 600; border-top: 2px solid var(--sc-borde); } }
 .movimientos { font-size: 13px; }
-.aprobar { display: grid; gap: 8px; max-width: 560px; }
+.aprobar { display: grid; gap: 8px; }
 .caja-form { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 12px; }
 .tolerancia { gap: 10px; input { max-width: 200px; } }
 .pin .formulario { max-width: 420px; }
