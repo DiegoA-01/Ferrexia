@@ -118,7 +118,8 @@ test('abrir turno, vender, anular con PIN y cerrar el turno cuadrado', async ({ 
   await page.locator('#vf-cons').fill(consecutivo);
   await page.locator('#vf-cons').press('Enter');
   await page.getByRole('button', { name: 'Detalle' }).first().click();
-  const detalle = page.locator('.detalle');
+  // el detalle de la venta se abre en la ventana flotante (sc-ventana-vidrio)
+  const detalle = page.getByRole('dialog');
   await detalle.getByRole('button', { name: 'Anular', exact: true }).click();
   await page.locator('#an-motivo').fill('Error de digitación en la prueba');
   await page.getByRole('button', { name: 'Anular (pide PIN)' }).click();
