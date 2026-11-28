@@ -111,4 +111,21 @@ describe('Plan de reabastecimiento', () => {
     backend.expectOne(r => r.url === '/api/reabastecimiento/sedes').flush([]);
     backend.expectOne(r => r.url === '/api/reabastecimiento').flush(datos);
   });
+
+  it('el detalle se abre en una ventana con el nombre del producto y se cierra', () => {
+    crear(['COMPRADOR']);
+    const raiz = fixture.nativeElement as HTMLElement;
+    expect(raiz.querySelector('[role="dialog"]')).toBeNull();
+    c()['verDetalle'](datos.items![0]);
+    backend.match(r => r.url.startsWith('/api/catalogos/producto/')).forEach(r => r.flush([]));
+    fixture.detectChanges();
+    const dialogo = raiz.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialogo.textContent).toContain('Tornillo');
+    expect(dialogo.textContent).toContain('Hay que pedir hoy.');
+    expect(dialogo.textContent).toContain('Necesito este producto');
+    expect(raiz.querySelector('tr.detalle')).toBeNull();
+    (dialogo.querySelector('button[aria-label="Cerrar la ventana"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(raiz.querySelector('[role="dialog"]')).toBeNull();
+  });
 });

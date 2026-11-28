@@ -11,6 +11,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 import { SelectorSede } from '../../core/ui/selector-sede';
 
+import { VentanaVidrio } from '../../core/ui/ventana-vidrio';
 import { Cifra } from '../../core/ui/cifra';
 /** Texto, color y explicación de cada estado del plan. */
 export const ESTADOS: Record<EstadoReabastecimiento, { texto: string; tono: string; ayuda: string }> = {
@@ -35,7 +36,7 @@ interface EdicionPlazo {
  */
 @Component({
   selector: 'sc-reabastecimiento',
-  imports: [Cifra, FormsModule, RouterLink, NumeroPipe, FechaPipe, PesosPipe, SelectorSede],
+  imports: [Cifra, FormsModule, RouterLink, NumeroPipe, FechaPipe, PesosPipe, SelectorSede, VentanaVidrio],
   templateUrl: './reabastecimiento.html',
   styleUrl: './reabastecimiento.scss',
 })
@@ -80,15 +81,27 @@ export class PlanReabastecimiento implements OnInit {
   /** Límites del producto abierto en la sede elegida. */
   protected readonly limiteSede = signal<{ productoId: number; minimo: number; maximo: number | null; actual?: ProductoEnSede } | null>(null);
 
-  /** @param i producto; abre o cierra su detalle y trae sus ofertas en los catálogos */
+  /** Producto cuyo detalle está abierto en la ventana (se toma de los datos vigentes, así sigue al recalcular). */
+  protected readonly itemAbierto = computed(() => (this.datos()?.items ?? []).find(i => i.productoId === this.abierto()) ?? null);
+
+  /** @param i producto; abre su detalle en la ventana y trae sus ofertas en los catálogos */
   protected verDetalle(i: ItemReabastecimiento): void {
-    const id = this.abierto() === i.productoId ? null : i.productoId!;
+    const id = i.productoId!;
     this.abierto.set(id);
     this.limiteSede.set(null);
+    this.edicion.set(null);
     this.ofertas.set([]);
-    if (id !== null && this.veOfertas()) {
+    if (this.veOfertas()) {
       this.catalogos.ofertasDe(id).subscribe({ next: l => this.ofertas.set(l), error: () => this.ofertas.set([]) });
     }
+  }
+
+  /** Cierra la ventana del detalle y descarta lo que se estaba editando. */
+  protected cerrarDetalle(): void {
+    this.abierto.set(null);
+    this.limiteSede.set(null);
+    this.edicion.set(null);
+    this.ofertas.set([]);
   }
 
   ngOnInit(): void {
