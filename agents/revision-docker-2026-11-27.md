@@ -1,7 +1,8 @@
 # Revisión en Docker (2026-11-27)
 
-Stack `ferrexia` en http://localhost:8088, con `develop` = `a3a7147` (specs 000 a 036) y la demo recién sembrada.
-Cuentas y claves: `credenciales-docker.local.txt` (no se sube a git). Código de empresa: el que dice ese archivo.
+Stack `ferrexia` en http://localhost:8088, con `develop` = `3baa2db` (specs 000 a 037 y los ajustes del PR #42) y la
+demo sembrada el 2026-11-27. Cuentas y claves: `credenciales-docker.local.txt` (no se sube a git). Desde la 037 se
+entra solo con correo y contraseña. Las cuentas de la demo están desactivadas: reactivarlas desde Usuarios.
 El Dueño de la ferretería y el dueño del software piden configurar el segundo factor en el primer ingreso.
 
 Marca `[x]` lo que funcione y anota debajo lo que falle. Al terminar, se marcan los criterios de cada spec.
@@ -88,8 +89,17 @@ Marca `[x]` lo que funcione y anota debajo lo que falle. Al terminar, se marcan 
 ## 036 · Ajustes de la prueba con usuarios
 - [ ] Revisar los puntos de `agents/specs/036-ajustes-prueba-usuarios/tasks.md`.
 
-## Arreglos del 2026-11-27
-- [ ] El cajero ve en Ventas las ventas que él cobró y las filtra por fecha y estado.
+## 037 · Ingreso sin código de empresa
+- [ ] Entrar solo con correo y contraseña (o PIN); "Olvidé mi contraseña" pide solo el correo.
+- [ ] Crear un usuario con un correo que ya usa otra empresa: "ese correo ya está registrado".
+- [ ] La consola de plataforma y la zona del grupo no muestran el código.
+
+## Arreglos y ajustes del 2026-11-27
+- [ ] Ventas: cada quien ve las que cobró o vendió; el consecutivo sugiere al escribir "C1-"; fechas y estado filtran.
+- [ ] Ventas: el detalle se abre en la ventana de vidrio; el Dueño con turno abierto ve "Anular" (rojo).
+- [ ] Mi turno: una fila por venta con "Ver detalle" (pagos por medio) y los demás movimientos aparte.
+- [ ] Cajas y turnos: "Ver" abre el turno en la ventana de vidrio (aprobar la diferencia funciona).
+- [ ] No se ven barras de desplazamiento y se sigue pudiendo bajar.
 - [ ] En la orden de compra, los botones de la factura en revisión salen según los permisos.
 
 ## Anotaciones
