@@ -59,10 +59,10 @@ export class PedidosInternos implements OnInit {
   protected readonly respuesta = signal<Respuesta | null>(null);
   protected readonly estados = Object.keys(ESTADOS) as EstadoPedidoInterno[];
 
-  /** Compras, auditoría y el administrador ven todos los pedidos. */
-  protected readonly veTodo = computed(() => this.sesion.tieneRol(['ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR', 'ADMIN_SISTEMA']));
-  /** Solo compras responde. */
-  protected readonly responde = computed(() => this.sesion.tieneRol(['ADMIN_COMPRAS', 'COMPRADOR']) && !this.sesion.soloLectura());
+  /** Quien tiene el permiso de ver todos los pedidos (compras, auditoría, el Dueño). */
+  protected readonly veTodo = computed(() => this.sesion.tienePermiso('PEDIDO_INTERNO_VER_TODOS'));
+  /** Responde quien tiene el permiso de gestionar pedidos internos (compras y el Dueño). */
+  protected readonly responde = computed(() => this.sesion.tienePermiso('PEDIDO_INTERNO_GESTIONAR') && !this.sesion.soloLectura());
 
   ngOnInit(): void {
     if (this.veTodo()) {

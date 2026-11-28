@@ -99,10 +99,21 @@
                   }
                 </td>
                 <td class="num"><button type="button" class="boton chico" (click)="verDetalle(i)"
-                  [attr.aria-expanded]="abierto() === i.productoId">{{ abierto() === i.productoId ? 'Ocultar' : 'Detalle' }}</button></td>
+                  aria-haspopup="dialog">Detalle</button></td>
               </tr>
-              @if (abierto() === i.productoId) {
-                <tr class="detalle"><td [attr.colspan]="puedePedir() ? 10 : 9"><div class="detalle-contenido">
+            } @empty {
+              <tr><td [attr.colspan]="puedePedir() ? 10 : 9" class="vacio">{{ filtro() === 'PEDIR' ? 'No hay nada que pedir por ahora: todo alcanza mientras llega un pedido.' : 'No hay productos con este filtro.' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    @if (itemAbierto(); as i) {
+      <sc-ventana-vidrio [abierta]="true" [titulo]="i.nombre ?? ''" idTitulo="t-detalle-plan" (cerrar)="cerrarDetalle()">
+        <span etiqueta class="chip {{ tono(i.estado) }}">{{ etiqueta(i.estado) }}</span>
+        <p class="sub sin-margen">{{ i.codigo }} · {{ i.categoria }}</p>
+        <div class="detalle-contenido">
                   <p class="sin-margen"><strong>{{ i.motivo }}</strong></p>
                   <a class="boton chico necesito" [routerLink]="['/app/pedidos']" [queryParams]="{ productoId: i.productoId }">
                     <span class="material-symbols-outlined">campaign</span> Necesito este producto</a>
@@ -156,15 +167,9 @@
                       }
                     }
                   }
-                </div></td></tr>
-              }
-            } @empty {
-              <tr><td [attr.colspan]="puedePedir() ? 10 : 9" class="vacio">{{ filtro() === 'PEDIR' ? 'No hay nada que pedir por ahora: todo alcanza mientras llega un pedido.' : 'No hay productos con este filtro.' }}</td></tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </section>
+                </div>
+      </sc-ventana-vidrio>
+    }
 
     @if (puedePedir() && pedibles().length) {
       <section class="tarjeta pedir">

@@ -1,7 +1,7 @@
 # 038 - Unidades según el material
 
 **Estado:** Hecha (2026-11-28) · **Rama:** `fix/grupos-cancelar-eliminar` (con el arreglo de grupos) · **Depende de:** 026
-· **Responsable:** Persona 1 · **Migración:** V59 · **Decisión:** D22
+· **Responsable:** Persona 1 · **Migración:** V60 · **Decisión:** D22
 
 ## Objetivo
 Que cada producto se maneje en la unidad de su material (el cable por metros, la arena por metros cúbicos) y que la unidad

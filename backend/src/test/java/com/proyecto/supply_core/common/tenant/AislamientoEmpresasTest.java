@@ -279,7 +279,7 @@ class AislamientoEmpresasTest {
      * turno y cobra (V47).
      */
     private static final Set<String> CONCEDIDOS_DESPUES_022 = Set.of("ADMIN_SISTEMA:TURNO_OPERAR",
-            "ADMIN_SISTEMA:VENTA_COBRAR", "ADMIN_SISTEMA:VENTA_COTIZAR");
+            "ADMIN_SISTEMA:VENTA_COBRAR", "ADMIN_SISTEMA:VENTA_COTIZAR", "ADMIN_SISTEMA:PEDIDO_INTERNO_GESTIONAR");
 
     /** Los 12 roles de siempre. */
     private static final List<String> ROLES = List.of("ADMIN_SISTEMA", "ADMIN_COMPRAS", "SOLICITANTE", "COMPRADOR",
@@ -2390,6 +2390,14 @@ class AislamientoEmpresasTest {
             mvc.perform(patch("/api/pedidos-internos/" + id).header(HttpHeaders.AUTHORIZATION, almacenA)
                             .contentType(json).content("{\"estado\":\"ATENDIDO\"}"))
                     .andExpect(status().isForbidden());
+            // el Dueño (V59) sí toma el pedido; el de otra empresa sigue sin poder
+            mvc.perform(patch("/api/pedidos-internos/" + id).header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "ADMIN_SISTEMA"))
+                            .contentType(json).content("{\"estado\":\"EN_GESTION\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("EN_GESTION"));
+            mvc.perform(patch("/api/pedidos-internos/" + id).header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_SISTEMA"))
+                            .contentType(json).content("{\"estado\":\"ATENDIDO\"}"))
+                    .andExpect(status().isNotFound());
 
             // descartar exige explicar; atendido queda cerrado y le llega el aviso a quien pidió
             mvc.perform(patch("/api/pedidos-internos/" + id).header(HttpHeaders.AUTHORIZATION, compradorA)

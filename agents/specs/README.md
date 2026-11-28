@@ -66,8 +66,8 @@ decisiones y se aprueban antes de escribir el plan.
 | [034-reportes-ventas-ampliados](034-reportes-ventas-ampliados/spec.md) | 4 | Ventas por categoría, empleado, producto, medio de pago, tipo de servicio y caja | `feature/reportes-ventas-ampliados` | 009, 019, 023, 032 | Persona 1 | Hecha (V56); falta revisión en Docker |
 | [035-sedes-super-admin](035-sedes-super-admin/spec.md) | 4 | Grupo de empresas con un super administrador | `feature/sedes-super-admin` | 020, 022 | Persona 2 | Hecha (V57); falta revisión en Docker |
 | [036-ajustes-prueba-usuarios](036-ajustes-prueba-usuarios/spec.md) | 4 | Ajustes de la prueba con usuarios: avisos al crear empresa, cantidad y existencia en el POS, detalle de venta en su fila, Inicio solo con categorías y pendientes | `fix/ajustes-prueba-usuarios` | 005, 012, 020, 024 | Persona 1 | Hecha (sin migración; aprobada en Docker 2026-11-26) |
-| [037-ingreso-sin-codigo](037-ingreso-sin-codigo/spec.md) | 4 | Ingreso solo con correo y contraseña, sin código de empresa; correo único en todo el sistema | `feature/ingreso-sin-codigo` | 020, 035 | Persona 1 | Hecha (V58); falta revisión en Docker |
-| [038-unidades-por-material](038-unidades-por-material/spec.md) | 4 | Unidades según el material (la categoría dice qué mide), m³, m², tonelada, libra y galón; cambiar la unidad con movimientos convirtiendo todo; vender en otra unidad en el POS | `fix/grupos-cancelar-eliminar` (con el arreglo de grupos) | 026 | Persona 1 | Hecha (V59); falta revisión en Docker |
+| [037-ingreso-sin-codigo](037-ingreso-sin-codigo/spec.md) | 4 | Ingreso solo con correo y contraseña, sin código de empresa; correo único en todo el sistema | `feature/ingreso-sin-codigo` | 020, 035 | Persona 1 | Hecha (V58, PR #40); falta revisión en Docker |
+| [038-unidades-por-material](038-unidades-por-material/spec.md) | 4 | Unidades según el material (la categoría dice qué mide), m³, m², tonelada, libra y galón; cambiar la unidad con movimientos convirtiendo todo; vender en otra unidad en el POS | `fix/grupos-cancelar-eliminar` (con el arreglo de grupos) | 026 | Persona 1 | Hecha (V60); falta revisión en Docker |
 
 Al terminar la 006 el negocio ya puede **vender y cuadrar caja**. De la 007 en adelante se suman crédito, márgenes y
 control fino.
@@ -139,8 +139,9 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V56 | `feature/reportes-ventas-ampliados` | Permiso `REPORTE_MARGEN` para Dueño, Administrador y Contador/Auditor (spec 034) |
 | V57 | `feature/sedes-super-admin` | Grupo de empresas: `grupo_empresa`, `usuario_grupo`, vínculos, traslados entre empresas, permisos y tipos de movimiento (spec 035) |
 | V58 | `feature/ingreso-sin-codigo` | Correo único en todo el sistema para usuarios de empresa (spec 037) |
-| V59 | `fix/grupos-cancelar-eliminar` | Unidades por material: medida AREA, unidades M3, M2, TON, LB y GAL, y `categoria_producto.magnitud` (spec 038) |
-| V60 en adelante | libre | Se reserva al empezar cada spec |
+| V59 | `fix/pedidos-internos-dueno` | El Dueño (ADMIN_SISTEMA) atiende pedidos internos: `PEDIDO_INTERNO_GESTIONAR` |
+| V60 | `fix/grupos-cancelar-eliminar` | Unidades por material: medida AREA, unidades M3, M2, TON, LB y GAL, y `categoria_producto.magnitud` (spec 038) |
+| V61 en adelante | libre | Se reserva al empezar cada spec |
 
 **Numeración propuesta en los planes 018 a 035 (no es reserva):** V41 (020), V42 (021), V43 y V44 (022), V45 (023),
 V46 (025), V47 (026), V48 (028), V49 (029), V50 (030), V51 (031), V52 (032), V53 (033), V54 (035). Las specs 018, 019,

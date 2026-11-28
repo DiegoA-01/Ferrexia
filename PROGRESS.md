@@ -1,12 +1,13 @@
 # Ferrexia (antes Supply-Core) — Progreso
 
-> **Última actualización: 2026-11-27.** El proyecto sigue en el repositorio `DiegoA-01/Ferrexia` (Supply-Core quedó como
-> histórico). Estado: **specs 000 a 036 mezcladas en `develop`** (`a3a7147`, PR #39) y **037 (ingreso sin código de
-> empresa) en su rama `feature/ingreso-sin-codigo`** (PR por abrir). Todas las specs de la reunión 2 están hechas; a la
-> 028 a la 032 y de la 034 a la 037 les falta la revisión en Docker (lista en `agents/revision-docker-2026-11-27.md`). **Mezcladas pero sin cerrar: 023 a 027** (PR #29, de Martin): les
+> **Última actualización: 2026-11-28.** El proyecto sigue en el repositorio `DiegoA-01/Ferrexia` (Supply-Core quedó como
+> histórico). Estado: **specs 000 a 037 mezcladas en `develop`** (`3baa2db`, PR #42), más los ajustes de Ventas y Mi
+> turno del 2026-11-27 (PR #42). Todas las specs de la reunión 2 están hechas; a la 028 a la 032 y de la 034 a la 037 les
+> falta la revisión en Docker (lista en `agents/revision-docker-2026-11-27.md`). **Mezcladas pero sin cerrar: 023 a 027** (PR #29, de Martin): les
 > faltan la revisión en Docker, la aprobación y marcar sus criterios, y la 026 tiene una decisión abierta (ver la
 > **sección 8**, que manda sobre las anteriores). Migraciones: 58 (V1 a V58), **próxima V59**.
-> Pruebas (rama de la 037): backend 1045 en verde (1 omitida, Gemini en vivo); frontend 371; e2e con 4 pruebas en el CI.
+> Pruebas (`develop`): backend 1046 en verde (1 omitida, Gemini en vivo); frontend 387; e2e con 4 pruebas en el CI (en
+> verde en el PR #42).
 > Las secciones 0 a 7 se dejan como historia.
 
 > Estado al 2026-11-19 (historia): **Ventas y Caja en construcción por specs: hechas la 000 (CI), 001 (catálogo de venta), 002 (clientes) y 003 (cajas y turnos); sigue la 004, la venta (ver sección 7)**. Antes: frontend completo (fases 0 a 8), stack de Docker e informe de compras para el dueño (V25). Antes: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), exportación a Excel y PDF con archivos legibles, y cruce de totales de la IA con Gemini como proveedor de lectura (sin migración)**.
@@ -670,7 +671,8 @@ de aceptación verificados → rama propia desde `develop` → PR que crea y mez
 | Arreglos 2026-11-27 | El cajero ve y filtra en Ventas las ventas que él cobró (con el consecutivo encuentra la de otro); aprobar y anular la factura del proveedor por permiso (`FACTURA_APROBAR`, `FACTURA_ANULAR`) y no por rol | — | #37 |
 | 034 | Reportes de ventas ampliados: vista por tipo de servicio, filtro por sede (también al exportar), costo y margen solo con el permiso nuevo `REPORTE_MARGEN` (Dueño, Administrador y Contador/Auditor) | V56 | #38 |
 | 035 | Sedes como empresas en un grupo (D12): la plataforma crea grupos, asigna empresas y crea el super administrador (login propio en `/grupo/ingreso`, MFA obligatorio, token `grp` que no sirve en empresas ni plataforma); entra a cualquier empresa del grupo sin reingresar con su usuario Dueño vinculado (que solo administra la plataforma y no entra por el login normal) y vuelve con "Cambiar de empresa"; tablero del grupo; traslados entre empresas del grupo emparejados por código, con salida al enviar y entrada al recibir en la destino (faltantes, anular, kardex y costo promedio). Revisión de seguridad del arquitecto con 2 hallazgos altos corregidos | V57 | #39 |
-| 037 | Ingreso sin código de empresa: el login, la recuperación y el restablecimiento de clave van solo con correo (el sistema halla la empresa por el correo); correo único en todo el sistema (columna `correo_login` con índice único, salvo los usuarios internos del super administrador); la consola y la zona del grupo ya no muestran el código (se sigue guardando por dentro) | V58 | rama `feature/ingreso-sin-codigo` |
+| 037 | Ingreso sin código de empresa: el login, la recuperación y el restablecimiento de clave van solo con correo (el sistema halla la empresa por el correo); correo único en todo el sistema (columna `correo_login` con índice único, salvo los usuarios internos del super administrador); la consola y la zona del grupo ya no muestran el código (se sigue guardando por dentro) | V58 | #40 |
+| Ajustes 2026-11-27 (Ventas y caja) | Ventas: quien no ve todas ve las que cobró o vendió (el vendedor-cajero no veía las que cobró sin pedido) y el consecutivo es una búsqueda "empieza por" con sugerencias, combinada con fechas y estado; el detalle de la venta se abre en una ventana flotante de vidrio centrada; Anular, Devolver y Cambiar pago salen según el permiso (`VENTA_COBRAR`, `DEVOLUCION_REGISTRAR`, `VENTA_CAMBIAR_PAGO`) y no por rol (el Dueño con turno abierto ya anula), con Anular en rojo. Mi turno: movimientos agrupados por venta con "Ver detalle" (`MovimientoCajaResponse` suma `referenciaTipo`, `referenciaId`, `consecutivo` y `totalVenta`). Componente compartido `core/ui/ventana-vidrio.ts` (Ventas, Cajas y turnos › Ver turno, Mi turno), ajustado al contenido. Barras de desplazamiento ocultas en toda la app (el desplazamiento sigue). E2E: el detalle se busca como diálogo | — | #42 |
 | Docker | El proyecto de Compose y las imágenes pasan a llamarse `ferrexia` (ver "Docker" más abajo) | — | #23 |
 
 Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agents/specs/018-mi-turno-claro/revision-flujo-cajas.md`.
@@ -687,8 +689,8 @@ Pendiente de la 018: revisión en Docker con el cajero y que el equipo lea `agen
 ### Specs: hechas y faltantes (corte 2026-11-26, para retomar tras compactar)
 **Hechas y verificadas en `develop`:** 000 a 022, 028 a 033 y 036. Las últimas: 028 (V50, #31), 029 (V51, #32),
 030 (V52, #33), 032 (V53, #34), 031 (V54, #35) y 033 con 036 (V55, #36, de Martin; la 033 aprobada en Docker).
-034 (V56, #38) y 035 (V57, #39). **Hecha en su rama:** 037 (V58, `feature/ingreso-sin-codigo`). A la 028 a la 032 y
-de la 034 a la 037 les falta la revisión en Docker. Detalle en su `spec.md` (criterios marcados) y su `tasks.md`.
+034 (V56, #38), 035 (V57, #39) y 037 (V58, #40), más los ajustes de Ventas y caja (#42). A la 028 a la 032 y de la
+034 a la 037 les falta la revisión en Docker (la 034 y la 035 tienen su tarea de verificación abierta por eso). Detalle en su `spec.md` (criterios marcados) y su `tasks.md`.
 
 **Mezcladas pero sin cerrar (PR #29, rama `feature/cierre-por-denominacion` de Martin):** el código está en `develop`, pero
 cada `spec.md` sigue "En construcción" y sin criterios marcados.
@@ -711,16 +713,13 @@ No queda ninguna decisión abierta en `agents/specs/README.md` (D1 a D21 tomadas
    022 (un rol propio con PIN, quitar un permiso suelto, los usuarios de la demo ven lo mismo que antes) y 023 a 027.
    Al terminar, marcar los criterios de 023 a 027 y pasarlas a "Hecha" en el índice.
 2. **Decidir la unidad de la 026** (producto con movimientos) y aprobar la 025.
-3. **Mezclar la 037** (`feature/ingreso-sin-codigo`, V58) y hacer la **revisión en Docker de la 028 a la 032 y de la
-   034 a la 037** (el ingreso ya no pide el código de empresa) (reportes por tipo de servicio y sede, el cajero sin margen; un grupo con dos empresas y una fuera: ingreso
-   del super administrador con MFA, entrar y cambiar de empresa, tablero, un traslado enviado, recibido con faltante y
-   otro anulado):
-   variantes (crear, comprar, recibir y vender por código de barras), cambio de pago y anulación de una factura de ayer,
-   venta sin existencia que se regulariza al recibir, un domicilio contraentrega de punta a punta con vendedor, cajero y
-   domiciliario (este último con el permiso suelto `DOMICILIO_REPARTIR`) a 360 px, y la 031 (con las claves de prueba de
-   Turnstile en `.env`: crear un proveedor solo con nombre, abrir una RFQ, cotizar desde el enlace en una ventana
-   privada, analizar, emitir la orden y registrar el despacho). Ojo: la demo hay que volver a sembrarla con el
-   `sembrar_demo.py` nuevo (el viejo usaba el registro público, que ahora da 410).
+3. **Revisión en Docker de la 028 a la 032 y de la 034 a la 037**, con la lista `agents/revision-docker-2026-11-27.md`
+   (stack `ferrexia` en el 8088): variantes, cambio de pago y anulación de una factura de ayer, venta sin existencia que
+   se regulariza al recibir, un domicilio contraentrega con vendedor, cajero y domiciliario a 360 px, la 031 (cotizar por
+   enlace con las claves de prueba de Turnstile que ya están en `.env`), reportes por tipo de servicio y sede (el cajero
+   sin margen), un grupo con dos empresas y una fuera (ingreso del super administrador con MFA, entrar y cambiar de
+   empresa, tablero, un traslado recibido con faltante y otro anulado), el ingreso solo con correo (037) y los ajustes de
+   Ventas y Mi turno. Antes: reactivar las cuentas de la demo (el administrador las desactivó el 2026-11-27).
 4. Specs nuevas por definir: carga del catálogo de precios del proveedor (antes la hacía él en el portal). Quedan
    abiertas de la 035: reinicio del segundo factor ya existe, pero el super administrador no puede cambiar su propia
    clave (lo hace la plataforma al crearlo). La prueba de fuga de la 033 se puede
@@ -732,24 +731,26 @@ No queda ninguna decisión abierta en `agents/specs/README.md` (D1 a D21 tomadas
 **Ojo:** desde la 022 todo endpoint nuevo lleva `@RequierePermiso` (catálogo en
 `agents/specs/022-permisos-plantillas-rol/permisos.md`); un permiso nuevo se siembra en su migración y se da a los roles.
 
-### Entorno local de DiegoA-01 (2026-11-26)
-- Copia local en la rama `feature/ingreso-sin-codigo` (sobre `develop` = `a3a7147`). El stack de Docker es el
-  proyecto `ferrexia` (puerto 8088, demo sembrada el 2026-11-27); el viejo `supply-core` quedó detenido con sus datos. `backend/mvnw.cmd` aparece modificado solo
+### Entorno local de DiegoA-01 (2026-11-28)
+- Copia local en `develop` (`3baa2db`). El stack de Docker es el proyecto `ferrexia` (puerto 8088, demo sembrada el
+  2026-11-27 con el `sembrar_demo.py` nuevo; el administrador desactivó las cuentas de la demo y creó
+  `diegoalejandro@gmail.com`); el viejo `supply-core` quedó detenido con sus datos (credenciales viejas en
+  `credenciales-docker-viejo.local.txt`). `backend/mvnw.cmd` aparece modificado solo
   por el fin de línea: no se sube. Siguen 11 ramas locales viejas ya mezcladas (`docs/progreso-2026-11-25`,
   `feature/menu-*`, `feature/inicio-categorias`, `feature/pestanas-categoria`, `feature/cajas-ocupadas`,
   `feature/pos-ajustes-rapidos`, `feature/interfaz-general`, `feature/mi-turno-movimientos`,
-  `feature/permisos-plantillas-rol`, `feature/permisos-parte-b`) que se pueden borrar.
+  `feature/permisos-plantillas-rol`, `feature/permisos-parte-b`) que se pueden borrar, más las de las specs ya
+  mezcladas (028 a 037 y los arreglos).
 - La base local de desarrollo (`supply_core`) ya tiene aplicadas hasta la V58 (tiene `superadmin@demo.local` y
   `cajero@demo.local`, claves en `credenciales-local.local.txt`): se levantó el backend para regenerar los
   tipos del frontend (`npm run api:tipos`), que se hace en cada spec que cambia la API.
 - `gh` no está instalado: los PR se abren desde el enlace que da `git push`.
-- Archivos locales que git ignora: `.env` (claves del stack), `credenciales-docker.local.txt` (cuentas de la demo, con la
-  cuenta `todo@ferreteriademo.local` que tiene los 11 roles internos y pide MFA la primera vez) y
+- Archivos locales que git ignora: `.env` (claves del stack, con las claves de PRUEBA de Turnstile agregadas el
+  2026-11-27), `credenciales-docker.local.txt` y `.json` (cuentas de la demo nueva) y
   `backend/src/main/resources/application-local.yaml` (clave del MySQL local para `./mvnw test`), copiados del proyecto
   viejo `Proyecto Formativo Supply-core`.
-- Los datos de la demo (Ferretería Demo, Caja 1 con el turno del cajero desde el 20 nov, Caja 2 con el turno de
-  "Usuario Total") quedaron en los volúmenes viejos `supply-core_db-data` y `supply-core_storage`. Con el cambio de nombre
-  el stack `ferrexia` arranca vacío: copiar esos volúmenes a `ferrexia_*` o volver a sembrar.
+- Los datos de la demo vieja quedaron en los volúmenes `supply-core_db-data` y `supply-core_storage` (stack detenido).
+  Si se vuelve a levantar con el código de hoy, la V58 se detiene si encuentra correos repetidos entre empresas.
 - E2E en local: `cd e2e && npm ci`; con Google Chrome instalado se puede correr con una configuración temporal que use
   `channel: 'chrome'` (no se sube) y `E2E_CREDENCIALES` apuntando a un JSON con `empresa` y `cuentas`. Las pruebas que
   recorren muchas pantallas deben navegar sin recargar: cada recarga renueva la sesión y `/api/auth/refresh` tiene un
@@ -759,8 +760,9 @@ No queda ninguna decisión abierta en `agents/specs/README.md` (D1 a D21 tomadas
 - El proyecto de Compose pasó a llamarse **`ferrexia`** y las imágenes **`ferrexia-api`** y **`ferrexia-web`** (antes
   `supply-core-*`, iguales a las del proyecto viejo, y se pisaban si los dos corrían en el mismo equipo). Los volúmenes
   ahora son `ferrexia_db-data` y `ferrexia_storage`: la primera vez el stack arranca vacío y hay que sembrar la demo.
-- Si Supply-Core sigue corriendo en el 8088, Ferrexia se levanta con `WEB_PORT=8098` en su `.env` (y `PUBLIC_URL` con el
-  mismo puerto). El e2e se corre con `E2E_BASE_URL=http://localhost:8098`.
+- Hoy `ferrexia` usa el 8088 (`docker compose -p ferrexia up -d --build`) y `supply-core` está detenido. Si alguna vez
+  corren los dos a la vez, uno debe usar `WEB_PORT=8098` (y `PUBLIC_URL` con ese puerto). Si la construcción falla porque
+  Docker no resuelve `registry-1.docker.io`, repetirla: suele pasar al segundo intento.
 
 ### Trampas nuevas de este entorno
 - **Pruebas del frontend:** se corren con `npx ng test --watch=false` (o `npm test`); `npx vitest` directo falla por el

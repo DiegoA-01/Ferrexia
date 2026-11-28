@@ -9,6 +9,7 @@
     }
   </div>
 
+  <div class="inicio-cuerpo">
   <section class="accesos" aria-label="Categorías">
     @for (cat of accesos(); track cat.titulo) {
       @if (destino(cat); as ruta) {
@@ -34,7 +35,7 @@
     }
   </section>
 
-  <section class="tarjeta">
+  <section class="tarjeta panel-atencion" aria-label="Requiere tu atención">
     <div class="tarjeta-cabecera">
       <h2>Requiere tu atención @if (atencion().length) { <span class="chip ambar">{{ atencion().length }} pendientes</span> }</h2>
     </div>
@@ -52,4 +53,5 @@
       <p class="vacio">No tienes pendientes. Todo al día.</p>
     }
   </section>
+  </div>
 </div>

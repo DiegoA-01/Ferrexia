@@ -26,9 +26,8 @@
 .resaltada td { background: #fff5f3; }
 .rojo { color: var(--sc-rojo); }
 .ambar { color: var(--sc-ambar); }
-tr.detalle td { background: #fafafa; padding: 14px 20px; white-space: normal; }
-// el detalle queda fijo a la izquierda y del ancho visible aunque la tabla se desplace de lado
-.detalle-contenido { position: sticky; left: 20px; max-width: min(900px, calc(100vw - 80px)); }
+// contenido de la ventana de detalle
+.detalle-contenido { max-width: 100%; white-space: normal; }
 .cuentas { margin: 8px 0 12px; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
 .plazo { align-items: flex-end; gap: 12px; flex-wrap: wrap; .campo { min-width: 180px; } }
 

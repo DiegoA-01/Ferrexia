@@ -20,10 +20,12 @@ describe('Pedidos internos', () => {
   const c = () => fixture.componentInstance as unknown as Record<string, any>;
   const texto = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
 
-  const crear = (roles: string[]) => {
+  const crear = (roles: string[], permisos: string[] = []) => {
     TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] });
     backend = TestBed.inject(HttpTestingController);
-    TestBed.inject(SesionService).usuario.set({ id: 3, nombre: 'Ana', correo: 'a@x.co', roles });
+    const sesion = TestBed.inject(SesionService);
+    sesion.usuario.set({ id: 3, nombre: 'Ana', correo: 'a@x.co', roles });
+    sesion.permisos.set(new Set(permisos));
     fixture = TestBed.createComponent(PedidosInternos);
     fixture.detectChanges();
   };
@@ -45,6 +47,27 @@ describe('Pedidos internos', () => {
     expect(botones).not.toContain('Descartar');
   });
 
+  const botonesDePedido = () => [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].map(b => b.textContent?.trim());
+
+  it('el Dueño con el permiso ve Tomar, Atendido y Descartar', () => {
+    crear(['ADMIN_SISTEMA'], ['PEDIDO_INTERNO_VER_TODOS', 'PEDIDO_INTERNO_GESTIONAR']);
+    lista('false', [pedido({})]);
+    expect(c()['responde']()).toBe(true);
+    const botones = botonesDePedido().join('|');
+    expect(botones).toContain('Tomar');
+    expect(botones).toContain('Atendido');
+    expect(botones).toContain('Descartar');
+  });
+
+  it('el Dueño sin el permiso no ve las acciones de responder', () => {
+    crear(['ADMIN_SISTEMA'], ['PEDIDO_INTERNO_VER_TODOS']);
+    lista('false', [pedido({})]);
+    expect(c()['responde']()).toBe(false);
+    const botones = botonesDePedido().join('|');
+    expect(botones).not.toContain('Tomar');
+    expect(botones).not.toContain('Descartar');
+  });
+
   it('envía un pedido con descripción libre cuando el producto no está en el catálogo', () => {
     crear(['ALMACENISTA']);
     lista('true', []);
@@ -58,7 +81,7 @@ describe('Pedidos internos', () => {
   });
 
   it('compras ve todos y descartar exige explicar', () => {
-    crear(['COMPRADOR']);
+    crear(['COMPRADOR'], ['PEDIDO_INTERNO_VER_TODOS', 'PEDIDO_INTERNO_GESTIONAR']);
     lista('false', [pedido({})]);
     expect(c()['responde']()).toBe(true);
     c()['responder'](pedido({}), 'DESCARTADO');
