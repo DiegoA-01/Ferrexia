@@ -17,7 +17,9 @@
       <div class="campo"><label for="vf-cons">Consecutivo</label><input id="vf-cons" class="entrada" placeholder="C1-000123" autocomplete="off" list="vf-cons-sugeridos" [ngModel]="consecutivo()" (ngModelChange)="escribirConsecutivo($event)" (keyup.enter)="buscar()">
         <datalist id="vf-cons-sugeridos">@for (s of sugerencias(); track s) { <option [value]="s"></option> }</datalist></div>
       <button type="button" class="boton" (click)="buscar()">Buscar</button>
+      <button type="button" class="boton chico" (click)="hoy()">Hoy</button>
     </div>
+    @if (esHoy() && !consecutivo().trim()) { <p class="sub" style="padding: 8px 20px 0">Ventas de hoy</p> }
     <div class="tabla-contenedor">
       <table class="tabla">
         <thead><tr><th>Venta</th><th>Fecha</th><th>Caja</th><th>Cliente</th><th>Cajero</th><th class="num">Total</th><th></th></tr></thead>
@@ -31,7 +33,7 @@
               <td class="num"><button type="button" class="boton chico" (click)="ver(v)">Detalle</button></td>
             </tr>
           } @empty {
-            <tr><td colspan="7" class="vacio">{{ pagina() ? 'No hay ventas con estos filtros.' : 'Cargando…' }}</td></tr>
+            <tr><td colspan="7" class="vacio">{{ !pagina() ? 'Cargando…' : (esHoy() && !consecutivo().trim() && !estado() ? 'No hay ventas hoy' : 'No hay ventas con estos filtros.') }}</td></tr>
           }
         </tbody>
       </table>

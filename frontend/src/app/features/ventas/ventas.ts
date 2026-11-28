@@ -19,6 +19,13 @@ import { imprimirTiquete } from '../pos/tiquete';
 
 import { Cifra } from '../../core/ui/cifra';
 import { ESTILO_TOTALES, VentanaVidrio } from '../../core/ui/ventana-vidrio';
+/** @returns la fecha de hoy en hora local del navegador, como la pide el input date (yyyy-MM-dd) */
+function fechaHoy(): string {
+  const d = new Date();
+  const dos = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`;
+}
+
 /** Línea en el formulario de devolución. */
 interface LineaDevuelta {
   ventaLineaId: number;
@@ -71,8 +78,9 @@ export class Ventas implements OnInit {
 
   protected readonly medios = MEDIOS_VENTA;
   protected readonly pagina = signal<Pagina<VentaResumen> | null>(null);
-  protected readonly desde = signal('');
-  protected readonly hasta = signal('');
+  /** Al abrir solo salen las ventas de hoy; para otros días se cambian las fechas o se busca por consecutivo. */
+  protected readonly desde = signal(fechaHoy());
+  protected readonly hasta = signal(fechaHoy());
   protected readonly estado = signal<EstadoVenta | null>(null);
   protected readonly consecutivo = signal('');
   protected readonly detalle = signal<Venta | null>(null);
@@ -96,6 +104,8 @@ export class Ventas implements OnInit {
   protected readonly devuelve = computed(() => this.sesion.tienePermiso('DEVOLUCION_REGISTRAR') && !this.sesion.soloLectura());
   /** Quien no tiene VENTA_VER_TODAS ve las ventas que cobró o vendió (el aviso lo explica). */
   protected readonly soloPropias = computed(() => !this.sesion.tienePermiso('VENTA_VER_TODAS'));
+  /** Las fechas siguen siendo las de hoy por defecto (el usuario no las tocó). */
+  protected readonly esHoy = computed(() => this.desde() === fechaHoy() && this.hasta() === fechaHoy());
   /** Consecutivos sugeridos mientras se escribe en el campo Consecutivo. */
   protected readonly sugerencias = signal<string[]>([]);
   private temporizador: ReturnType<typeof setTimeout> | null = null;
@@ -141,11 +151,34 @@ export class Ventas implements OnInit {
     }
   }
 
+  /**
+   * Fechas que viajan al servidor: con consecutivo y las fechas de hoy sin tocar se busca en todos los días (sin
+   * fechas); si el usuario las cambió, se combinan con el consecutivo.
+   *
+   * @param consecutivo texto del consecutivo ya recortado
+   * @returns desde y hasta (o null)
+   */
+  private fechas(consecutivo: string): { desde: string | null; hasta: string | null } {
+    if (consecutivo && this.esHoy()) {
+      return { desde: null, hasta: null };
+    }
+    return { desde: this.desde() || null, hasta: this.hasta() || null };
+  }
+
+  /** Vuelve al filtro inicial (hoy, sin consecutivo, todos los estados) y recarga. */
+  protected hoy(): void {
+    this.desde.set(fechaHoy());
+    this.hasta.set(fechaHoy());
+    this.consecutivo.set('');
+    this.estado.set(null);
+    this.buscar();
+  }
+
   /** @param pagina página */
   protected buscar(pagina = 0): void {
     this.sugerencias.set([]);
-    this.ventas.buscar({ desde: this.desde() || null, hasta: this.hasta() || null, estado: this.estado(),
-      consecutivo: this.consecutivo().trim() || null, pagina }).subscribe({ next: p => this.pagina.set(p), error: e => this.avisos.error(e) });
+    const cons = this.consecutivo().trim();
+    this.ventas.buscar({ ...this.fechas(cons), estado: this.estado(), consecutivo: cons || null, pagina }).subscribe({ next: p => this.pagina.set(p), error: e => this.avisos.error(e) });
   }
 
   /**
@@ -169,8 +202,7 @@ export class Ventas implements OnInit {
       return;
     }
     this.temporizador = setTimeout(() => {
-      this.ventas.buscar({ desde: this.desde() || null, hasta: this.hasta() || null, estado: this.estado(),
-        consecutivo: t, tamano: 10 }).subscribe({
+      this.ventas.buscar({ ...this.fechas(t), estado: this.estado(), consecutivo: t, tamano: 10 }).subscribe({
         next: p => this.sugerencias.set((p.contenido ?? []).map(v => v.consecutivo ?? '').filter(Boolean)),
         error: () => this.sugerencias.set([]),
       });

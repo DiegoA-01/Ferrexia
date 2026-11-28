@@ -27,6 +27,12 @@ const sesion = (roles: string[], permisos?: string[]) => {
 };
 const limites = [{ rol: 'CAJERO', descuentoMaximoPct: 5 }, { rol: 'SUPERVISOR_VENTAS', descuentoMaximoPct: 15 }, { rol: 'VENDEDOR', descuentoMaximoPct: 5 }];
 
+/** Hoy en hora local, igual que la pantalla. */
+const hoyLocal = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 describe('Ventas', () => {
   let fixture: ComponentFixture<Ventas>;
   let backend: HttpTestingController;
@@ -269,6 +275,69 @@ describe('Ventas', () => {
       expect(b.request.params.get('size')).toBe('20');
       expect(b.request.params.get('estado')).toBe('CONFIRMADA');
       b.flush(pagina([]));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('al abrir pide solo las ventas de hoy y muestra "Ventas de hoy"', () => {
+    TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), sesion(['AUDITOR'])] });
+    backend = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(Ventas);
+    fixture.detectChanges();
+    const r = backend.expectOne(req => req.url === '/api/ventas');
+    expect(r.request.params.get('desde')).toBe(hoyLocal());
+    expect(r.request.params.get('hasta')).toBe(hoyLocal());
+    r.flush(pagina([]));
+    backend.expectOne('/api/ventas/limites-descuento').flush(limites);
+    fixture.detectChanges();
+    expect(texto()).toContain('Ventas de hoy');
+    expect(texto()).toContain('No hay ventas hoy');
+  });
+
+  it('el consecutivo con las fechas de hoy sin tocar busca en todos los días; con fechas cambiadas las conserva', () => {
+    crear(['AUDITOR']);
+    c()['consecutivo'].set('C1-000005');
+    c()['buscar']();
+    const a = backend.expectOne(req => req.url === '/api/ventas');
+    expect(a.request.params.has('desde')).toBe(false);
+    expect(a.request.params.has('hasta')).toBe(false);
+    expect(a.request.params.get('consecutivo')).toBe('C1-000005');
+    a.flush(pagina([resumen]));
+    c()['desde'].set('2026-11-01');
+    c()['buscar']();
+    const b = backend.expectOne(req => req.url === '/api/ventas');
+    expect(b.request.params.get('desde')).toBe('2026-11-01');
+    expect(b.request.params.get('hasta')).toBe(hoyLocal());
+    expect(b.request.params.get('consecutivo')).toBe('C1-000005');
+    b.flush(pagina([]));
+  });
+
+  it('el botón Hoy restablece fechas, consecutivo y estado y recarga', () => {
+    crear(['AUDITOR']);
+    c()['desde'].set('2026-11-01');
+    c()['consecutivo'].set('C1-0');
+    c()['estado'].set('ANULADA');
+    c()['hoy']();
+    const r = backend.expectOne(req => req.url === '/api/ventas');
+    expect(r.request.params.get('desde')).toBe(hoyLocal());
+    expect(r.request.params.get('hasta')).toBe(hoyLocal());
+    expect(r.request.params.has('consecutivo')).toBe(false);
+    expect(r.request.params.has('estado')).toBe(false);
+    expect(c()['consecutivo']()).toBe('');
+    r.flush(pagina([]));
+  });
+
+  it('las sugerencias del consecutivo buscan en todos los días si las fechas son las de hoy', () => {
+    vi.useFakeTimers();
+    try {
+      crear(['CAJERO'], { id: 4, estado: 'ABIERTO' });
+      c()['escribirConsecutivo']('C1-');
+      vi.advanceTimersByTime(500);
+      const s = backend.expectOne(r => r.url === '/api/ventas');
+      expect(s.request.params.has('desde')).toBe(false);
+      expect(s.request.params.has('hasta')).toBe(false);
+      s.flush(pagina([]));
     } finally {
       vi.useRealTimers();
     }
