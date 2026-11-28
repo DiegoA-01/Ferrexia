@@ -14,10 +14,10 @@
         <select id="vf-estado" class="entrada" [ngModel]="estado()" (ngModelChange)="estado.set($event)">
           <option [ngValue]="null">Todas</option><option ngValue="CONFIRMADA">Confirmadas</option><option ngValue="ANULADA">Anuladas</option>
         </select></div>
-      <div class="campo"><label for="vf-cons">Consecutivo</label><input id="vf-cons" class="entrada" placeholder="C1-000123" autocomplete="off" list="vf-cons-sugeridos" [ngModel]="consecutivo()" (ngModelChange)="escribirConsecutivo($event)" (keyup.enter)="buscar()">
+      <div class="campo ancho"><label for="vf-cons">Consecutivo</label><input id="vf-cons" class="entrada" placeholder="C1-000123" autocomplete="off" list="vf-cons-sugeridos" [ngModel]="consecutivo()" (ngModelChange)="escribirConsecutivo($event)" (keyup.enter)="buscar()">
         <datalist id="vf-cons-sugeridos">@for (s of sugerencias(); track s) { <option [value]="s"></option> }</datalist></div>
       <button type="button" class="boton" (click)="buscar()">Buscar</button>
-      <button type="button" class="boton chico" (click)="hoy()">Hoy</button>
+      <button type="button" class="boton" [class.activo]="hoyActivo()" [attr.aria-pressed]="hoyActivo()" (click)="hoy()">Hoy</button>
     </div>
     @if (esHoy() && !consecutivo().trim()) { <p class="sub" style="padding: 8px 20px 0">Ventas de hoy</p> }
     <div class="tabla-contenedor">

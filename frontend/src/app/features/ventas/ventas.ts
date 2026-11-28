@@ -56,7 +56,15 @@ const ROLES_LIMITE: Record<string, string> = { CAJERO: 'Cajero', SUPERVISOR_VENT
   templateUrl: './ventas.html',
   styles: [ESTILO_TOTALES, `
     .filtros { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--sc-borde); align-items: flex-end;
-      .campo { min-width: 150px; } }
+      .campo { flex: 0 0 160px; min-width: 0; }
+      .campo.ancho { flex-basis: 210px; }
+      .entrada, .boton { height: 44px; min-height: 44px; box-sizing: border-box; }
+      .boton { flex: 0 0 96px; width: 96px; padding: 0; justify-content: center; }
+      .boton.activo { background: var(--sc-primario); border-color: var(--sc-primario); color: #fff; }
+      .boton.activo:hover:not(:disabled) { background: var(--sc-primario-hover); } }
+    @media (max-width: 640px) {
+      .filtros { .campo, .campo.ancho { flex: 1 1 100%; }
+        .boton { flex: 1 1 0; width: auto; } } }
     .sub { display: block; font-size: 12px; color: var(--sc-texto-2); }
     .datos-venta { font-size: 12.5px; color: var(--sc-texto-2); line-height: 1.5; margin-top: -6px; }
     .boton.anular { background: #c62828; border-color: #c62828; color: #fff; }
@@ -106,6 +114,8 @@ export class Ventas implements OnInit {
   protected readonly soloPropias = computed(() => !this.sesion.tienePermiso('VENTA_VER_TODAS'));
   /** Las fechas siguen siendo las de hoy por defecto (el usuario no las tocó). */
   protected readonly esHoy = computed(() => this.desde() === fechaHoy() && this.hasta() === fechaHoy());
+  /** El botón Hoy se ve seleccionado cuando el filtro es el de hoy y no hay consecutivo escrito. */
+  protected readonly hoyActivo = computed(() => this.esHoy() && !this.consecutivo().trim());
   /** Consecutivos sugeridos mientras se escribe en el campo Consecutivo. */
   protected readonly sugerencias = signal<string[]>([]);
   private temporizador: ReturnType<typeof setTimeout> | null = null;

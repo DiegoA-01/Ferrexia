@@ -313,6 +313,22 @@ describe('Ventas', () => {
     b.flush(pagina([]));
   });
 
+  it('el botón Hoy está presionado al abrir y deja de estarlo al cambiar la fecha o escribir consecutivo', () => {
+    crear(['AUDITOR']);
+    const boton = () => [...(fixture.nativeElement as HTMLElement).querySelectorAll('.filtros button')]
+      .find(b => b.textContent!.trim() === 'Hoy') as HTMLButtonElement;
+    expect(boton().getAttribute('aria-pressed')).toBe('true');
+    c()['desde'].set('2026-11-01');
+    fixture.detectChanges();
+    expect(boton().getAttribute('aria-pressed')).toBe('false');
+    c()['desde'].set(hoyLocal());
+    fixture.detectChanges();
+    expect(boton().getAttribute('aria-pressed')).toBe('true');
+    c()['consecutivo'].set('C1-0');
+    fixture.detectChanges();
+    expect(boton().getAttribute('aria-pressed')).toBe('false');
+  });
+
   it('el botón Hoy restablece fechas, consecutivo y estado y recarga', () => {
     crear(['AUDITOR']);
     c()['desde'].set('2026-11-01');
