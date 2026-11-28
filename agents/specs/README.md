@@ -66,7 +66,7 @@ decisiones y se aprueban antes de escribir el plan.
 | [034-reportes-ventas-ampliados](034-reportes-ventas-ampliados/spec.md) | 4 | Ventas por categoría, empleado, producto, medio de pago, tipo de servicio y caja | `feature/reportes-ventas-ampliados` | 009, 019, 023, 032 | Persona 1 | Hecha (V56); falta revisión en Docker |
 | [035-sedes-super-admin](035-sedes-super-admin/spec.md) | 4 | Grupo de empresas con un super administrador | `feature/sedes-super-admin` | 020, 022 | Persona 2 | Hecha (V57); falta revisión en Docker |
 | [036-ajustes-prueba-usuarios](036-ajustes-prueba-usuarios/spec.md) | 4 | Ajustes de la prueba con usuarios: avisos al crear empresa, cantidad y existencia en el POS, detalle de venta en su fila, Inicio solo con categorías y pendientes | `fix/ajustes-prueba-usuarios` | 005, 012, 020, 024 | Persona 1 | Hecha (sin migración; aprobada en Docker 2026-11-26) |
-| [037-ingreso-sin-codigo](037-ingreso-sin-codigo/spec.md) | 4 | Ingreso solo con correo y contraseña, sin código de empresa; correo único en todo el sistema | `feature/ingreso-sin-codigo` | 020, 035 | Persona 1 | Hecha (V58); falta revisión en Docker |
+| [037-ingreso-sin-codigo](037-ingreso-sin-codigo/spec.md) | 4 | Ingreso solo con correo y contraseña, sin código de empresa; correo único en todo el sistema | `feature/ingreso-sin-codigo` | 020, 035 | Persona 1 | Hecha (V58, PR #40); falta revisión en Docker |
 
 Al terminar la 006 el negocio ya puede **vender y cuadrar caja**. De la 007 en adelante se suman crédito, márgenes y
 control fino.
