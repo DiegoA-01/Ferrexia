@@ -181,7 +181,7 @@ public class PedidoInternoService {
         }
         auditoriaService.exito(AccionAuditoria.PEDIDO_INTERNO_GESTIONAR, EntidadAuditada.PEDIDO_INTERNO, id,
                 p.getConsecutivo() + "; estado=" + req.estado());
-        return respuesta(p, nombres(Set.of(p.getUsuarioId(), sesion.id())));
+        return respuesta(p, nombres(Set.copyOf(java.util.List.of(p.getUsuarioId(), sesion.id()))));
     }
 
     /**

@@ -64,7 +64,7 @@ Después se sumaron `CAJA_RETIRO_SIN_PIN`, `CAJA_GASTO_SIN_PIN` y `CAJA_INGRESO_
 | `PAGO_BUSCAR` | Buscar pagos a proveedores | Administrativo, Admin. compras, Contador/Auditor | PagoController |
 | `PAGO_REGISTRAR` | Registrar y anular pagos a proveedores | Administrativo | PagoController |
 | `PAGO_VER` | Ver pagos de una orden | Administrativo, Admin. compras, Aprobador, Contador/Auditor, Compras | PagoController |
-| `PEDIDO_INTERNO_GESTIONAR` | Gestionar pedidos internos | Admin. compras, Compras | PedidoInternoController |
+| `PEDIDO_INTERNO_GESTIONAR` | Gestionar pedidos internos | Admin. compras, Compras, Dueño (V59) | PedidoInternoController |
 | `PESOS_EVALUACION_GESTIONAR` | Cambiar los pesos de evaluación | Admin. compras | PesosController |
 | `POLITICA_APROBACION_GESTIONAR` | Administrar políticas de aprobación | Admin. compras | PoliticaAprobacionController |
 | `PRESUPUESTO_GESTIONAR` | Crear y editar presupuestos | Admin. compras | PresupuestoController |

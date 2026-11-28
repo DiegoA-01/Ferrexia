@@ -137,7 +137,8 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V56 | `feature/reportes-ventas-ampliados` | Permiso `REPORTE_MARGEN` para Dueño, Administrador y Contador/Auditor (spec 034) |
 | V57 | `feature/sedes-super-admin` | Grupo de empresas: `grupo_empresa`, `usuario_grupo`, vínculos, traslados entre empresas, permisos y tipos de movimiento (spec 035) |
 | V58 | `feature/ingreso-sin-codigo` | Correo único en todo el sistema para usuarios de empresa (spec 037) |
-| V59 en adelante | libre | Se reserva al empezar cada spec |
+| V59 | `fix/pedidos-internos-dueno` | El Dueño (ADMIN_SISTEMA) atiende pedidos internos: `PEDIDO_INTERNO_GESTIONAR` |
+| V60 en adelante | libre | Se reserva al empezar cada spec |
 
 **Numeración propuesta en los planes 018 a 035 (no es reserva):** V41 (020), V42 (021), V43 y V44 (022), V45 (023),
 V46 (025), V47 (026), V48 (028), V49 (029), V50 (030), V51 (031), V52 (032), V53 (033), V54 (035). Las specs 018, 019,
