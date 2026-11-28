@@ -30,10 +30,8 @@ h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .cifra { font-size: 10px; }
 }
 
-/* Cuerpo del inicio: accesos en cuadros a la izquierda y "Requiere tu atención" a la derecha; en pantallas
-   angostas el panel baja debajo de los cuadros. */
-.inicio-cuerpo { --gap-inicio: 16px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--gap-inicio); align-items: start; }
-@media (max-width: 1100px) { .inicio-cuerpo { grid-template-columns: minmax(0, 1fr); } }
+/* Cuerpo del inicio: accesos en cuadros a todo el ancho y, debajo, "Requiere tu atención" compacto a la izquierda. */
+.inicio-cuerpo { --gap-inicio: 16px; display: flex; flex-direction: column; gap: var(--gap-inicio); }
 
 /* Categorías del menú como accesos (spec 012): rejilla de 3 columnas, filas parejas y el mismo espacio a lo alto y a lo ancho. */
 .accesos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: var(--gap-inicio); }
@@ -73,7 +71,7 @@ a.categoria-acceso:focus-visible { outline: 2px solid var(--sc-primario); outlin
   font-size: 11px; font-weight: 600; color: var(--sc-ambar); background: var(--sc-ambar-fondo); }
 
 /* Requiere tu atención: panel compacto */
-.panel-atencion { padding: 14px 16px; border-radius: 18px;
+.panel-atencion { width: 100%; max-width: 340px; align-self: flex-start; padding: 14px 16px; border-radius: 18px;
   .tarjeta-cabecera { margin-bottom: 6px; }
   h2 { font-size: 14px; margin: 0; }
   .chip { font-size: 11px; }
