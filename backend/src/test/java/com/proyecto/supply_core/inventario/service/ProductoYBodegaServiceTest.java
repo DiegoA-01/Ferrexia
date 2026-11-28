@@ -103,6 +103,66 @@ class ProductoYBodegaServiceTest {
     }
 
     @Test
+    void spec038ConMovimientosPasaAUnaUnidadQueMideLoMismoYConvierteMinimoMaximoYCostos() {
+        ConversionUnidadProductoService conversion = mock(ConversionUnidadProductoService.class);
+        productoService.setConversion(conversion);
+        doc.setFactorConversionBase(new BigDecimal("12")); // 1 docena = 12 unidades
+        producto.setCostoPromedio(new BigDecimal("1000"));
+        when(movimientos.existsByProductoId(10L)).thenReturn(true);
+
+        var r = productoService.actualizar(10L, new ProductoUpdateRequest("PAP-001", "Resma", null, 1L, 2L,
+                new BigDecimal("24"), new BigDecimal("120"), new BigDecimal("1200")));
+
+        assertEquals("DOC", r.unidadMedida().codigo());
+        assertEquals(new BigDecimal("2.0000"), producto.getStockMinimo());   // 24 UND = 2 DOC
+        assertEquals(new BigDecimal("10.0000"), producto.getStockMaximo());  // 120 UND = 10 DOC
+        assertEquals(new BigDecimal("14400.0000"), producto.getCostoReferencia()); // $1.200 la UND = $14.400 la DOC
+        assertEquals(new BigDecimal("12000.0000"), producto.getCostoPromedio());
+        org.mockito.Mockito.verify(conversion).convertir(org.mockito.ArgumentMatchers.eq(10L),
+                org.mockito.ArgumentMatchers.argThat(k -> k.compareTo(new BigDecimal("0.0833333333")) == 0));
+    }
+
+    @Test
+    void spec038ConMovimientosNoSePasaAUnaUnidadQueMideOtraCosa() {
+        ConversionUnidadProductoService conversion = mock(ConversionUnidadProductoService.class);
+        productoService.setConversion(conversion);
+        UnidadMedida metro = unidad(3L, "M");
+        metro.setMagnitud(Magnitud.LONGITUD);
+        when(unidades.findById(3L)).thenReturn(Optional.of(metro));
+        when(movimientos.existsByProductoId(10L)).thenReturn(true);
+
+        var ex = assertThrows(NegocioException.class, () -> productoService.actualizar(10L,
+                new ProductoUpdateRequest("PAP-001", "Resma", null, 1L, 3L, BigDecimal.ZERO, null, null)));
+
+        assertEquals("UNIDAD_EN_USO", ex.getCodigo());
+        assertTrue(ex.getMessage().contains("indica cuántos M equivale 1 UND"));
+        org.mockito.Mockito.verifyNoInteractions(conversion);
+        assertEquals("UND", producto.getUnidadMedida().getCodigo());
+    }
+
+    @Test
+    void spec038ConLaEquivalenciaSiPasaDeUnidadesAMetrosYConvierteTambienLoDeUnidadPropia() {
+        ConversionUnidadProductoService conversion = mock(ConversionUnidadProductoService.class);
+        productoService.setConversion(conversion);
+        UnidadMedida metro = unidad(3L, "M");
+        metro.setMagnitud(Magnitud.LONGITUD);
+        when(unidades.findById(3L)).thenReturn(Optional.of(metro));
+        when(movimientos.existsByProductoId(10L)).thenReturn(true);
+
+        // un rollo (1 UND) son 100 metros
+        var r = productoService.actualizar(10L, new ProductoUpdateRequest("PAP-001", "Cable", null, 1L, 3L,
+                new BigDecimal("2"), null, new BigDecimal("150000"), null, null, null, new BigDecimal("100")));
+
+        assertEquals("M", r.unidadMedida().codigo());
+        assertEquals(new BigDecimal("200.0000"), producto.getStockMinimo());
+        assertEquals(new BigDecimal("1500.0000"), producto.getCostoReferencia());
+        org.mockito.Mockito.verify(conversion).convertir(10L, new BigDecimal("100"));
+        org.mockito.Mockito.verify(conversion).cambiarMedida(org.mockito.ArgumentMatchers.eq(10L),
+                org.mockito.ArgumentMatchers.argThat(u -> "UND".equals(u.getCodigo())),
+                org.mockito.ArgumentMatchers.eq(metro), org.mockito.ArgumentMatchers.eq(new BigDecimal("100")));
+    }
+
+    @Test
     void sinMovimientosSiPuedeCambiarLaUnidad() {
         when(movimientos.existsByProductoId(10L)).thenReturn(false);
         var r = productoService.actualizar(10L,

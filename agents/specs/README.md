@@ -55,7 +55,7 @@ decisiones y se aprueban antes de escribir el plan.
 | [023-cierre-por-denominacion](023-cierre-por-denominacion/spec.md) | 2 | Cierre contando billetes y monedas, vista de ventas por turno | `feature/cierre-por-denominacion` | 021 | Persona 1 | Mezclada (V45, PR #29); falta revisión en Docker |
 | [024-planes-simbolicos](024-planes-simbolicos/spec.md) | 2 | Sin planes: los módulos se eligen al crear la empresa; las existentes con todos | `feature/cierre-por-denominacion` (con la 023 y la 027) | SaaS 2 | Persona 2 | Mezclada (V46, PR #29); falta revisión en Docker |
 | [025-caja-con-permisos](025-caja-con-permisos/spec.md) | 3 | El dueño vende, cajas por persona, retiro y gasto sin PIN con permiso | `feature/cierre-por-denominacion` (con la 023, 024 y 027) | 022 | Persona 1 | Mezclada (V47 y V48, PR #29); revisada en Docker, falta aprobación |
-| [026-producto-completo](026-producto-completo/spec.md) | 3 | Categoría y proveedor al vuelo, impuesto, unidad ajustable, stock máximo, proveedor y fecha del costo | `feature/cierre-por-denominacion` | 001 | Persona 2 | Mezclada (V49, PR #29); falta decidir la unidad con movimientos |
+| [026-producto-completo](026-producto-completo/spec.md) | 3 | Categoría y proveedor al vuelo, impuesto, unidad ajustable, stock máximo, proveedor y fecha del costo | `feature/cierre-por-denominacion` | 001 | Persona 2 | Mezclada (V49, PR #29); la unidad con movimientos quedó en la 038 (D22) |
 | [027-venta-agil](027-venta-agil/spec.md) | 3 | Categorías en el pedido y el POS, cliente y pago en un paso | `feature/cierre-por-denominacion` (con la 023) | 005, 016 | Persona 1 | Mezclada (PR #29); falta revisión en Docker |
 | [028-variantes-producto](028-variantes-producto/spec.md) | 3 | Atributos y variantes con código, precio y stock propios | `feature/variantes-producto` | 026 | Persona 2 | Hecha (V50); falta revisión en Docker |
 | [029-anular-factura-metodo-pago](029-anular-factura-metodo-pago/spec.md) | 3 | Anular factura de un turno cerrado y cambiar el método de pago | `feature/anular-factura-metodo-pago` | 006, 022 | Persona 1 | Hecha (V51); falta revisión en Docker |
@@ -67,6 +67,7 @@ decisiones y se aprueban antes de escribir el plan.
 | [035-sedes-super-admin](035-sedes-super-admin/spec.md) | 4 | Grupo de empresas con un super administrador | `feature/sedes-super-admin` | 020, 022 | Persona 2 | Hecha (V57); falta revisión en Docker |
 | [036-ajustes-prueba-usuarios](036-ajustes-prueba-usuarios/spec.md) | 4 | Ajustes de la prueba con usuarios: avisos al crear empresa, cantidad y existencia en el POS, detalle de venta en su fila, Inicio solo con categorías y pendientes | `fix/ajustes-prueba-usuarios` | 005, 012, 020, 024 | Persona 1 | Hecha (sin migración; aprobada en Docker 2026-11-26) |
 | [037-ingreso-sin-codigo](037-ingreso-sin-codigo/spec.md) | 4 | Ingreso solo con correo y contraseña, sin código de empresa; correo único en todo el sistema | `feature/ingreso-sin-codigo` | 020, 035 | Persona 1 | Hecha (V58); falta revisión en Docker |
+| [038-unidades-por-material](038-unidades-por-material/spec.md) | 4 | Unidades según el material (la categoría dice qué mide), m³, m², tonelada, libra y galón; cambiar la unidad con movimientos convirtiendo todo; vender en otra unidad en el POS | `fix/grupos-cancelar-eliminar` (con el arreglo de grupos) | 026 | Persona 1 | Hecha (V59); falta revisión en Docker |
 
 Al terminar la 006 el negocio ya puede **vender y cuadrar caja**. De la 007 en adelante se suman crédito, márgenes y
 control fino.
@@ -99,6 +100,7 @@ referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real
 | D19 | ¿Qué alcance tiene domicilios? | Venta tipo domicilio con dirección y envío, domiciliario, estados y pago contraentrega en la caja; sin mapa en vivo ni app. | Tomada (2026-11-26: tal como está; contraentrega como venta al despachar; envío como producto servicio) | 032 |
 | D20 | ¿El cajero ve lo esperado antes de cerrar? (revisa el cierre ciego de la 003) | Cuenta primero y después ve lo esperado y la diferencia; quien tenga el permiso "ver esperado" lo ve siempre. | Tomada (2026-11-25, opción A: cierre ciego; mientras llega la 022 ven lo esperado SUPERVISOR_VENTAS y ADMIN_SISTEMA) | 021 |
 | D21 | ¿Las alertas de presupuesto excedido y solicitud duplicada se pueden saltar con justificación? (revisa la 18-a) | Solo quien tenga el permiso `SOLICITUD_EXCEPCION` (por defecto el Dueño); los demás quedan bloqueados. | Tomada (2026-11-26: opción recomendada, se aplicó al empezar la 033; se puede cambiar a bloquear siempre) | 033 |
+| D22 | ¿Se puede cambiar la unidad de un producto que ya tiene movimientos? (pendiente de la 026) | A otra unidad que mida lo mismo, convirtiendo stock, kárdex, costos y documentos; a otra medida (unidades a metros) diciendo la equivalencia. La categoría dice qué mide su material y se ofrecen sus unidades, con la opción de ver todas. | Tomada (2026-11-28) | 038 |
 
 Una decisión **Recomendada** pasa a **Tomada** cuando la aprueba el equipo; se anota aquí antes de aprobar la spec.
 
@@ -137,7 +139,8 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V56 | `feature/reportes-ventas-ampliados` | Permiso `REPORTE_MARGEN` para Dueño, Administrador y Contador/Auditor (spec 034) |
 | V57 | `feature/sedes-super-admin` | Grupo de empresas: `grupo_empresa`, `usuario_grupo`, vínculos, traslados entre empresas, permisos y tipos de movimiento (spec 035) |
 | V58 | `feature/ingreso-sin-codigo` | Correo único en todo el sistema para usuarios de empresa (spec 037) |
-| V59 en adelante | libre | Se reserva al empezar cada spec |
+| V59 | `fix/grupos-cancelar-eliminar` | Unidades por material: medida AREA, unidades M3, M2, TON, LB y GAL, y `categoria_producto.magnitud` (spec 038) |
+| V60 en adelante | libre | Se reserva al empezar cada spec |
 
 **Numeración propuesta en los planes 018 a 035 (no es reserva):** V41 (020), V42 (021), V43 y V44 (022), V45 (023),
 V46 (025), V47 (026), V48 (028), V49 (029), V50 (030), V51 (031), V52 (032), V53 (033), V54 (035). Las specs 018, 019,

@@ -123,6 +123,34 @@ class GrupoPlataformaServiceTest {
     }
 
     @Test
+    void eliminarUnGrupoVacioBorraSusSuperAdministradoresYSusVinculosYLoAudita() {
+        UsuarioGrupo s1 = superAdmin(70L, "s1@x.com", true);
+        when(superAdmins.findByGrupoIdOrderByIdAsc(2L)).thenReturn(List.of(s1));
+        var vinculosDeS1 = List.of(new com.proyecto.supply_core.grupo.entity.UsuarioGrupoEmpresa());
+        when(vinculos.findByUsuarioGrupoId(70L)).thenReturn(vinculosDeS1);
+
+        service.eliminar(2L);
+
+        verify(vinculos).deleteAll(vinculosDeS1);
+        verify(superAdmins).deleteAll(List.of(s1));
+        verify(grupos).delete(grupo);
+        verify(auditoria).registrar(eq(3L), eq(AccionPlataforma.GRUPO_ELIMINAR), isNull(), eq(true), anyString());
+    }
+
+    @Test
+    void unGrupoConEmpresasOConTrasladosNoSeElimina() {
+        when(empresas.existsByGrupoId(2L)).thenReturn(true);
+        assertEquals("GRUPO_CON_EMPRESAS", assertThrows(NegocioException.class, () -> service.eliminar(2L)).getCodigo());
+
+        when(empresas.existsByGrupoId(2L)).thenReturn(false);
+        when(traslados.existsByGrupoId(2L)).thenReturn(true);
+        assertEquals("GRUPO_CON_TRASLADOS", assertThrows(NegocioException.class, () -> service.eliminar(2L)).getCodigo());
+
+        verify(grupos, never()).delete(any());
+        assertThrows(com.proyecto.supply_core.common.exception.NoEncontradoException.class, () -> service.eliminar(99L));
+    }
+
+    @Test
     void noSePuedeCrearUnGrupoConNombreRepetido() {
         when(grupos.existsByNombreIgnoreCase("Ferrecentro")).thenReturn(true);
 

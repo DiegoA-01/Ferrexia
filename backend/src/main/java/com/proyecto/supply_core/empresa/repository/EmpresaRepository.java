@@ -53,4 +53,10 @@ public interface EmpresaRepository extends JpaRepository<Empresa, Long> {
      * @return empresas del grupo
      */
     List<Empresa> findByGrupoIdOrderByIdAsc(Long grupoId);
+
+    /**
+     * @param grupoId grupo
+     * @return {@code true} si alguna empresa está en ese grupo
+     */
+    boolean existsByGrupoId(Long grupoId);
 }

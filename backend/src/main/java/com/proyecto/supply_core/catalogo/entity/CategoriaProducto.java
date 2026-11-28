@@ -34,6 +34,11 @@ public class CategoriaProducto {
     @Column(nullable = false, length = 150)
     private String nombre;
 
+    /** Spec 038: qué mide su material (cable → LONGITUD, arena → VOLUMEN); {@code null} = no lo dice. */
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column
+    private com.proyecto.supply_core.catalogo.enums.Magnitud magnitud;
+
     @Column(nullable = false)
     private boolean activo = true;
 }

@@ -16,7 +16,7 @@ describe('Producto completo', () => {
   const crear = () => {
     TestBed.configureTestingModule({
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
-        { provide: SesionService, useValue: { tieneRol: () => true, tieneModulo: () => true, soloLectura: () => false,
+        { provide: SesionService, useValue: { tieneRol: () => true, tienePermiso: () => true, tieneModulo: () => true, soloLectura: () => false,
           empresa: signal(null) } }],
     });
     backend = TestBed.inject(HttpTestingController);
@@ -98,5 +98,68 @@ describe('Producto completo', () => {
     expect(c['estado'](c['filas']()[1]).texto).toBe('Normal');
     c['soloSobreMaximo'].set(true);
     expect(c['filasVisibles']().map((f: { productoId: number }) => f.productoId)).toEqual([1]);
+  });
+
+  it('spec 038: la categoría dice qué mide y solo se ofrecen sus unidades, salvo que se pidan todas', () => {
+    const c = crear();
+    c['abrir']('nuevo');
+    backend.expectOne(r => r.url === '/api/unidades-medida').flush([
+      { id: 1, codigo: 'UND', nombre: 'Unidad', magnitud: 'CANTIDAD' }, { id: 8, codigo: 'M', nombre: 'Metro', magnitud: 'LONGITUD' },
+      { id: 9, codigo: 'CM', nombre: 'Centímetro', magnitud: 'LONGITUD' }, { id: 10, codigo: 'M3', nombre: 'Metro cúbico', magnitud: 'VOLUMEN' }]);
+    backend.expectOne('/api/ventas/impuestos').flush([]);
+    backend.expectOne(r => r.url === '/api/proveedores').flush({ contenido: [], pagina: 0, tamano: 100, totalElementos: 0, totalPaginas: 0 });
+    c['categorias'].set([{ id: 3, nombre: 'Cables', magnitud: 'LONGITUD' }, { id: 4, nombre: 'Agregados', magnitud: 'VOLUMEN' },
+      { id: 5, nombre: 'Varios' }]);
+    const codigos = () => c['unidadesOfrecidas']().map((u: { codigo: string }) => u.codigo);
+
+    c['nuevo'].controls.categoriaId.setValue(3);
+    expect(codigos()).toEqual(['M', 'CM']);          // cable: por metros
+    c['nuevo'].controls.categoriaId.setValue(4);
+    expect(codigos()).toEqual(['M3']);               // arena: por metros cúbicos
+    c['todasLasUnidades'].set(true);
+    expect(codigos()).toEqual(['UND', 'M', 'CM', 'M3']);
+    c['todasLasUnidades'].set(false);
+    c['nuevo'].controls.categoriaId.setValue(5);
+    expect(codigos()).toEqual(['UND', 'M', 'CM', 'M3']); // sin medida: todas
+
+    // decir qué mide una categoría existente la actualiza
+    c['nuevo'].controls.categoriaId.setValue(5);
+    c['guardarMedidaCategoria']('AREA');
+    const r = backend.expectOne(x => x.url === '/api/categorias/5' && x.method === 'PUT');
+    expect(r.request.body).toEqual({ nombre: 'Varios', magnitud: 'AREA' });
+    r.flush({ id: 5, nombre: 'Varios', magnitud: 'AREA' });
+    expect(c['medidaCategoria']()).toBe('AREA');
+  });
+
+  it('spec 038: la categoría nueva lleva lo que mide su material', () => {
+    const c = crear();
+    abrirNuevo(c);
+    c['abrirAlVuelo']('categoria');
+    c['nombreNuevo'].set('Agregados');
+    c['magnitudNueva'].set('VOLUMEN');
+    c['guardarAlVuelo']();
+    const r = backend.expectOne(x => x.url === '/api/categorias' && x.method === 'POST');
+    expect(r.request.body).toEqual({ nombre: 'Agregados', magnitud: 'VOLUMEN' });
+    r.flush({ id: 11, nombre: 'Agregados', magnitud: 'VOLUMEN' });
+  });
+
+  it('spec 038: al pasar de unidades a metros pide la equivalencia y la envía', () => {
+    const c = crear();
+    c['unidades'].set([{ id: 1, codigo: 'UND', magnitud: 'CANTIDAD' }, { id: 8, codigo: 'M', magnitud: 'LONGITUD' }]);
+    c['editandoId'].set(30);
+    c['unidadOriginal'].set(1);
+    c['nuevo'].setValue({ codigo: 'CAB-12', nombre: 'Cable 12', categoriaId: 3, unidadMedidaId: 8, stockMinimo: 0,
+      stockMaximo: null, costoReferencia: null, tarifaImpuestoId: null, proveedorReferenciaId: null, costoReferenciaFecha: null });
+    expect(c['otraMedida']()).toBe(true);
+    c['crearProducto']();
+    backend.expectNone(x => x.method === 'PUT'); // sin equivalencia no guarda
+
+    c['equivalencia'].set(1);
+    c['crearProducto']();
+    const r = backend.expectOne(x => x.url === '/api/productos/30' && x.method === 'PUT');
+    expect(r.request.body.equivalenciaUnidad).toBe(1);
+    expect(r.request.body.unidadMedidaId).toBe(8);
+    r.flush({ id: 30, codigo: 'CAB-12' });
+    backend.match(() => true).forEach(x => x.flush([]));
   });
 });

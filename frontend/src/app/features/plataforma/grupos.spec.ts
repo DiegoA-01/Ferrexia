@@ -46,7 +46,55 @@ describe('Consola: Grupos de empresas (spec 035)', () => {
     expect(html().textContent).toContain('Falta configurar el segundo factor');
   });
 
+  it('"Nuevo grupo" abre el formulario y "Cancelar" lo cierra sin crear nada', () => {
+    expect(html().querySelector('#gnombre')).toBeNull();
+    c()['abrirCrear']();
+    fixture.detectChanges();
+    expect(html().querySelector('#gnombre')).not.toBeNull();
+    c()['nombreGrupo'] = 'Grupo que no va';
+    [...html().querySelectorAll('button')].find(b => b.textContent?.trim() === 'Cancelar')!.click();
+    fixture.detectChanges();
+    expect(html().querySelector('#gnombre')).toBeNull();
+    expect(c()['nombreGrupo']).toBe('');
+    backend.expectNone(q => q.method === 'POST');
+  });
+
+  it('eliminar abre "¿Seguro deseas eliminar este grupo?"; Cancelar no borra y "Sí, eliminar" lo quita de la lista', () => {
+    const boton = (t: string) => [...html().querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent?.includes(t))!;
+    expect(boton('Eliminar grupo').disabled).toBe(true); // tiene empresas
+
+    const vacio = { ...grupo, empresas: [] };
+    c()['pedirEliminar'](vacio);
+    fixture.detectChanges();
+    expect(html().querySelector('[role=dialog]')?.textContent).toContain('¿Seguro deseas eliminar este grupo?');
+    expect(html().querySelector('[role=dialog]')?.textContent).toContain('También se eliminan sus 1 super administrador');
+    [...html().querySelectorAll<HTMLButtonElement>('[role=dialog] button')].find(b => b.textContent?.trim() === 'Cancelar')!.click();
+    fixture.detectChanges();
+    expect(html().querySelector('[role=dialog]')).toBeNull();
+    backend.expectNone(q => q.method === 'DELETE');
+
+    c()['pedirEliminar'](vacio);
+    fixture.detectChanges();
+    boton('Sí, eliminar').click();
+    backend.expectOne(q => q.url === '/api/plataforma/grupos/10' && q.method === 'DELETE').flush(null);
+    fixture.detectChanges();
+    expect(html().querySelector('[role=dialog]')).toBeNull();
+    expect(html().textContent).not.toContain('Grupo Norte');
+    backend.expectOne('/api/plataforma/grupos').flush([]);
+  });
+
+  it('si el servidor no deja eliminar, cierra la ventana y muestra el motivo', () => {
+    c()['pedirEliminar']({ ...grupo, empresas: [] });
+    c()['eliminar']();
+    backend.expectOne(q => q.method === 'DELETE').flush({ codigo: 'GRUPO_CON_TRASLADOS', mensaje: 'Tiene traslados registrados' },
+      { status: 409, statusText: 'Conflict' });
+    fixture.detectChanges();
+    expect(html().querySelector('[role=alert]')?.textContent).toContain('Tiene traslados registrados');
+    expect(c()['porEliminar']()).toBeNull();
+  });
+
   it('crea un grupo con su nombre y recarga la lista', () => {
+    c()['abrirCrear']();
     c()['nombreGrupo'] = 'Grupo Sur';
     c()['crearGrupo']();
     const r = backend.expectOne(q => q.url === '/api/plataforma/grupos' && q.method === 'POST');
@@ -54,6 +102,7 @@ describe('Consola: Grupos de empresas (spec 035)', () => {
     r.flush({ id: 11, nombre: 'Grupo Sur' });
     recargar();
     expect(c()['nombreGrupo']).toBe('');
+    expect(c()['creando']()).toBe(false);
   });
 
   it('el selector ofrece solo las empresas que no están en el grupo y asigna la elegida', () => {

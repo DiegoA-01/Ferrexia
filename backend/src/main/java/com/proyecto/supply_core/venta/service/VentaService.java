@@ -689,6 +689,12 @@ public class VentaService {
             }
             UnidadMedida unidad = preciosService.unidadDelPrecio(producto, l.unidadMedidaId());
             PrecioProducto precio = precios.get(producto.getId() + ":" + unidad.getId());
+            if (precio == null && !unidad.getId().equals(producto.getUnidadMedida().getId())) {
+                // spec 038: sin precio propio en esa unidad (D9 permite fijarlo, por ejemplo la caja), se calcula desde el
+                // de la unidad del producto: el metro a $3.700 deja el centímetro a $37
+                precio = precioConvertido(precios.get(producto.getId() + ":" + producto.getUnidadMedida().getId()), unidad,
+                        producto);
+            }
             if (precio == null) {
                 throw new NegocioException("SIN_PRECIO", "El producto " + producto.getCodigo() + " no tiene precio de venta en "
                         + unidad.getCodigo());
@@ -704,6 +710,30 @@ public class VentaService {
                     descuento.compareTo(limite) > 0, bajoMinimo));
         }
         return lineas;
+    }
+
+    /**
+     * Precio de una unidad que no tiene precio propio, calculado desde el de la unidad del producto (spec 038). No se
+     * guarda: solo vale para esta venta.
+     *
+     * @param base     precio vigente en la unidad del producto ({@code null} = no tiene)
+     * @param unidad   unidad en que se vende (ya se sabe que mide lo mismo)
+     * @param producto producto
+     * @return precio y precio mínimo de una unidad vendida, a 2 decimales; {@code null} si no hay precio base
+     */
+    private PrecioProducto precioConvertido(PrecioProducto base, UnidadMedida unidad, Producto producto) {
+        if (base == null) {
+            return null;
+        }
+        BigDecimal enProducto = unidadMedidaService.convertir(BigDecimal.ONE, unidad.getId(), producto.getUnidadMedida().getId());
+        PrecioProducto p = new PrecioProducto();
+        p.setProducto(producto);
+        p.setLista(base.getLista());
+        p.setUnidadMedidaId(unidad.getId());
+        p.setPrecio(base.getPrecio().multiply(enProducto).setScale(2, java.math.RoundingMode.HALF_UP));
+        p.setPrecioMinimo(base.getPrecioMinimo() == null ? null
+                : base.getPrecioMinimo().multiply(enProducto).setScale(2, java.math.RoundingMode.HALF_UP));
+        return p;
     }
 
     /**

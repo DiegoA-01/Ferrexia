@@ -16,6 +16,13 @@ import { SesionService } from '../../core/sesion/sesion.service';
 import { Cifra } from '../../core/ui/cifra';
 import { ProductoVariantes } from './producto-variantes';
 /** Fila de la tabla: viene del reporte de inventario o, si el rol no lo ve, del listado de productos. */
+/** Spec 038: qué puede medir el material de una categoría. */
+const MEDIDAS: { valor: NonNullable<Categoria['magnitud']>; texto: string }[] = [
+  { valor: 'CANTIDAD', texto: 'Unidades (piezas, docenas, cajas)' }, { valor: 'LONGITUD', texto: 'Longitud (metros, centímetros)' },
+  { valor: 'AREA', texto: 'Área (metros cuadrados)' }, { valor: 'VOLUMEN', texto: 'Volumen (litros, galones, metros cúbicos)' },
+  { valor: 'MASA', texto: 'Peso (kilos, libras, toneladas)' },
+];
+
 type Fila = Pick<InventarioItem, 'productoId' | 'codigo' | 'nombre' | 'categoria' | 'unidad' | 'stock' | 'stockMinimo' | 'stockMaximo' | 'valor' | 'bajoMinimo' | 'esAgrupador' | 'agrupadorId'>;
 
 /**
@@ -129,6 +136,42 @@ export class Inventario implements OnInit {
   protected readonly hoy = iso(new Date());
   /** Código escrito, para proponer el de cada variante. */
   protected readonly codigoActual = toSignal(this.nuevo.controls.codigo.valueChanges, { initialValue: '' });
+  /** Spec 038: categoría y unidad elegidas en el formulario. */
+  private readonly categoriaElegida = toSignal(this.nuevo.controls.categoriaId.valueChanges, { initialValue: 0 });
+  private readonly unidadElegida = toSignal(this.nuevo.controls.unidadMedidaId.valueChanges, { initialValue: 0 });
+  /** Spec 038: ver todas las unidades aunque la categoría diga qué mide. */
+  protected readonly todasLasUnidades = signal(false);
+  /** Spec 038: lo que se elige como medida de la categoría (alta "Nueva" y categoría existente). */
+  protected readonly magnitudNueva = signal<Categoria['magnitud'] | null>(null);
+  protected readonly MEDIDAS = MEDIDAS;
+  /** Unidad que tenía el producto al abrirlo para editar (para avisar de la conversión). */
+  protected readonly unidadOriginal = signal<number | null>(null);
+  /** Lo que mide la categoría elegida ({@code null} = no lo dice). */
+  protected readonly medidaCategoria = computed(() =>
+    this.categorias().find(c => c.id === this.categoriaElegida())?.magnitud ?? null);
+  /** Unidades que se ofrecen: las de la medida de la categoría, salvo que se pidan todas (siempre con la elegida). */
+  protected readonly unidadesOfrecidas = computed(() => {
+    const medida = this.medidaCategoria();
+    const elegida = this.unidadElegida();
+    return this.unidades().filter(u => this.todasLasUnidades() || !medida || u.magnitud === medida || u.id === elegida);
+  });
+  /** Al editar se cambió la unidad: con movimientos solo pasa a una que mida lo mismo y se convierte todo. */
+  protected readonly cambiaUnidad = computed(() => !!this.editandoId() && !!this.unidadOriginal()
+    && this.unidadElegida() !== this.unidadOriginal());
+  /** Spec 038: la unidad nueva mide otra cosa que la actual (unidades a metros): se pide la equivalencia. */
+  protected readonly otraMedida = computed(() => {
+    if (!this.cambiaUnidad()) {
+      return false;
+    }
+    const antes = this.unidades().find(u => u.id === this.unidadOriginal());
+    const despues = this.unidades().find(u => u.id === this.unidadElegida());
+    return !!antes && !!despues && antes.magnitud !== despues.magnitud;
+  });
+  protected readonly codigoUnidadOriginal = computed(() => this.unidades().find(u => u.id === this.unidadOriginal())?.codigo ?? '');
+  protected readonly codigoUnidadElegida = computed(() => this.unidades().find(u => u.id === this.unidadElegida())?.codigo ?? '');
+  /** Spec 038: cuántas unidades nuevas equivale 1 unidad actual (1 UND = 1 M). */
+  protected readonly equivalencia = signal<number | null>(null);
+  protected readonly puedeEditarCategorias = computed(() => this.sesion.tienePermiso('CATALOGO_BASE_GESTIONAR'));
 
   ngOnInit(): void {
     this.servicio.categorias().subscribe({ next: l => this.categorias.set(l), error: () => undefined });
@@ -188,6 +231,7 @@ export class Inventario implements OnInit {
   /** @param tipo abre el alta corta de una categoría o un proveedor, sin perder lo escrito en el producto */
   protected abrirAlVuelo(tipo: 'categoria' | 'proveedor'): void {
     this.alVuelo.set(tipo);
+    this.magnitudNueva.set(null);
     this.nombreNuevo.set('');
     this.nitNuevo.set('');
   }
@@ -200,7 +244,7 @@ export class Inventario implements OnInit {
       return;
     }
     if (this.alVuelo() === 'categoria') {
-      this.servicio.crearCategoria(nombre).subscribe({
+      this.servicio.crearCategoria(nombre, this.magnitudNueva()).subscribe({
         next: c => {
           this.categorias.update(l => [...l, c].sort((a, b) => (a.nombre ?? '').localeCompare(b.nombre ?? '')));
           this.nuevo.controls.categoriaId.setValue(c.id!);
@@ -223,6 +267,23 @@ export class Inventario implements OnInit {
     });
   }
 
+  /** @param medida lo que mide la categoría elegida en el formulario (spec 038); se guarda en la categoría */
+  protected guardarMedidaCategoria(medida: Categoria['magnitud'] | null): void {
+    const c = this.categorias().find(x => x.id === this.categoriaElegida());
+    if (!c) {
+      return;
+    }
+    this.servicio.actualizarCategoria({ ...c, magnitud: medida ?? undefined }).subscribe({
+      next: r => {
+        this.categorias.update(l => l.map(x => (x.id === r.id ? r : x)));
+        this.todasLasUnidades.set(false);
+        this.avisos.ok(medida ? `${r.nombre} ahora mide ${MEDIDAS.find(m => m.valor === medida)?.texto.split(' (')[0].toLowerCase()}.`
+          : `${r.nombre} ya no dice qué mide.`);
+      },
+      error: e => this.avisos.error(e),
+    });
+  }
+
   /** @param p panel que se abre (o se cierra si ya estaba abierto) */
   protected abrir(p: 'nuevo' | 'reorden' | 'inactivos'): void {
     this.panel.set(this.panel() === p ? 'ninguno' : p);
@@ -231,6 +292,8 @@ export class Inventario implements OnInit {
       this.editando.set(null);
       this.conVariantes.set(false);
       this.heredados(false);
+      this.unidadOriginal.set(null);
+      this.todasLasUnidades.set(false);
       this.nuevo.reset({ codigo: '', nombre: '', categoriaId: 0, unidadMedidaId: 0, stockMinimo: 0, stockMaximo: null, costoReferencia: null,
         tarifaImpuestoId: null, proveedorReferenciaId: null, costoReferenciaFecha: null });
       this.alVuelo.set(null);
@@ -252,6 +315,9 @@ export class Inventario implements OnInit {
         this.editandoId.set(p.id ?? null);
         this.editando.set(p);
         this.conVariantes.set(false);
+        this.unidadOriginal.set(p.unidadMedida?.id ?? null);
+        this.todasLasUnidades.set(false);
+        this.equivalencia.set(null);
         this.nuevo.reset({
           codigo: p.codigo ?? '', nombre: p.nombre ?? '', categoriaId: p.categoria?.id ?? 0, unidadMedidaId: p.unidadMedida?.id ?? 0,
           stockMinimo: p.stockMinimo ?? 0, stockMaximo: p.stockMaximo ?? null, costoReferencia: p.costoReferencia ?? null,
@@ -382,10 +448,15 @@ export class Inventario implements OnInit {
       return;
     }
     const v = this.nuevo.getRawValue();
+    const id = this.editandoId();
+    if (id && this.otraMedida() && !((this.equivalencia() ?? 0) > 0)) {
+      this.avisos.ok(`Escribe cuántos ${this.codigoUnidadElegida()} equivale 1 ${this.codigoUnidadOriginal()}.`);
+      return;
+    }
     const datos = { ...v, stockMaximo: v.stockMaximo ?? undefined, costoReferencia: v.costoReferencia ?? undefined,
       tarifaImpuestoId: v.tarifaImpuestoId ?? undefined, proveedorReferenciaId: v.proveedorReferenciaId ?? undefined,
-      costoReferenciaFecha: v.costoReferenciaFecha || undefined };
-    const id = this.editandoId();
+      costoReferenciaFecha: v.costoReferenciaFecha || undefined,
+      ...(id && this.otraMedida() ? { equivalenciaUnidad: this.equivalencia()! } : {}) };
     this.trabajando.set(true);
     (id ? this.servicio.actualizarProducto(id, datos) : this.servicio.crear(datos)).subscribe({
       next: p => {

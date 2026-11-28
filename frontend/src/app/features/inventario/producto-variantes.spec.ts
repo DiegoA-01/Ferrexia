@@ -16,7 +16,7 @@ describe('Variantes de producto', () => {
   const preparar = () => {
     TestBed.configureTestingModule({
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
-        { provide: SesionService, useValue: { tieneRol: () => true, tieneModulo: () => true, soloLectura: () => false,
+        { provide: SesionService, useValue: { tieneRol: () => true, tienePermiso: () => true, tieneModulo: () => true, soloLectura: () => false,
           empresa: signal(null) } }],
     });
     backend = TestBed.inject(HttpTestingController);

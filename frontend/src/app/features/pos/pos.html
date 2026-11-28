@@ -85,11 +85,17 @@
                   <td><strong>{{ x.nombre }}</strong><span class="sub">{{ x.codigo }}@if (x.stock != null) { · stock {{ x.stock | numero }} }</span>
                     @if (calculada(i)?.pasaLimite) { <span class="sub ambar">Pasa su límite de descuento: pedirá el PIN del supervisor</span> }
                     @if (calculada(i)?.bajoMinimo) { <span class="sub ambar">Queda bajo el precio mínimo: pedirá el PIN del supervisor</span> }
-                    @if (pasaExistencia(x)) { <span class="sub rojo">Pide {{ x.cantidad | numero }} y solo hay {{ x.stock | numero }} {{ x.unidad }}</span> }
+                    @if (pasaExistencia(x)) { <span class="sub rojo">Pide {{ cantidadEnProducto(x) | numero }} {{ x.unidadProducto || x.unidad }} y solo hay {{ x.stock | numero }} {{ x.unidadProducto || x.unidad }}</span> }
                     @if (x.cantidad == null || x.cantidad <= 0) { <span class="sub rojo">Escribe la cantidad</span> }</td>
                   <td class="num"><input scCifra [decimales]="4" class="entrada mini" min="0" [class.invalida]="pasaExistencia(x) || x.cantidad == null || x.cantidad <= 0"
                     [attr.aria-invalid]="pasaExistencia(x) || x.cantidad == null || x.cantidad <= 0" [attr.aria-label]="'Cantidad de ' + x.nombre"
-                    [ngModel]="x.cantidad" (ngModelChange)="cambiarCantidad(i, $event)"> {{ x.unidad }}</td>
+                    [ngModel]="x.cantidad" (ngModelChange)="cambiarCantidad(i, $event)">
+                    @if (unidadesDe(x).length > 1) {
+                      <select class="entrada unidad-linea" [attr.aria-label]="'Unidad de ' + x.nombre" [disabled]="fijo()"
+                              [ngModel]="x.unidadMedidaId" (ngModelChange)="cambiarUnidad(i, $event)">
+                        @for (u of unidadesDe(x); track u.id) { <option [ngValue]="u.id">{{ u.codigo }}</option> }
+                      </select>
+                    } @else { {{ x.unidad }} }</td>
                   <td class="num"><input scCifra class="entrada mini" min="0" max="100" [attr.aria-label]="'Descuento de ' + x.nombre"
                     [ngModel]="x.descuentoPct" (ngModelChange)="cambiarDescuento(i, $event)"></td>
                   <td class="num">{{ calculada(i) ? (calculada(i)!.precioUnitario | pesos) : '…' }}</td>

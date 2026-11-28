@@ -83,4 +83,10 @@ public interface TrasladoGrupoRepository extends Repository<TrasladoGrupo, Long>
             + "where t.estado = com.proyecto.supply_core.grupo.enums.EstadoTrasladoGrupo.EN_TRANSITO "
             + "and (t.empresaOrigenId = :empresaId or t.empresaDestinoId = :empresaId)")
     boolean hayEnTransito(@Param("empresaId") Long empresaId);
+
+    /**
+     * @param grupoId grupo
+     * @return {@code true} si el grupo tiene traslados en su historial (en cualquier estado)
+     */
+    boolean existsByGrupoId(Long grupoId);
 }

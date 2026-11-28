@@ -76,3 +76,6 @@ tr.pasa-existencia td { background: var(--sc-rojo-fondo); }
 /* spec 032: datos del domicilio en el cobro */
 .domicilio { display: grid; gap: 6px; }
 .campos-domicilio { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+
+// spec 038: unidad en que se vende la línea (metros, centímetros, docenas…)
+.unidad-linea { display: inline-block; width: auto; min-width: 64px; margin-left: 4px; padding: 4px 6px; }

@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import {
-  Caja, CategoriaParaVender, Cliente, CotizacionVenta, LineaVentaRequest, MedioPagoVenta, PagoVentaRequest, ProductoParaVender, Turno, Venta, EnvioDomicilio,
+  Caja, CategoriaParaVender, Cliente, CotizacionVenta, LineaVentaRequest, MedioPagoVenta, PagoVentaRequest, ProductoParaVender, Turno, Venta, EnvioDomicilio, UnidadMedida,
 } from '../../core/api/modelos';
 import { NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { CajaService } from '../../core/servicios/caja.service';
@@ -14,6 +14,7 @@ import { VentasService } from '../../core/servicios/ventas.service';
 import { conPermiso } from '../../core/sesion/acceso';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { DomiciliosService } from '../../core/servicios/domicilios.service';
+import { InventarioService } from '../../core/servicios/inventario.service';
 import { Avisos } from '../../core/ui/avisos';
 import { AutorizacionPin } from '../caja/autorizacion-pin';
 import { ClienteFormulario } from '../clientes/cliente-formulario';
@@ -30,7 +31,11 @@ export interface ItemCarrito {
   /** Spec 036: {@code null} mientras el cajero borra la cantidad para escribir otra. */
   cantidad: number | null;
   descuentoPct: number;
+  /** Existencia en la unidad del producto. */
   stock: number | null;
+  /** Spec 038: unidad propia del producto (en la que está el stock); la línea puede venderse en otra que mida lo mismo. */
+  unidadProductoId?: number | null;
+  unidadProducto?: string;
 }
 
 /** Pago que escribe el cajero. */
@@ -107,6 +112,9 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
   /** Producto servicio del envío y su precio, si la empresa lo configuró. */
   protected readonly envio = signal<EnvioDomicilio | null>(null);
   private readonly domicilios = inject(DomiciliosService);
+  private readonly inventario = inject(InventarioService);
+  /** Spec 038: unidades de medida, para vender en otra que mida lo mismo (metros o centímetros de un cable). */
+  protected readonly unidades = signal<UnidadMedida[]>([]);
   protected readonly domicilioValido = computed(() => !this.domicilio()
     || (this.domDireccion().trim().length > 3 && this.domTelefono().trim().length >= 7));
 
@@ -190,6 +198,7 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.inventario.unidades().subscribe({ next: l => this.unidades.set(l), error: () => undefined });
     this.pedidoPendiente = Number(this.ruta.snapshot.queryParamMap.get('pedido')) || null;
     this.clientes.consumidorFinal().subscribe({ next: c => this.consumidorFinal.set(c), error: () => undefined });
     this.catalogo.categoriasParaVender().subscribe({ next: l => this.categorias.set(l), error: () => undefined });
@@ -372,6 +381,7 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
       this.carrito.set([...items, {
         productoId: p.productoId!, codigo: p.codigo ?? '', nombre: p.nombre ?? '', unidadMedidaId: p.unidadMedidaId ?? null,
         unidad: p.unidad ?? '', cantidad: 1, descuentoPct: 0, stock: p.stock ?? null,
+        unidadProductoId: p.unidadMedidaId ?? null, unidadProducto: p.unidad ?? '',
       }]);
     }
     this.texto.set('');
@@ -424,7 +434,46 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
 
   /** @param x línea del carrito @returns {@code true} si la cantidad pasa la existencia conocida (spec 036) */
   protected pasaExistencia(x: ItemCarrito): boolean {
-    return x.stock != null && x.cantidad != null && x.cantidad > x.stock;
+    const pedida = this.cantidadEnProducto(x);
+    return x.stock != null && pedida != null && pedida > x.stock;
+  }
+
+  /**
+   * Spec 038: la cantidad de la línea llevada a la unidad del producto (la del stock); solo para comparar, el total lo
+   * calcula el servidor.
+   *
+   * @param x línea del carrito
+   * @returns cantidad en la unidad del producto, o {@code null} si no se puede saber
+   */
+  protected cantidadEnProducto(x: ItemCarrito): number | null {
+    if (x.cantidad == null) {
+      return null;
+    }
+    if (!x.unidadProductoId || x.unidadMedidaId === x.unidadProductoId) {
+      return x.cantidad;
+    }
+    const de = this.unidades().find(u => u.id === x.unidadMedidaId)?.factorConversionBase;
+    const a = this.unidades().find(u => u.id === x.unidadProductoId)?.factorConversionBase;
+    return de && a ? (x.cantidad * de) / a : x.cantidad;
+  }
+
+  /** @param x línea @returns unidades en que se puede vender: las que miden lo mismo que la del producto (spec 038) */
+  protected unidadesDe(x: ItemCarrito): UnidadMedida[] {
+    const actual = this.unidades().find(u => u.id === x.unidadMedidaId);
+    return actual ? this.unidades().filter(u => u.magnitud === actual.magnitud && (u.activo !== false || u.id === actual.id)) : [];
+  }
+
+  /** @param i posición; @param unidadId unidad en que se vende la línea (el precio de esa unidad lo da el servidor) */
+  protected cambiarUnidad(i: number, unidadId: number): void {
+    if (this.fijo()) {
+      return;
+    }
+    const u = this.unidades().find(x => x.id === unidadId);
+    if (!u) {
+      return;
+    }
+    this.carrito.update(items => items.map((x, j) => (j === i ? { ...x, unidadMedidaId: u.id!, unidad: u.codigo ?? '' } : x)));
+    this.recalcular();
   }
 
   /** @param i posición; @param pct descuento pedido */

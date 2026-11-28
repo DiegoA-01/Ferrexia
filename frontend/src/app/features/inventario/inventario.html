@@ -51,8 +51,34 @@
         <div class="campo"><label for="uni">Unidad</label>
           <select id="uni" class="entrada" formControlName="unidadMedidaId">
             <option [ngValue]="0" disabled>Elige</option>
-            @for (u of unidades(); track u.id) { <option [ngValue]="u.id">{{ u.nombre }} ({{ u.codigo }})</option> }
-          </select></div>
+            @for (u of unidadesOfrecidas(); track u.id) { <option [ngValue]="u.id">{{ u.nombre }} ({{ u.codigo }})</option> }
+          </select>
+          @if (medidaCategoria()) {
+            <label class="ayuda casilla"><input type="checkbox" [checked]="todasLasUnidades()" (change)="todasLasUnidades.set(!todasLasUnidades())">
+              Ver todas las unidades (la categoría sugiere las de su medida)</label>
+          }
+          @if (nuevo.controls.categoriaId.value && puedeEditarCategorias()) {
+            <label class="ayuda">Esta categoría mide:
+              <select class="entrada mini-select" aria-label="Qué mide la categoría" [ngModel]="medidaCategoria()" [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="guardarMedidaCategoria($event)">
+                <option [ngValue]="null">Sin decir (todas las unidades)</option>
+                @for (m of MEDIDAS; track m.valor) { <option [ngValue]="m.valor">{{ m.texto }}</option> }
+              </select></label>
+          }
+          @if (otraMedida()) {
+            <div class="equivalencia" role="group" aria-label="Equivalencia entre unidades">
+              <span>1 {{ codigoUnidadOriginal() }} equivale a</span>
+              <input scCifra [decimales]="6" min="0" class="entrada num" aria-label="Equivalencia" [ngModel]="equivalencia()"
+                     [ngModelOptions]="{ standalone: true }" (ngModelChange)="equivalencia.set($event)">
+              <span>{{ codigoUnidadElegida() }}</span>
+            </div>
+            <span class="ayuda aviso-unidad">La unidad nueva mide otra cosa. Si el producto ya tiene movimientos, con esta
+              equivalencia se convierten el stock, el kárdex, el mínimo, el máximo, los costos y los precios de venta.</span>
+          } @else if (cambiaUnidad()) {
+            <span class="ayuda aviso-unidad">Si el producto ya tiene movimientos, al guardar el stock, el kárdex, el mínimo, el
+              máximo y los costos se convierten solos a la unidad nueva.</span>
+          }
+        </div>
         @if (!sinStockPropio()) {
         <div class="campo"><label for="min">Stock mínimo</label><input scCifra [decimales]="4" id="min" min="0" class="entrada num" formControlName="stockMinimo"></div>
         <div class="campo"><label for="max">Stock máximo</label><input scCifra [decimales]="4" id="max" min="0" class="entrada num" formControlName="stockMaximo"></div>
@@ -85,6 +111,13 @@
             <input class="entrada" [attr.aria-label]="tipo === 'categoria' ? 'Nombre de la categoría' : 'Nombre del proveedor'"
               [placeholder]="tipo === 'categoria' ? 'Nombre de la categoría' : 'Nombre o razón social'"
               [ngModel]="nombreNuevo()" [ngModelOptions]="{ standalone: true }" (ngModelChange)="nombreNuevo.set($event)">
+            @if (tipo === 'categoria') {
+              <select class="entrada" aria-label="Qué mide el material de la categoría" [ngModel]="magnitudNueva()"
+                      [ngModelOptions]="{ standalone: true }" (ngModelChange)="magnitudNueva.set($event)">
+                <option [ngValue]="null">¿Qué mide su material? (opcional)</option>
+                @for (m of MEDIDAS; track m.valor) { <option [ngValue]="m.valor">{{ m.texto }}</option> }
+              </select>
+            }
             @if (tipo === 'proveedor') {
               <input class="entrada" aria-label="NIT del proveedor (opcional)" placeholder="NIT (opcional)"
                 [ngModel]="nitNuevo()" [ngModelOptions]="{ standalone: true }" (ngModelChange)="nitNuevo.set($event)">

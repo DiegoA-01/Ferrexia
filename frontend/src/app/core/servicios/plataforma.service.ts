@@ -93,6 +93,11 @@ export class PlataformaService {
     return this.http.post<GrupoPlataforma>(api('/api/plataforma/grupos'), { nombre });
   }
 
+  /** @param id grupo sin empresas ni traslados; se borra con sus super administradores */
+  eliminarGrupo(id: number): Observable<void> {
+    return this.http.delete<void>(api(`/api/plataforma/grupos/${id}`));
+  }
+
   /**
    * Asigna una empresa a un grupo o la saca de él (409 {@code TRASLADOS_EN_TRANSITO} si tiene traslados sin cerrar).
    *

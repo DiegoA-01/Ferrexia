@@ -4888,7 +4888,7 @@ export interface components {
             codigo?: string;
             nombre?: string;
             /** @enum {string} */
-            magnitud?: "CANTIDAD" | "MASA" | "VOLUMEN" | "LONGITUD";
+            magnitud?: "CANTIDAD" | "MASA" | "VOLUMEN" | "LONGITUD" | "AREA";
             factorConversionBase?: number;
             activo?: boolean;
         };
@@ -5135,6 +5135,8 @@ export interface components {
             id?: number;
             nombre?: string;
             activo?: boolean;
+            /** @enum {string} */
+            magnitud?: "CANTIDAD" | "MASA" | "VOLUMEN" | "LONGITUD" | "AREA";
         };
         ProveedorResponse: {
             /** Format: int64 */
@@ -5186,6 +5188,7 @@ export interface components {
             proveedorReferenciaId?: number;
             /** Format: date */
             costoReferenciaFecha?: string;
+            equivalenciaUnidad?: number;
             rangoStockValido?: boolean;
         };
         ProductoResponse: {
@@ -5610,6 +5613,8 @@ export interface components {
         };
         CategoriaUpdateRequest: {
             nombre: string;
+            /** @enum {string} */
+            magnitud?: "CANTIDAD" | "MASA" | "VOLUMEN" | "LONGITUD" | "AREA";
         };
         ExcepcionCreditoRequest: {
             /** Format: date */
@@ -5920,7 +5925,7 @@ export interface components {
             codigo: string;
             nombre: string;
             /** @enum {string} */
-            magnitud: "CANTIDAD" | "MASA" | "VOLUMEN" | "LONGITUD";
+            magnitud: "CANTIDAD" | "MASA" | "VOLUMEN" | "LONGITUD" | "AREA";
             factorConversionBase: number;
         };
         AbrirTurnoRequest: {
@@ -7232,6 +7237,8 @@ export interface components {
         };
         CategoriaRequest: {
             nombre: string;
+            /** @enum {string} */
+            magnitud?: "CANTIDAD" | "MASA" | "VOLUMEN" | "LONGITUD" | "AREA";
         };
         CategoriaMovimientoCajaRequest: {
             /** @enum {string} */

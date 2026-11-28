@@ -6,6 +6,7 @@ import { EmpresaPlataforma, GrupoPlataforma, SuperAdmin } from '../../core/api/m
 import { mensajeError } from '../../core/http/api';
 import { PlataformaService } from '../../core/servicios/plataforma.service';
 import { Avisos } from '../../core/ui/avisos';
+import { VentanaVidrio } from '../../core/ui/ventana-vidrio';
 
 /**
  * Consola del dueño › Grupos (spec 035): crear grupos, asignar o quitar empresas y crear al super administrador de cada
@@ -13,28 +14,42 @@ import { Avisos } from '../../core/ui/avisos';
  */
 @Component({
   selector: 'sc-grupos',
-  imports: [FormsModule, ReactiveFormsModule],
+  imports: [FormsModule, ReactiveFormsModule, VentanaVidrio],
   template: `
     <div class="pagina">
       <div class="encabezado">
         <div><h1>Grupos de empresas</h1>
           <p class="texto-2">Un grupo reúne empresas de un mismo dueño. Su super administrador entra a todas con una sola cuenta (con segundo factor) y ve el tablero conjunto.</p></div>
+        @if (!creando()) {
+          <button type="button" class="boton primario" (click)="abrirCrear()"><span class="material-symbols-outlined">add</span> Nuevo grupo</button>
+        }
       </div>
 
-      <section class="tarjeta">
-        <h2>Crear grupo</h2>
-        <form class="fila" (ngSubmit)="crearGrupo()">
-          <div class="campo crece"><label for="gnombre">Nombre del grupo</label>
-            <input id="gnombre" name="gnombre" class="entrada" maxlength="150" [(ngModel)]="nombreGrupo" required></div>
-          <button type="submit" class="boton primario" [disabled]="trabajando()">Crear grupo</button>
-        </form>
-      </section>
+      @if (creando()) {
+        <section class="tarjeta">
+          <h2>Nuevo grupo</h2>
+          <form class="fila" (ngSubmit)="crearGrupo()">
+            <div class="campo crece"><label for="gnombre">Nombre del grupo</label>
+              <input id="gnombre" name="gnombre" class="entrada" maxlength="150" [(ngModel)]="nombreGrupo" required></div>
+            <button type="submit" class="boton primario" [disabled]="trabajando() || !nombreGrupo.trim()">Crear grupo</button>
+            <button type="button" class="boton" (click)="cancelarCrear()">Cancelar</button>
+          </form>
+        </section>
+      }
 
       @if (error()) { <div class="aviso rojo" role="alert">{{ error() }}</div> }
 
       @for (g of grupos(); track g.id) {
         <section class="tarjeta grupo">
-          <h2>{{ g.nombre }}</h2>
+          <div class="linea titulo">
+            <h2>{{ g.nombre }}</h2>
+            <button type="button" class="boton chico peligro" [disabled]="trabajando() || !!(g.empresas ?? []).length"
+                    [attr.title]="(g.empresas ?? []).length ? 'Quita primero sus empresas' : null" (click)="pedirEliminar(g)">
+              <span class="material-symbols-outlined">delete</span> Eliminar grupo</button>
+          </div>
+          @if ((g.empresas ?? []).length) {
+            <p class="texto-chico texto-2">Para eliminar el grupo, primero quita sus empresas.</p>
+          }
 
           <h3>Empresas</h3>
           @for (e of g.empresas ?? []; track e.id) {
@@ -91,6 +106,20 @@ import { Avisos } from '../../core/ui/avisos';
       } @empty {
         <p class="vacio">{{ grupos() ? 'Todavía no hay grupos.' : 'Cargando…' }}</p>
       }
+
+      @if (porEliminar(); as g) {
+        <sc-ventana-vidrio [abierta]="true" titulo="¿Seguro deseas eliminar este grupo?" idTitulo="t-eliminar-grupo"
+                           [bloquearCierre]="trabajando()" [bloquearEscape]="trabajando()" (cerrar)="porEliminar.set(null)">
+          <p class="sin-margen">Vas a eliminar el grupo <strong>{{ g.nombre }}</strong>.
+            @if ((g.superAdmins ?? []).length) { También se eliminan sus {{ (g.superAdmins ?? []).length }} super administrador(es). }
+            No se puede deshacer.</p>
+          <div class="fila">
+            <button type="button" class="boton peligro" [disabled]="trabajando()" (click)="eliminar()">
+              <span class="material-symbols-outlined">delete</span> Sí, eliminar</button>
+            <button type="button" class="boton" [disabled]="trabajando()" (click)="porEliminar.set(null)">Cancelar</button>
+          </div>
+        </sc-ventana-vidrio>
+      }
     </div>
   `,
   styles: `
@@ -99,6 +128,7 @@ import { Avisos } from '../../core/ui/avisos';
     h3 { margin: 18px 0 6px; font-size: 15px; }
     .crece { flex: 1 1 240px; }
     .margen { margin-top: 12px; }
+    .linea.titulo { border-top: 0; padding-top: 0; }
     .linea { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 10px 0; border-top: 1px solid #f0f0f0; }
     .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
     .fila { align-items: flex-end; }
@@ -118,6 +148,10 @@ export class Grupos implements OnInit {
   /** Grupo cuyo formulario de super administrador está abierto. */
   protected readonly formSuper = signal<number | null>(null);
   protected nombreGrupo = '';
+  /** El formulario de grupo nuevo está abierto. */
+  protected readonly creando = signal(false);
+  /** Grupo cuya eliminación se está confirmando (ventana "¿Seguro deseas eliminar este grupo?"). */
+  protected readonly porEliminar = signal<GrupoPlataforma | null>(null);
 
   /** Grupo al que ya pertenece cada empresa (para avisar al moverla). */
   private readonly grupoDe = computed(() => {
@@ -162,6 +196,19 @@ export class Grupos implements OnInit {
     this.elegida.update(m => ({ ...m, [grupoId]: empresaId }));
   }
 
+  /** Abre el formulario de grupo nuevo, vacío. */
+  protected abrirCrear(): void {
+    this.nombreGrupo = '';
+    this.error.set(null);
+    this.creando.set(true);
+  }
+
+  /** Cierra el formulario sin crear nada. */
+  protected cancelarCrear(): void {
+    this.nombreGrupo = '';
+    this.creando.set(false);
+  }
+
   /** Crea un grupo con el nombre escrito. */
   protected crearGrupo(): void {
     const nombre = this.nombreGrupo.trim();
@@ -170,7 +217,38 @@ export class Grupos implements OnInit {
     }
     this.ejecutar(this.servicio.crearGrupo(nombre), () => {
       this.nombreGrupo = '';
+      this.creando.set(false);
       this.avisos.ok('Grupo creado.');
+    });
+  }
+
+  /** @param g grupo sin empresas: abre la ventana para confirmar su eliminación */
+  protected pedirEliminar(g: GrupoPlataforma): void {
+    this.error.set(null);
+    this.porEliminar.set(g);
+  }
+
+  /** Elimina el grupo confirmado; al terminar cierra la ventana y lo quita de la lista. */
+  protected eliminar(): void {
+    const g = this.porEliminar();
+    if (!g?.id) {
+      return;
+    }
+    this.trabajando.set(true);
+    this.error.set(null);
+    this.servicio.eliminarGrupo(g.id).subscribe({
+      next: () => {
+        this.trabajando.set(false);
+        this.porEliminar.set(null);
+        this.grupos.update(l => (l ?? []).filter(x => x.id !== g.id));
+        this.avisos.ok(`Grupo ${g.nombre} eliminado.`);
+        this.cargar();
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.porEliminar.set(null);
+        this.error.set(mensajeError(e));
+      },
     });
   }
 

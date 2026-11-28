@@ -33,5 +33,7 @@ public enum AccionPlataforma {
     /** Código de MFA de un super administrador de grupo verificado: sesión de grupo emitida (EXITO o FALLO). */
     GRUPO_MFA,
     /** La plataforma borró el segundo factor de un super administrador de grupo y cortó sus sesiones. */
-    GRUPO_SUPER_ADMIN_REINICIAR_MFA
+    GRUPO_SUPER_ADMIN_REINICIAR_MFA,
+    /** La plataforma eliminó un grupo vacío (sin empresas ni traslados) junto con sus super administradores. */
+    GRUPO_ELIMINAR
 }

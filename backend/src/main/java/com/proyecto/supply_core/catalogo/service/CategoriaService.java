@@ -72,6 +72,7 @@ public class CategoriaService {
     public CategoriaResponse crear(CategoriaRequest req) {
         CategoriaProducto c = new CategoriaProducto();
         c.setNombre(req.nombre().trim());
+        c.setMagnitud(req.magnitud());
         CategoriaProducto guardada = categoriaRepository.save(c);
         auditoriaService.exito(AccionAuditoria.CATEGORIA_CREAR, EntidadAuditada.CATEGORIA_PRODUCTO,
                 guardada.getId(), "nombre=" + guardada.getNombre());
@@ -96,8 +97,9 @@ public class CategoriaService {
         }
         String antes = c.getNombre();
         c.setNombre(nombre);
+        c.setMagnitud(req.magnitud());
         auditoriaService.exito(AccionAuditoria.CATEGORIA_EDITAR, EntidadAuditada.CATEGORIA_PRODUCTO, id,
-                "nombre: " + antes + " -> " + nombre);
+                "nombre: " + antes + " -> " + nombre + "; mide=" + req.magnitud());
         return CategoriaResponse.of(c);
     }
 

@@ -116,6 +116,38 @@ public class GrupoPlataformaService {
     }
 
     /**
+     * Elimina un grupo vacío y sus super administradores (con sus vínculos, que ya quedaron sin empresas). Solo se puede si
+     * no tiene empresas ni traslados en su historial; si tiene, hay que sacar primero sus empresas, y con traslados
+     * registrados se conserva para no perder ese historial.
+     *
+     * @param grupoId grupo
+     * @throws NoEncontradoException si no existe
+     * @throws NegocioException      {@code GRUPO_CON_EMPRESAS} si aún tiene empresas; {@code GRUPO_CON_TRASLADOS} si tiene
+     *                               traslados registrados
+     */
+    @Transactional
+    public void eliminar(Long grupoId) {
+        GrupoEmpresa g = grupoRepository.findById(grupoId).orElseThrow(() -> new NoEncontradoException("Grupo", grupoId));
+        if (empresaRepository.existsByGrupoId(grupoId)) {
+            throw new NegocioException("GRUPO_CON_EMPRESAS", "El grupo " + g.getNombre() + " tiene empresas: quítelas del "
+                    + "grupo antes de eliminarlo");
+        }
+        if (trasladoRepository.existsByGrupoId(grupoId)) {
+            throw new NegocioException("GRUPO_CON_TRASLADOS", "El grupo " + g.getNombre() + " tiene traslados registrados "
+                    + "entre sus empresas; se conserva para no perder ese historial");
+        }
+        List<UsuarioGrupo> admins = usuarioGrupoRepository.findByGrupoIdOrderByIdAsc(grupoId);
+        admins.forEach(u -> vinculoRepository.deleteAll(vinculoRepository.findByUsuarioGrupoId(u.getId())));
+        vinculoRepository.flush();
+        usuarioGrupoRepository.deleteAll(admins);
+        usuarioGrupoRepository.flush();
+        grupoRepository.delete(g);
+        auditoria.registrar(PlataformaActual.usuario().id(), AccionPlataforma.GRUPO_ELIMINAR, null, true,
+                "grupo=" + grupoId + "; nombre=" + g.getNombre() + "; superAdmins=" + admins.size());
+        log.info("Grupo {} ({}) eliminado con {} super administradores", grupoId, g.getNombre(), admins.size());
+    }
+
+    /**
      * Asigna una empresa a un grupo, la cambia de grupo o la saca de él. Al entrar a un grupo, cada super administrador
      * activo queda vinculado con un usuario Dueño dentro de la empresa; al salir (o cambiar), esos usuarios se
      * desactivan y sus sesiones se cortan. Repetir la asignación al mismo grupo repara los vínculos que falten.

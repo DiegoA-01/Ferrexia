@@ -10,6 +10,12 @@ import { SesionService } from '../../core/sesion/sesion.service';
 import { PuntoDeVenta } from './pos';
 
 const turno: Turno = { id: 4, cajaId: 1, caja: 'Caja 1', bodega: 'Principal', cajero: 'Pedro', estado: 'ABIERTO', baseApertura: 0, debeRetirar: false };
+/** Spec 038: unidades que miden lo mismo que el metro del cable (y una que no). */
+const unidadesDemo = [
+  { id: 3, codigo: 'M', nombre: 'Metro', magnitud: 'LONGITUD', factorConversionBase: 1, activo: true },
+  { id: 4, codigo: 'CM', nombre: 'Centímetro', magnitud: 'LONGITUD', factorConversionBase: 0.01, activo: true },
+  { id: 1, codigo: 'UND', nombre: 'Unidad', magnitud: 'CANTIDAD', factorConversionBase: 1, activo: true },
+];
 const cable: ProductoParaVender = { productoId: 7, codigo: 'CAB-12', codigoBarras: '770123', nombre: 'Cable 12', unidadMedidaId: 3, unidad: 'M', precio: 3700, stock: 20 };
 const cotizacion = (extra: Partial<CotizacionVenta> = {}): CotizacionVenta => ({
   lineas: [{ productoId: 7, nombre: 'Cable 12', precioUnitario: 3700, totalLinea: 3700, pasaLimite: false, bajoMinimo: false }],
@@ -36,6 +42,7 @@ describe('Punto de venta', () => {
     backend = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(PuntoDeVenta);
     fixture.detectChanges();
+    backend.match(r => r.url === '/api/unidades-medida').forEach(r => r.flush(unidadesDemo));
     backend.expectOne('/api/clientes/consumidor-final').flush({ id: 1, nombre: 'Consumidor final', esConsumidorFinal: true });
     backend.expectOne('/api/ventas/categorias').flush(categorias);
     if (roles.some(r => r === 'CAJERO' || r === 'SUPERVISOR_VENTAS')) {
@@ -590,5 +597,21 @@ describe('Punto de venta', () => {
     c()['cancelar']();
     expect(c()['creandoCliente']()).toBe(false);
     expect(c()['cobrando']()).toBe(true);
+  });
+
+  it('spec 038: la línea se vende en otra unidad que mide lo mismo y la existencia se compara en la unidad del producto', () => {
+    crear(['CAJERO']);
+    escanear();
+    cotizar();
+    expect(c()['unidadesDe'](c()['carrito']()[0]).map((u: { codigo: string }) => u.codigo)).toEqual(['M', 'CM']);
+    c()['cambiarUnidad'](0, 4);       // centímetros
+    c()['cambiarCantidad'](0, 150);   // 150 cm = 1,5 m: hay 20 m
+    const r = cotizar();
+    expect(r.request.body.lineas[0]).toEqual({ productoId: 7, unidadMedidaId: 4, cantidad: 150, descuentoPct: 0 });
+    expect(c()['pasaExistencia'](c()['carrito']()[0])).toBe(false);
+    c()['cambiarCantidad'](0, 2500);  // 25 m: pasa los 20 m
+    cotizar();
+    expect(c()['pasaExistencia'](c()['carrito']()[0])).toBe(true);
+    expect(texto()).toContain('Pide 25 M y solo hay 20 M');
   });
 });

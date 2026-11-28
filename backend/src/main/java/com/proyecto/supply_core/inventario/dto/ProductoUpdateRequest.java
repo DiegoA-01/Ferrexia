@@ -29,6 +29,8 @@ import jakarta.validation.constraints.Size;
  * @param tarifaImpuestoId      impuesto de venta (spec 026); vacío = no cambia
  * @param proveedorReferenciaId proveedor del costo de referencia (spec 026); vacío = no cambia
  * @param costoReferenciaFecha  fecha del costo de referencia (spec 026); vacío = no cambia
+ * @param equivalenciaUnidad    spec 038: al pasar a una unidad que mide otra cosa con movimientos, cuántas unidades nuevas
+ *                              equivale 1 unidad actual (1 UND = 1 M); vacío si no hace falta
  */
 public record ProductoUpdateRequest(
         @NotBlank(message = "es obligatorio")
@@ -70,7 +72,33 @@ public record ProductoUpdateRequest(
         @Positive(message = "debe ser un id válido") Long proveedorReferenciaId,
 
         @jakarta.validation.constraints.PastOrPresent(message = "no puede ser una fecha futura")
-        java.time.LocalDate costoReferenciaFecha) {
+        java.time.LocalDate costoReferenciaFecha,
+
+        @Positive(message = "debe ser mayor que cero")
+        @Digits(integer = 12, fraction = 6, message = "máximo 12 enteros y 6 decimales")
+        BigDecimal equivalenciaUnidad) {
+
+    /**
+     * Edición sin equivalencia de unidades (como antes de la spec 038).
+     *
+     * @param codigo                código
+     * @param nombre                nombre
+     * @param descripcion           descripción
+     * @param categoriaId           categoría
+     * @param unidadMedidaId        unidad
+     * @param stockMinimo           mínimo
+     * @param stockMaximo           máximo
+     * @param costoReferencia       costo de referencia
+     * @param tarifaImpuestoId      impuesto
+     * @param proveedorReferenciaId proveedor del costo
+     * @param costoReferenciaFecha  fecha del costo
+     */
+    public ProductoUpdateRequest(String codigo, String nombre, String descripcion, Long categoriaId, Long unidadMedidaId,
+            BigDecimal stockMinimo, BigDecimal stockMaximo, BigDecimal costoReferencia, Long tarifaImpuestoId,
+            Long proveedorReferenciaId, java.time.LocalDate costoReferenciaFecha) {
+        this(codigo, nombre, descripcion, categoriaId, unidadMedidaId, stockMinimo, stockMaximo, costoReferencia,
+                tarifaImpuestoId, proveedorReferenciaId, costoReferenciaFecha, null);
+    }
 
     /**
      * Edición sin los datos de la spec 026 (como antes): impuesto, proveedor y fecha no cambian.
@@ -87,7 +115,7 @@ public record ProductoUpdateRequest(
     public ProductoUpdateRequest(String codigo, String nombre, String descripcion, Long categoriaId,
             Long unidadMedidaId, BigDecimal stockMinimo, BigDecimal stockMaximo, BigDecimal costoReferencia) {
         this(codigo, nombre, descripcion, categoriaId, unidadMedidaId, stockMinimo, stockMaximo, costoReferencia, null,
-                null, null);
+                null, null, null);
     }
 
     /**

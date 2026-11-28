@@ -9,7 +9,20 @@ import com.proyecto.supply_core.catalogo.entity.CategoriaProducto;
  * @param nombre nombre visible
  * @param activo si se puede usar en nuevas operaciones
  */
-public record CategoriaResponse(Long id, String nombre, boolean activo) {
+public record CategoriaResponse(Long id, String nombre, boolean activo,
+        com.proyecto.supply_core.catalogo.enums.Magnitud magnitud) {
+
+    /**
+     * Sin medida.
+     *
+     * @param id     id
+     * @param nombre nombre
+     * @param activo si está activa
+     */
+    public CategoriaResponse(Long id, String nombre, boolean activo) {
+        this(id, nombre, activo, null);
+    }
+
 
     /**
      * Convierte la entidad en DTO.
@@ -18,6 +31,6 @@ public record CategoriaResponse(Long id, String nombre, boolean activo) {
      * @return DTO
      */
     public static CategoriaResponse of(CategoriaProducto c) {
-        return new CategoriaResponse(c.getId(), c.getNombre(), c.isActivo());
+        return new CategoriaResponse(c.getId(), c.getNombre(), c.isActivo(), c.getMagnitud());
     }
 }

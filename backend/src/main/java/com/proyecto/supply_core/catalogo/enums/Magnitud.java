@@ -12,5 +12,7 @@ public enum Magnitud {
     /** Capacidad (base: LT). */
     VOLUMEN,
     /** Distancia (base: M). */
-    LONGITUD
+    LONGITUD,
+    /** Superficie (base: M2), spec 038. */
+    AREA
 }

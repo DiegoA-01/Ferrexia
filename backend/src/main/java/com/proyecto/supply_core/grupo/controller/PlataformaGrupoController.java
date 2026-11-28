@@ -3,6 +3,7 @@ package com.proyecto.supply_core.grupo.controller;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -76,6 +77,17 @@ public class PlataformaGrupoController {
     public AsignacionGrupoResponse asignarEmpresa(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @RequestBody AsignarGrupoRequest request) {
         return grupoService.asignarEmpresa(id, request.grupoId());
+    }
+
+    /**
+     * Elimina un grupo sin empresas ni traslados, junto con sus super administradores.
+     *
+     * @param id id positivo del grupo
+     */
+    @DeleteMapping("/grupos/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
+        grupoService.eliminar(id);
     }
 
     /**

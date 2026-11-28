@@ -63,7 +63,7 @@ export class InventarioService {
   }
 
   /** @param id producto; @param datos todos los campos del formulario; el stock no se toca desde aquí */
-  actualizarProducto(id: number, datos: ProductoNuevo): Observable<Producto> {
+  actualizarProducto(id: number, datos: ProductoNuevo & { equivalenciaUnidad?: number }): Observable<Producto> {
     return this.http.put<Producto>(api(`/api/productos/${id}`), datos);
   }
 
@@ -86,9 +86,17 @@ export class InventarioService {
     return this.http.get<Categoria[]>(api('/api/categorias'), { params: parametros({ activo: true }) });
   }
 
-  /** @param nombre categoría nueva, creada desde el formulario del producto (spec 026) */
-  crearCategoria(nombre: string): Observable<Categoria> {
-    return this.http.post<Categoria>(api('/api/categorias'), { nombre });
+  /**
+   * @param nombre   categoría nueva, creada desde el formulario del producto (spec 026)
+   * @param magnitud qué mide su material (spec 038); vacío = no lo dice
+   */
+  crearCategoria(nombre: string, magnitud?: Categoria['magnitud'] | null): Observable<Categoria> {
+    return this.http.post<Categoria>(api('/api/categorias'), { nombre, magnitud: magnitud || undefined });
+  }
+
+  /** @param c categoría con su nombre y lo que mide (spec 038) */
+  actualizarCategoria(c: Categoria): Observable<Categoria> {
+    return this.http.put<Categoria>(api(`/api/categorias/${c.id}`), { nombre: c.nombre, magnitud: c.magnitud || undefined });
   }
 
   /** Proveedores habilitados para elegir el del costo de referencia (spec 026). */

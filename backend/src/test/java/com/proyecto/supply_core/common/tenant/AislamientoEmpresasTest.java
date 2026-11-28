@@ -2147,6 +2147,88 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void spec038CambiarLaUnidadConMovimientosConvierteStockYKardexEnLaBaseReal() throws Exception {
+        Long sedeA = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaA);
+        jdbc.update("INSERT INTO bodega (empresa_id, sede_id, nombre) VALUES (?, ?, 'Bodega unidades')", empresaA, sedeA);
+        Long bodega = jdbc.queryForObject("SELECT MAX(id) FROM bodega WHERE empresa_id = ?", Long.class, empresaA);
+        Long und = jdbc.queryForObject("SELECT unidad_medida_id FROM producto WHERE id = ?", Long.class, productoA);
+        // producto propio de la prueba: la conversión no debe tocar el stock que usan las demás pruebas
+        jdbc.update("INSERT INTO producto (empresa_id, codigo, nombre, categoria_producto_id, unidad_medida_id, stock_minimo) "
+                + "VALUES (?, 'UNI-038', 'Producto de unidades', ?, ?, 0)", empresaA, categoriaA, und);
+        Long producto = jdbc.queryForObject("SELECT id FROM producto WHERE empresa_id = ? AND codigo = 'UNI-038'", Long.class,
+                empresaA);
+        Long doc = jdbc.queryForObject("SELECT id FROM unidad_medida WHERE codigo = 'DOC'", Long.class);
+        Long metro = jdbc.queryForObject("SELECT id FROM unidad_medida WHERE codigo = 'M'", Long.class);
+        String codigo = "UNI-038";
+        String nombre = "Producto de unidades";
+        String adminA = token(empresaA, usuarioA, "ADMIN_COMPRAS"); // quien gestiona productos
+        String cuerpo = "{\"codigo\":\"%s\",\"nombre\":\"%s\",\"categoriaId\":%d,\"unidadMedidaId\":%d,\"stockMinimo\":%s}";
+        try {
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 24)",
+                    empresaA, producto, bodega);
+            jdbc.update("INSERT INTO movimiento_inventario (empresa_id, producto_id, bodega_destino_id, usuario_id, tipo, "
+                    + "cantidad, stock_resultante, costo_unitario, creado_en) VALUES (?, ?, ?, ?, 'ENTRADA_COMPRA', 24, 24, 500, NOW())",
+                    empresaA, producto, bodega, usuarioA);
+
+            // a una unidad que mide otra cosa: no
+            mvc.perform(put("/api/productos/" + producto).header(HttpHeaders.AUTHORIZATION, adminA)
+                            .contentType(MediaType.APPLICATION_JSON).content(cuerpo.formatted(codigo, nombre, categoriaA, metro, "12")))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("UNIDAD_EN_USO"));
+            // de unidades a docenas: 24 UND = 2 DOC y el costo de $500 la unidad pasa a $6.000 la docena
+            mvc.perform(put("/api/productos/" + producto).header(HttpHeaders.AUTHORIZATION, adminA)
+                            .contentType(MediaType.APPLICATION_JSON).content(cuerpo.formatted(codigo, nombre, categoriaA, doc, "12")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.unidadMedida.codigo").value("DOC"))
+                    .andExpect(jsonPath("$.stockMinimo").value(1.0));
+            assertEquals(0, new java.math.BigDecimal("2").compareTo(jdbc.queryForObject(
+                    "SELECT cantidad FROM stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?",
+                    java.math.BigDecimal.class, producto, bodega)));
+            assertEquals(0, new java.math.BigDecimal("6000").compareTo(jdbc.queryForObject(
+                    "SELECT costo_unitario FROM movimiento_inventario WHERE producto_id = ? AND bodega_destino_id = ?",
+                    java.math.BigDecimal.class, producto, bodega)));
+            assertEquals(0, new java.math.BigDecimal("2").compareTo(jdbc.queryForObject(
+                    "SELECT stock_resultante FROM movimiento_inventario WHERE producto_id = ? AND bodega_destino_id = ?",
+                    java.math.BigDecimal.class, producto, bodega)));
+            // de vuelta a unidades: queda como estaba
+            mvc.perform(put("/api/productos/" + producto).header(HttpHeaders.AUTHORIZATION, adminA)
+                            .contentType(MediaType.APPLICATION_JSON).content(cuerpo.formatted(codigo, nombre, categoriaA, und, "1")))
+                    .andExpect(status().isOk());
+            assertEquals(0, new java.math.BigDecimal("24").compareTo(jdbc.queryForObject(
+                    "SELECT cantidad FROM stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?",
+                    java.math.BigDecimal.class, producto, bodega)));
+
+            // a otra medida diciendo la equivalencia: 1 UND = 1 M (el cable que se creó por unidades y es por metro)
+            Long lista = jdbc.queryForObject("SELECT id FROM lista_precio WHERE empresa_id = ? ORDER BY id LIMIT 1", Long.class,
+                    empresaA);
+            jdbc.update("INSERT INTO precio_producto (empresa_id, lista_precio_id, producto_id, unidad_medida_id, precio, "
+                    + "creado_por_usuario_id) VALUES (?, ?, ?, ?, 4300, ?)", empresaA, lista, producto, und, usuarioA);
+            jdbc.update("INSERT INTO precio_producto (empresa_id, lista_precio_id, producto_id, unidad_medida_id, precio, "
+                    + "creado_por_usuario_id) VALUES (?, ?, ?, ?, 48000, ?)", empresaA, lista, producto, doc, usuarioA);
+            mvc.perform(put("/api/productos/" + producto).header(HttpHeaders.AUTHORIZATION, adminA)
+                            .contentType(MediaType.APPLICATION_JSON).content(cuerpo.formatted(codigo, nombre, categoriaA, metro, "1")
+                                    .replace("}", ",\"equivalenciaUnidad\":1}")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.unidadMedida.codigo").value("M"));
+            assertEquals(0, new java.math.BigDecimal("24").compareTo(jdbc.queryForObject(
+                    "SELECT cantidad FROM stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?",
+                    java.math.BigDecimal.class, producto, bodega)));
+            // el precio de la unidad pasa al metro y el de la docena deja de estar vigente
+            assertEquals(0, new java.math.BigDecimal("4300").compareTo(jdbc.queryForObject("SELECT precio FROM precio_producto "
+                    + "WHERE producto_id = ? AND unidad_medida_id = ? AND vigente_hasta IS NULL", java.math.BigDecimal.class,
+                    producto, metro)));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM precio_producto WHERE producto_id = ? "
+                    + "AND unidad_medida_id = ? AND vigente_hasta IS NULL", Integer.class, producto, doc));
+        } finally {
+            jdbc.update("DELETE FROM precio_producto WHERE producto_id = ?", producto);
+            jdbc.update("DELETE FROM movimiento_inventario WHERE producto_id = ? AND bodega_destino_id = ?", producto, bodega);
+            jdbc.update("DELETE FROM stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?", producto, bodega);
+            jdbc.update("DELETE FROM bodega WHERE id = ?", bodega);
+            jdbc.update("DELETE FROM producto WHERE id = ?", producto);
+        }
+    }
+
+    @Test
     void losReportesPorSedeSoloUsanLasBodegasDeEsaSedeYNoAceptanSedesAjenas() throws Exception {
         Long sedeA = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaA);
         Long sedeB = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaB);
@@ -3129,6 +3211,13 @@ class AislamientoEmpresasTest {
                             .content("{\"lineas\":[" + linea.formatted(1, 10) + "]}"))
                     .andExpect(jsonPath("$.requiereAutorizacionDescuento").value(true))
                     .andExpect(jsonPath("$.limiteDescuentoPct").value(5.0));
+            // spec 038: vender en otra unidad que mide lo mismo sin precio propio: el precio sale del de la unidad del producto
+            Long docena = jdbc.queryForObject("SELECT id FROM unidad_medida WHERE codigo = 'DOC'", Long.class);
+            mvc.perform(post("/api/ventas/cotizar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"lineas\":[{\"productoId\":" + productoA + ",\"unidadMedidaId\":" + docena
+                                    + ",\"cantidad\":1,\"descuentoPct\":0}]}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.total").value(143160.0)); // 12 x 11.930
             assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM venta WHERE empresa_id = ?", Integer.class, empresaA));
 
             // tiquete: el original y luego COPIA, cada impresión auditada; otra empresa no lo ve

@@ -54,6 +54,16 @@ public class ProductoService {
     private final com.proyecto.supply_core.venta.repository.TarifaImpuestoRepository tarifaRepository;
     /** Proveedor del costo de referencia (spec 026); {@code null} en pruebas que no lo usan. */
     private final com.proyecto.supply_core.proveedor.repository.ProveedorRepository proveedorRepository;
+    /** Spec 038: convierte lo guardado en la unidad del producto al cambiarla ({@code null} en pruebas sin Spring). */
+    private ConversionUnidadProductoService conversion;
+
+    /**
+     * @param conversion conversión de cantidades y precios al cambiar la unidad de un producto con movimientos
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setConversion(ConversionUnidadProductoService conversion) {
+        this.conversion = conversion;
+    }
 
     /**
      * @param productoRepository   acceso a productos
@@ -240,17 +250,33 @@ public class ProductoService {
             exigirHerencia(general, req);
         }
         boolean cambiaUnidad = !p.getUnidadMedida().getId().equals(req.unidadMedidaId());
-        if (cambiaUnidad && (movimientoRepository.existsByProductoId(id)
-                || p.isEsAgrupador() && movimientoRepository.existsByProductoAgrupadorId(id))) {
+        boolean conMovimientos = cambiaUnidad && (movimientoRepository.existsByProductoId(id)
+                || p.isEsAgrupador() && movimientoRepository.existsByProductoAgrupadorId(id));
+        if (conMovimientos && (p.isEsAgrupador() || conversion == null)) {
             throw new NegocioException("UNIDAD_EN_USO",
                     "No se puede cambiar la unidad de un producto que ya tiene movimientos de inventario"
                             + (p.isEsAgrupador() ? " (en alguna de sus variantes)" : ""));
         }
+        com.proyecto.supply_core.catalogo.entity.UnidadMedida unidadNueva = cambiaUnidad ? unidad(req.unidadMedidaId())
+                : p.getUnidadMedida();
+        // spec 038: con movimientos solo se pasa a una unidad que mida lo mismo; el mínimo, el máximo y los costos que
+        // llegan están en la unidad actual y se convierten aquí; el resto lo convierte ConversionUnidadProductoService
+        com.proyecto.supply_core.catalogo.entity.UnidadMedida unidadVieja = p.getUnidadMedida();
+        boolean otraMedida = conMovimientos && unidadVieja.getMagnitud() != unidadNueva.getMagnitud();
+        BigDecimal factor = conMovimientos
+                ? ConversionUnidadProductoService.factor(unidadVieja, unidadNueva, req.equivalenciaUnidad()) : null;
         String antes = describir(p);
         p.setCodigo(codigo);
-        aplicar(p, req.nombre(), req.descripcion(), categoria(req.categoriaId()),
-                cambiaUnidad ? unidad(req.unidadMedidaId()) : p.getUnidadMedida(),
-                req.stockMinimo(), req.stockMaximo(), req.costoReferencia());
+        aplicar(p, req.nombre(), req.descripcion(), categoria(req.categoriaId()), unidadNueva,
+                cantidadConvertida(req.stockMinimo(), factor), cantidadConvertida(req.stockMaximo(), factor),
+                precioConvertido(req.costoReferencia(), factor));
+        if (factor != null) {
+            p.setCostoPromedio(precioConvertido(p.getCostoPromedio(), factor));
+            conversion.convertir(id, factor);
+            if (otraMedida) {
+                conversion.cambiarMedida(id, unidadVieja, unidadNueva, factor);
+            }
+        }
         // spec 026: impuesto, proveedor y fecha del costo; lo que no se envía no cambia
         if (req.tarifaImpuestoId() != null) {
             p.setTarifaImpuesto(tarifa(req.tarifaImpuestoId()));
@@ -517,5 +543,25 @@ public class ProductoService {
      */
     private static BigDecimal cero() {
         return BigDecimal.ZERO.setScale(4);
+    }
+
+    /**
+     * @param cantidad cantidad en la unidad actual ({@code null} se deja igual)
+     * @param factor   factor de la conversión ({@code null} = no cambia la unidad)
+     * @return cantidad en la unidad nueva, con 4 decimales
+     */
+    private static BigDecimal cantidadConvertida(BigDecimal cantidad, BigDecimal factor) {
+        return cantidad == null || factor == null ? cantidad
+                : cantidad.multiply(factor).setScale(4, java.math.RoundingMode.HALF_UP);
+    }
+
+    /**
+     * @param precio precio por unidad actual ({@code null} se deja igual)
+     * @param factor factor de la conversión ({@code null} = no cambia la unidad)
+     * @return precio por unidad nueva, con 4 decimales
+     */
+    private static BigDecimal precioConvertido(BigDecimal precio, BigDecimal factor) {
+        return precio == null || factor == null ? precio
+                : precio.divide(factor, 4, java.math.RoundingMode.HALF_UP);
     }
 }
